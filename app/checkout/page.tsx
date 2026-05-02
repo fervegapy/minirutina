@@ -20,6 +20,7 @@ const NOMBRE_COLOR: Record<string, string> = {
 };
 
 const PRECIO_PRODUCTO = 149000;
+const PRECIO_DIGITAL = 89000;
 const PRECIO_DELIVERY = 35000;
 
 function fmt(n: number) {
@@ -43,8 +44,9 @@ function CheckoutInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const precioBase = tipoEntrega === "digital" ? PRECIO_DIGITAL : PRECIO_PRODUCTO;
   const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery" ? PRECIO_DELIVERY : 0;
-  const precioTotal = PRECIO_PRODUCTO + precioEnvio;
+  const precioTotal = precioBase + precioEnvio;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,8 +193,11 @@ function CheckoutInner() {
               <>
                 <div className="rounded-xl border-2 border-[#a8c8e8] bg-[#a8c8e8]/10 p-4 flex items-start gap-3">
                   <span className="text-2xl shrink-0">📲</span>
-                  <div>
-                    <p className="font-bold text-sm text-[#233933]">Archivo digital</p>
+                  <div className="flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="font-bold text-sm text-[#233933]">Archivo digital</p>
+                      <p className="font-bold text-sm text-[#233933] shrink-0">{fmt(PRECIO_DIGITAL)}</p>
+                    </div>
                     <p className="text-xs text-[#233933]/60 mt-0.5">
                       Recibís el PDF listo para imprimir donde quieras.
                     </p>
@@ -293,7 +298,7 @@ function CheckoutInner() {
             <div className="max-w-md mx-auto space-y-1.5">
               <div className="flex justify-between text-sm text-[#233933]/60">
                 <span>Tablero {tipoEntrega === "fisico" ? "Impreso" : "Digital"}</span>
-                <span>{fmt(PRECIO_PRODUCTO)}</span>
+                <span>{fmt(precioBase)}</span>
               </div>
               <div className="flex justify-between text-sm text-[#233933]/60">
                 <span>Envío ({tipoEntrega === "fisico" ? (modalidad === "delivery" ? "Delivery" : "Pickup") : "Digital"})</span>
