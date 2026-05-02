@@ -8,7 +8,7 @@ async function fetchItems(url: string): Promise<{ id: number; nombre: string }[]
     const res = await fetch(`${url}?limit=500&sort=nombre+asc`);
     if (!res.ok) return [];
     const json = await res.json();
-    return json.data ?? [];
+    return Array.isArray(json) ? json : (json.data ?? []);
   } catch {
     return [];
   }
