@@ -27,31 +27,48 @@ function CheckoutInner() {
   const colorAcento = params.get("color_acento") ?? "";
   const personalizacionRaw = params.get("personalizacion") ?? "{}";
 
-  const [tipoEntrega, setTipoEntrega] = useState<"digital" | "fisico">("digital");
-  const [contacto, setContacto] = useState("");
-  const [calle, setCalle] = useState("");
+  const [tipoEntrega, setTipoEntrega] = useState<"fisico" | "digital">("fisico");
+  const [modalidad, setModalidad] = useState<"pickup" | "delivery">("pickup");
+  const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [departamento, setDepartamento] = useState("");
   const [ciudad, setCiudad] = useState("");
-  const [telefono, setTelefono] = useState("");
+  const [barrio, setBarrio] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!contacto.trim()) {
-      setError("Ingresá tu contacto (WhatsApp o email).");
+
+    if (!email.trim() && !whatsapp.trim()) {
+      setError("Ingresá al menos tu email o WhatsApp.");
       return;
     }
-    if (tipoEntrega === "fisico" && (!calle.trim() || !ciudad.trim())) {
-      setError("Completá los datos de envío.");
-      return;
+    if (tipoEntrega === "fisico" && modalidad === "delivery") {
+      if (!departamento.trim() || !ciudad.trim()) {
+        setError("Completá el departamento y la ciudad.");
+        return;
+      }
     }
+
     setLoading(true);
     setError("");
 
-    const direccion =
-      tipoEntrega === "fisico"
-        ? `${calle}, ${ciudad}${telefono ? ` — Tel: ${telefono}` : ""}`
-        : null;
+    const contacto = [
+      email.trim() && `Email: ${email.trim()}`,
+      whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    let direccion: string | null = null;
+    if (tipoEntrega === "fisico") {
+      if (modalidad === "pickup") {
+        direccion = "Pickup — Villamorra, Asunción";
+      } else {
+        direccion = `Delivery — ${departamento}, ${ciudad}${barrio ? `, ${barrio}` : ""}`;
+      }
+    }
 
     let personalizacion: unknown;
     try {
@@ -97,8 +114,8 @@ function CheckoutInner() {
         </h1>
 
         {/* Order summary */}
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-6">
-          <h2 className="font-bold text-sm uppercase tracking-wide text-[#233933]/50 mb-3">
+        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-5">
+          <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50 mb-3">
             Tu pedido
           </h2>
           <div className="space-y-2 text-sm">
@@ -128,76 +145,148 @@ function CheckoutInner() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Delivery type */}
+          {/* Tipo de entrega */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-            <h2 className="font-bold text-sm uppercase tracking-wide text-[#233933]/50 mb-3">
+            <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50 mb-4">
               Tipo de entrega
             </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {(["digital", "fisico"] as const).map((tipo) => (
+
+            {tipoEntrega === "fisico" ? (
+              <>
+                <div className="rounded-xl border-2 border-[#233933] bg-[#ecbc5d]/10 p-4 flex items-start gap-3">
+                  <span className="text-2xl shrink-0">📦</span>
+                  <div>
+                    <p className="font-bold text-sm text-[#233933]">
+                      Impreso y enviado
+                    </p>
+                    <p className="text-xs text-[#233933]/60 mt-0.5">
+                      Imprimimos en alta calidad y lo entregamos listo para colgar.
+                    </p>
+                  </div>
+                </div>
                 <button
-                  key={tipo}
                   type="button"
-                  onClick={() => setTipoEntrega(tipo)}
+                  onClick={() => setTipoEntrega("digital")}
+                  className="mt-3 text-xs text-[#233933]/40 hover:text-[#233933] underline underline-offset-2 w-full text-center transition-colors"
+                >
+                  ¿Preferís solo el archivo digital para imprimir vos?
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="rounded-xl border-2 border-[#a8c8e8] bg-[#a8c8e8]/10 p-4 flex items-start gap-3">
+                  <span className="text-2xl shrink-0">📲</span>
+                  <div>
+                    <p className="font-bold text-sm text-[#233933]">
+                      Archivo digital
+                    </p>
+                    <p className="text-xs text-[#233933]/60 mt-0.5">
+                      Recibís el PDF listo para imprimir donde quieras.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTipoEntrega("fisico");
+                    setModalidad("pickup");
+                  }}
+                  className="mt-3 text-xs text-[#233933]/40 hover:text-[#233933] underline underline-offset-2 w-full text-center transition-colors"
+                >
+                  ← Volver a impreso y enviado
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Modalidad de entrega (solo físico) */}
+          {tipoEntrega === "fisico" && (
+            <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
+              <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50 mb-4">
+                Modalidad de entrega
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setModalidad("pickup")}
                   className={`rounded-xl p-4 border-2 text-left transition-all ${
-                    tipoEntrega === tipo
+                    modalidad === "pickup"
                       ? "border-[#233933] bg-[#ecbc5d]/10"
                       : "border-[#e5e7eb] hover:border-[#233933]/30"
                   }`}
                 >
-                  <div className="text-2xl mb-1">
-                    {tipo === "digital" ? "📲" : "📦"}
+                  <div className="text-xl mb-1">🏠</div>
+                  <div className="font-bold text-sm text-[#233933]">Pickup</div>
+                  <div className="text-xs font-semibold text-[#a8c5a0] mt-0.5">
+                    Sin costo
                   </div>
-                  <div className="font-bold text-sm text-[#233933]">
-                    {tipo === "digital" ? "Digital" : "Físico"}
-                  </div>
-                  <div className="text-xs text-[#233933]/60 mt-0.5">
-                    {tipo === "digital"
-                      ? "Descarga inmediata"
-                      : "Impreso y enviado"}
+                  <div className="text-xs text-[#233933]/50 mt-1 leading-relaxed">
+                    Retirás en Villamorra, Asunción. Dirección exacta por WhatsApp.
                   </div>
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setModalidad("delivery")}
+                  className={`rounded-xl p-4 border-2 text-left transition-all ${
+                    modalidad === "delivery"
+                      ? "border-[#233933] bg-[#ecbc5d]/10"
+                      : "border-[#e5e7eb] hover:border-[#233933]/30"
+                  }`}
+                >
+                  <div className="text-xl mb-1">🛵</div>
+                  <div className="font-bold text-sm text-[#233933]">Delivery</div>
+                  <div className="text-xs text-[#233933]/50 mt-0.5">A tu puerta</div>
+                  <div className="text-xs text-[#233933]/50 mt-1 leading-relaxed">
+                    Costo según zona, a confirmar por WhatsApp.
+                  </div>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Shipping address (only for physical) */}
-          {tipoEntrega === "fisico" && (
+          {/* Datos de entrega (solo delivery) */}
+          {tipoEntrega === "fisico" && modalidad === "delivery" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-              <h2 className="font-bold text-sm uppercase tracking-wide text-[#233933]/50">
-                Dirección de envío
+              <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50">
+                Datos de entrega
               </h2>
               <Input
-                placeholder="Calle y número"
-                value={calle}
-                onChange={(e) => setCalle(e.target.value)}
+                placeholder="Departamento"
+                value={departamento}
+                onChange={(e) => setDepartamento(e.target.value)}
               />
               <Input
-                placeholder="Ciudad / Localidad"
+                placeholder="Ciudad"
                 value={ciudad}
                 onChange={(e) => setCiudad(e.target.value)}
               />
               <Input
-                placeholder="Teléfono de contacto"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                type="tel"
+                placeholder="Barrio"
+                value={barrio}
+                onChange={(e) => setBarrio(e.target.value)}
               />
             </div>
           )}
 
-          {/* Contact */}
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-            <h2 className="font-bold text-sm uppercase tracking-wide text-[#233933]/50 mb-3">
-              Contacto
+          {/* Datos de contacto */}
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
+            <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50">
+              Datos de contacto
             </h2>
             <Input
-              placeholder="WhatsApp o email"
-              value={contacto}
-              onChange={(e) => setContacto(e.target.value)}
+              placeholder="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
-            <p className="text-xs text-[#233933]/50 mt-2">
-              Te contactaremos para confirmar tu pedido.
+            <Input
+              placeholder="WhatsApp (ej: +595 981 123456)"
+              type="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
+            />
+            <p className="text-xs text-[#233933]/50">
+              Te contactamos para confirmar y coordinar tu pedido.
             </p>
           </div>
 
@@ -205,15 +294,13 @@ function CheckoutInner() {
             <p className="text-red-500 text-sm text-center">{error}</p>
           )}
 
-          <a href="#">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl py-3 text-base shadow-none border-0"
-            >
-              {loading ? "Guardando..." : "Ir a pagar →"}
-            </Button>
-          </a>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl text-base shadow-none border-0"
+          >
+            {loading ? "Guardando..." : "Ir a pagar →"}
+          </Button>
         </form>
       </div>
     </main>

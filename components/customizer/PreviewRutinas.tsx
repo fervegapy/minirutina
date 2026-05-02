@@ -1,4 +1,4 @@
-import { ICONOS_MANANA, ICONOS_SIESTA, ICONOS_NOCHE } from "./IconPicker";
+import { ICONOS_MANANA, ICONOS_SIESTA, ICONOS_NOCHE, getIconEmoji } from "./IconPicker";
 
 interface PreviewRutinasProps {
   nombreNino: string;
@@ -14,18 +14,6 @@ const BLOQUES = [
   { key: "noche" as const, label: "🌙 Noche", iconos: ICONOS_NOCHE },
 ];
 
-function getIconEmoji(id: string): string {
-  const map: Record<string, string> = {
-    despertar: "☀️", dientes: "🦷", desayuno: "🥣", vestirse: "👕",
-    mochila: "🎒", colegio: "🏫", pelo: "💇", lavarse: "🧼",
-    almuerzo: "🍽️", siesta: "😴", lectura: "📖", juego: "🎮",
-    tarea: "✏️", merienda: "🍎", tv: "📺", dibujo: "🎨",
-    cena: "🍜", bano: "🛁", pijama: "🌙", cuento: "📚",
-    dientes_noche: "🪥", dormir: "💤", rezar: "🙏", abrazar: "🤗",
-  };
-  return map[id] ?? "⭐";
-}
-
 export default function PreviewRutinas({
   nombreNino,
   colorAcento,
@@ -36,58 +24,71 @@ export default function PreviewRutinas({
   const selected = { manana, siesta, noche };
 
   return (
-    <div
-      className="rounded-2xl border border-[#e5e7eb] bg-white p-6 max-w-sm mx-auto"
-      style={{ fontFamily: "Nunito, sans-serif" }}
-    >
+    <div style={{ fontFamily: "Nunito, sans-serif" }}>
+      {/* Title header */}
       <div
-        className="rounded-xl px-4 py-3 mb-5 text-center"
+        className="rounded-xl px-4 py-3 mb-4 text-center"
         style={{ backgroundColor: colorAcento + "44" }}
       >
-        <h3 className="font-bold text-lg text-[#233933]">
+        <h3 className="font-bold text-base text-[#233933]">
           Rutina de {nombreNino || "tu niño"}
         </h3>
       </div>
-      <div className="space-y-4">
+
+      {/* One card per block */}
+      <div className="space-y-3">
         {BLOQUES.map((bloque) => {
           const ids = selected[bloque.key];
-          const allIconos = bloque.iconos;
           const iconosSeleccionados = ids
-            .map((id) => allIconos.find((ic) => ic.id === id))
+            .map((id) => bloque.iconos.find((ic) => ic.id === id))
             .filter(Boolean) as { id: string; label: string }[];
 
           return (
-            <div key={bloque.key}>
+            <div
+              key={bloque.key}
+              className="rounded-xl border border-[#e5e7eb] overflow-hidden"
+            >
+              {/* Block header */}
               <div
-                className="rounded-lg px-3 py-1.5 mb-2 inline-block text-sm font-bold text-[#233933]"
+                className="px-4 py-2 text-sm font-bold text-[#233933]"
                 style={{ backgroundColor: colorAcento + "55" }}
               >
                 {bloque.label}
               </div>
-              <div className="flex flex-wrap gap-2">
+
+              {/* Icons row */}
+              <div className="bg-white px-4 py-3">
                 {iconosSeleccionados.length === 0 ? (
                   <span className="text-xs text-[#233933]/30 italic">
-                    Sin actividades
+                    Sin actividades seleccionadas
                   </span>
                 ) : (
-                  iconosSeleccionados.map((ic) => (
-                    <div
-                      key={ic.id}
-                      className="rounded-lg border border-[#e5e7eb] px-3 py-2 flex flex-col items-center gap-1 bg-[#fffef6]"
-                    >
-                      <span className="text-xl">{getIconEmoji(ic.id)}</span>
-                      <span className="text-[10px] font-semibold text-[#233933]">
-                        {ic.label}
-                      </span>
-                    </div>
-                  ))
+                  <div className="flex flex-wrap gap-2">
+                    {iconosSeleccionados.map((ic, i) => (
+                      <div
+                        key={ic.id}
+                        className="flex flex-col items-center gap-1 relative"
+                      >
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl border border-[#e5e7eb]"
+                          style={{ backgroundColor: colorAcento + "22" }}
+                        >
+                          {getIconEmoji(ic.id)}
+                        </div>
+                        <span className="text-[9px] font-bold text-[#233933]/50 w-12 text-center leading-tight">
+                          {i + 1}. {ic.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-      <p className="text-center text-[9px] text-[#233933]/30 mt-5 uppercase tracking-widest">
+
+      <p className="text-center text-[9px] text-[#233933]/30 mt-4 uppercase tracking-widest">
         minirutina.com
       </p>
     </div>

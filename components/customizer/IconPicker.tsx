@@ -59,26 +59,30 @@ export default function IconPicker({
   return (
     <div>
       <p className="text-xs text-[#233933]/50 mb-3 text-center">
-        Seleccioná hasta {max} actividades
+        Seleccioná hasta {max} actividades · el orden importa
       </p>
       <div className="grid grid-cols-4 gap-3">
         {iconos.map((icono) => {
           const isSelected = selected.includes(icono.id);
+          const order = isSelected ? selected.indexOf(icono.id) + 1 : null;
           return (
             <button
               key={icono.id}
               type="button"
               onClick={() => toggle(icono.id)}
-              className={`rounded-xl p-3 flex flex-col items-center gap-1 border-2 transition-all text-center ${
+              className={`relative rounded-xl p-3 flex flex-col items-center gap-1 border-2 transition-all text-center ${
                 isSelected
                   ? "border-[#233933]"
                   : "border-[#e5e7eb] hover:border-[#233933]/30"
               }`}
               style={isSelected ? { backgroundColor: accentColor + "33" } : {}}
             >
-              <span className="text-2xl">
-                {getIconEmoji(icono.id)}
-              </span>
+              {order !== null && (
+                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#233933] text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                  {order}
+                </span>
+              )}
+              <span className="text-2xl">{getIconEmoji(icono.id)}</span>
               <span className="text-[11px] font-semibold text-[#233933] leading-tight">
                 {icono.label}
               </span>
@@ -90,7 +94,7 @@ export default function IconPicker({
   );
 }
 
-function getIconEmoji(id: string): string {
+export function getIconEmoji(id: string): string {
   const map: Record<string, string> = {
     despertar: "☀️",
     dientes: "🦷",
