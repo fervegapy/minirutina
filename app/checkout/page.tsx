@@ -1,5 +1,5 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,9 +19,9 @@ const NOMBRE_COLOR: Record<string, string> = {
   "#f5d78e": "Amarillo cálido",
 };
 
-const PRECIO_PRODUCTO = 149000;
-const PRECIO_DIGITAL = 89000;
 const PRECIO_DELIVERY = 35000;
+const FALLBACK_IMPRESO = 149000;
+const FALLBACK_DIGITAL = 89000;
 
 function fmt(n: number) {
   return "Gs. " + n.toLocaleString("es-PY");
@@ -43,8 +43,27 @@ function CheckoutInner() {
   const [location, setLocation] = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [precioImpreso, setPrecioImpreso] = useState(FALLBACK_IMPRESO);
+  const [precioDigital, setPrecioDigital] = useState(FALLBACK_DIGITAL);
+  const [loadingPrecios, setLoadingPrecios] = useState(true);
 
-  const precioBase = tipoEntrega === "digital" ? PRECIO_DIGITAL : PRECIO_PRODUCTO;
+  useEffect(() => {
+    if (!producto) return;
+    supabase
+      .from("precios")
+      .select("precio_impreso, precio_digital")
+      .eq("producto", producto)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setPrecioImpreso(data.precio_impreso);
+          setPrecioDigital(data.precio_digital);
+        }
+        setLoadingPrecios(false);
+      });
+  }, [producto]);
+
+  const precioBase = tipoEntrega === "digital" ? precioDigital : precioImpreso;
   const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery" ? PRECIO_DELIVERY : 0;
   const precioTotal = precioBase + precioEnvio;
 
@@ -155,7 +174,11 @@ function CheckoutInner() {
             </div>
             <div className="flex justify-between pt-2 border-t border-[#e5e7eb] mt-2">
               <span className="text-[#233933]/70">Precio del tablero</span>
-              <span className="font-bold text-[#233933]">{fmt(PRECIO_PRODUCTO)}</span>
+              {loadingPrecios ? (
+                <span className="w-20 h-4 bg-[#e5e7eb] rounded animate-pulse" />
+              ) : (
+                <span className="font-bold text-[#233933]">{fmt(precioImpreso)}</span>
+              )}
             </div>
           </div>
         </div>
@@ -174,7 +197,7 @@ function CheckoutInner() {
                   <div className="flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="font-bold text-sm text-[#233933]">Impreso y enviado</p>
-                      <p className="font-bold text-sm text-[#233933] shrink-0">{fmt(PRECIO_PRODUCTO)}</p>
+                      <p className="font-bold text-sm text-[#233933] shrink-0">{loadingPrecios ? "—" : fmt(precioImpreso)}</p>
                     </div>
                     <p className="text-xs text-[#233933]/60 mt-0.5">
                       Imprimimos en alta calidad y lo entregamos listo para colgar.
@@ -196,7 +219,7 @@ function CheckoutInner() {
                   <div className="flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="font-bold text-sm text-[#233933]">Archivo digital</p>
-                      <p className="font-bold text-sm text-[#233933] shrink-0">{fmt(PRECIO_DIGITAL)}</p>
+                      <p className="font-bold text-sm text-[#233933] shrink-0">{loadingPrecios ? "—" : fmt(precioDigital)}</p>
                     </div>
                     <p className="text-xs text-[#233933]/60 mt-0.5">
                       Recibís el PDF listo para imprimir donde quieras.
@@ -306,7 +329,11 @@ function CheckoutInner() {
               </div>
               <div className="flex justify-between font-bold text-[#233933] pt-2 border-t border-[#e5e7eb]">
                 <span>Total</span>
-                <span className="text-lg">{fmt(precioTotal)}</span>
+                {loadingPrecios ? (
+                  <span className="w-24 h-5 bg-[#e5e7eb] rounded animate-pulse" />
+                ) : (
+                  <span className="text-lg">{fmt(precioTotal)}</span>
+                )}
               </div>
               <Button
                 type="submit"
