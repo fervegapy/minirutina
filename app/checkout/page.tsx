@@ -19,6 +19,13 @@ const NOMBRE_COLOR: Record<string, string> = {
   "#f5d78e": "Amarillo cálido",
 };
 
+const PRECIO_PRODUCTO = 149000;
+const PRECIO_DELIVERY = 35000;
+
+function fmt(n: number) {
+  return "Gs. " + n.toLocaleString("es-PY");
+}
+
 function CheckoutInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -35,6 +42,9 @@ function CheckoutInner() {
   const [location, setLocation] = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery" ? PRECIO_DELIVERY : 0;
+  const precioTotal = PRECIO_PRODUCTO + precioEnvio;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +117,7 @@ function CheckoutInner() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fffef6] px-4 py-10">
+    <main className="min-h-screen bg-[#fffef6] px-4 py-10 pb-44">
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold text-[#233933] mb-8 text-center">
           Resumen del pedido
@@ -141,6 +151,10 @@ function CheckoutInner() {
                 </span>
               </div>
             </div>
+            <div className="flex justify-between pt-2 border-t border-[#e5e7eb] mt-2">
+              <span className="text-[#233933]/70">Precio del tablero</span>
+              <span className="font-bold text-[#233933]">{fmt(PRECIO_PRODUCTO)}</span>
+            </div>
           </div>
         </div>
 
@@ -155,10 +169,8 @@ function CheckoutInner() {
               <>
                 <div className="rounded-xl border-2 border-[#233933] bg-[#ecbc5d]/10 p-4 flex items-start gap-3">
                   <span className="text-2xl shrink-0">📦</span>
-                  <div>
-                    <p className="font-bold text-sm text-[#233933]">
-                      Impreso y enviado
-                    </p>
+                  <div className="flex-1">
+                    <p className="font-bold text-sm text-[#233933]">Impreso y enviado</p>
                     <p className="text-xs text-[#233933]/60 mt-0.5">
                       Imprimimos en alta calidad y lo entregamos listo para colgar.
                     </p>
@@ -177,9 +189,7 @@ function CheckoutInner() {
                 <div className="rounded-xl border-2 border-[#a8c8e8] bg-[#a8c8e8]/10 p-4 flex items-start gap-3">
                   <span className="text-2xl shrink-0">📲</span>
                   <div>
-                    <p className="font-bold text-sm text-[#233933]">
-                      Archivo digital
-                    </p>
+                    <p className="font-bold text-sm text-[#233933]">Archivo digital</p>
                     <p className="text-xs text-[#233933]/60 mt-0.5">
                       Recibís el PDF listo para imprimir donde quieras.
                     </p>
@@ -187,10 +197,7 @@ function CheckoutInner() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setTipoEntrega("fisico");
-                    setModalidad("pickup");
-                  }}
+                  onClick={() => { setTipoEntrega("fisico"); setModalidad("pickup"); }}
                   className="mt-3 text-xs text-[#233933]/40 hover:text-[#233933] underline underline-offset-2 w-full text-center transition-colors"
                 >
                   ← Volver a impreso y enviado
@@ -217,9 +224,7 @@ function CheckoutInner() {
                 >
                   <div className="text-xl mb-1">🏠</div>
                   <div className="font-bold text-sm text-[#233933]">Pickup</div>
-                  <div className="text-xs font-semibold text-[#a8c5a0] mt-0.5">
-                    Sin costo
-                  </div>
+                  <div className="text-xs font-bold text-[#a8c5a0] mt-0.5">Gs. 0</div>
                   <div className="text-xs text-[#233933]/50 mt-1 leading-relaxed">
                     Retirás en Villamorra, Asunción. Dirección exacta por WhatsApp.
                   </div>
@@ -235,9 +240,9 @@ function CheckoutInner() {
                 >
                   <div className="text-xl mb-1">🛵</div>
                   <div className="font-bold text-sm text-[#233933]">Delivery</div>
-                  <div className="text-xs text-[#233933]/50 mt-0.5">A tu puerta</div>
+                  <div className="text-xs font-bold text-[#233933]/70 mt-0.5">{fmt(PRECIO_DELIVERY)}</div>
                   <div className="text-xs text-[#233933]/50 mt-1 leading-relaxed">
-                    Costo según zona, a confirmar por WhatsApp.
+                    A tu puerta. Zona a confirmar por WhatsApp.
                   </div>
                 </button>
               </div>
@@ -280,13 +285,30 @@ function CheckoutInner() {
             <p className="text-red-500 text-sm text-center">{error}</p>
           )}
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl text-base shadow-none border-0"
-          >
-            {loading ? "Guardando..." : "Ir a pagar →"}
-          </Button>
+          {/* Sticky summary bar */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e7eb] shadow-[0_-4px_24px_rgba(0,0,0,0.07)] px-4 pt-4 pb-6 z-50">
+            <div className="max-w-md mx-auto space-y-1.5">
+              <div className="flex justify-between text-sm text-[#233933]/60">
+                <span>Tablero</span>
+                <span>{fmt(PRECIO_PRODUCTO)}</span>
+              </div>
+              <div className="flex justify-between text-sm text-[#233933]/60">
+                <span>Envío ({tipoEntrega === "fisico" ? (modalidad === "delivery" ? "Delivery" : "Pickup") : "Digital"})</span>
+                <span>{precioEnvio === 0 ? "Gs. 0" : fmt(precioEnvio)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-[#233933] pt-2 border-t border-[#e5e7eb]">
+                <span>Total</span>
+                <span className="text-lg">{fmt(precioTotal)}</span>
+              </div>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl text-base shadow-none border-0 mt-3"
+              >
+                {loading ? "Guardando..." : "Ir a pagar →"}
+              </Button>
+            </div>
+          </div>
         </form>
       </div>
     </main>
