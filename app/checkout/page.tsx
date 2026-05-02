@@ -170,7 +170,10 @@ function CheckoutInner() {
                 <div className="rounded-xl border-2 border-[#233933] bg-[#ecbc5d]/10 p-4 flex items-start gap-3">
                   <span className="text-2xl shrink-0">📦</span>
                   <div className="flex-1">
-                    <p className="font-bold text-sm text-[#233933]">Impreso y enviado</p>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="font-bold text-sm text-[#233933]">Impreso y enviado</p>
+                      <p className="font-bold text-sm text-[#233933] shrink-0">{fmt(PRECIO_PRODUCTO)}</p>
+                    </div>
                     <p className="text-xs text-[#233933]/60 mt-0.5">
                       Imprimimos en alta calidad y lo entregamos listo para colgar.
                     </p>
@@ -289,7 +292,7 @@ function CheckoutInner() {
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e7eb] shadow-[0_-4px_24px_rgba(0,0,0,0.07)] px-4 pt-4 pb-6 z-50">
             <div className="max-w-md mx-auto space-y-1.5">
               <div className="flex justify-between text-sm text-[#233933]/60">
-                <span>Tablero</span>
+                <span>Tablero {tipoEntrega === "fisico" ? "Impreso" : "Digital"}</span>
                 <span>{fmt(PRECIO_PRODUCTO)}</span>
               </div>
               <div className="flex justify-between text-sm text-[#233933]/60">
