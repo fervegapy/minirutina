@@ -8,7 +8,7 @@ const productos = [
     nombre: "Tablero de Rutinas",
     desc: "Mañana, siesta y noche. Tu hijo sabe qué sigue en cada momento del día sin que tengas que recordárselo.",
     beneficio: "Menos conflictos a la hora de dormir y levantarse.",
-    href: "/personalizar/rutinas",
+    href: "/productos/rutinas",
     accent: "#a8c5a0",
   },
   {
@@ -17,7 +17,7 @@ const productos = [
     nombre: "Plan de la Semana",
     desc: "Las actividades de toda la semana a la vista. Lunes a domingo, con lo que corresponde cada día.",
     beneficio: "Los chicos anticipan su semana y se sienten seguros.",
-    href: "/personalizar/semana",
+    href: "/productos/semana",
     accent: "#a8c8e8",
   },
   {
@@ -26,7 +26,7 @@ const productos = [
     nombre: "Tablero de Recompensas",
     desc: "Un sistema de estrellitas con una recompensa especial al final. Funciona mejor que cualquier castigo.",
     beneficio: "Hábitos nuevos en menos de 3 semanas.",
-    href: "/personalizar/recompensas",
+    href: "/productos/recompensas",
     accent: "#f5d78e",
   },
 ];
