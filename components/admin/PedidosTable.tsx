@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Pedido, EstadoPedido } from "@/types/pedido";
-import { Badge } from "@/components/ui/badge";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas: "Tablero de Rutinas",
