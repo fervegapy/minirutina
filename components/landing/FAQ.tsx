@@ -8,42 +8,47 @@ import {
 
 const faqs = [
   {
-    q: "¿El tablero es digital o físico?",
-    a: "Podés elegir: descarga digital (PDF/PNG para imprimir en casa) o impresión y envío físico. La opción digital se entrega en minutos; la física llega en 3-5 días hábiles.",
+    q: "¿Qué recibo exactamente?",
+    a: "Un tablero impreso en papel couché de 300g, plastificado mate, listo para colgar. Viene con los datos de tu hijo, los íconos que elegiste y el color que personalizaste. Solo necesitás una moldura o cinta doble faz.",
   },
   {
-    q: "¿Cómo imprimo el tablero en casa?",
-    a: "Recibirás un archivo PNG de alta resolución. Imprimilo en hoja A4 en cualquier impresora de tinta. Para mejor resultado, usá papel fotográfico o couché.",
+    q: "¿Cuánto tarda en llegar?",
+    a: "Entre 3 y 5 días hábiles desde que confirmamos el pago. Te avisamos por WhatsApp con el seguimiento del envío.",
   },
   {
-    q: "¿Cuánto tarda en llegar el pedido?",
-    a: "La versión digital llega en menos de 24 horas. La versión física tarda entre 3 y 5 días hábiles dependiendo de tu zona.",
+    q: "¿Puedo elegir imprimir yo mismo?",
+    a: "Sí. Si preferís la versión digital, te enviamos un archivo PNG de alta resolución para que lo imprimás en cualquier imprenta o en casa. Es una opción más económica pero la impresión depende de vos.",
   },
   {
-    q: "¿Cómo puedo pagar?",
-    a: "Aceptamos transferencia bancaria, Mercado Pago y tarjeta de crédito/débito. El pago se realiza de forma segura a través de nuestra plataforma.",
+    q: "¿Qué pasa si hay algún error en el tablero?",
+    a: "Si hay un error nuestro en la producción, lo reimprimimos sin costo. Si hubo un error en los datos que ingresaste, coordinamos una reimpresión a precio especial.",
   },
   {
-    q: "¿Qué puedo personalizar en cada tablero?",
-    a: "Podés elegir el nombre del niño, el color de acento y las actividades o íconos de cada sección. Cada producto tiene sus propias opciones de personalización.",
+    q: "¿Cómo pago?",
+    a: "Aceptamos transferencia bancaria y Mercado Pago (tarjeta de crédito, débito o dinero en cuenta). El pedido se confirma cuando validamos el pago.",
   },
 ];
 
 export default function FAQ() {
   return (
-    <section className="px-6 py-16 md:py-20 bg-white">
+    <section id="faq" className="bg-[#fffef6] px-6 py-20 md:py-24">
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10 text-[#233933]">
-          Preguntas frecuentes
-        </h2>
-        <Accordion multiple={false} className="space-y-2">
+        <div className="text-center mb-12">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#ecbc5d] mb-3 block">
+            Dudas frecuentes
+          </span>
+          <h2 className="text-3xl md:text-4xl font-bold text-[#233933]">
+            Preguntas frecuentes
+          </h2>
+        </div>
+        <Accordion multiple={false} className="space-y-3">
           {faqs.map((faq, i) => (
             <AccordionItem
               key={i}
               value={`item-${i}`}
-              className="border border-[#e5e7eb] rounded-xl px-4"
+              className="bg-white border border-[#e5e7eb] rounded-xl px-5"
             >
-              <AccordionTrigger className="text-left font-semibold text-[#233933] hover:no-underline py-4">
+              <AccordionTrigger className="text-left font-semibold text-[#233933] hover:no-underline py-4 text-sm">
                 {faq.q}
               </AccordionTrigger>
               <AccordionContent className="text-sm text-[#233933]/70 pb-4 leading-relaxed">

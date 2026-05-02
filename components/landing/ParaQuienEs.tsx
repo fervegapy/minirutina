@@ -1,41 +1,50 @@
-const items = [
+const razones = [
   {
-    icon: "🌸",
-    title: "Para mamás y papás",
-    desc: "Ayuda a tus hijos a construir hábitos sanos con rutinas visuales fáciles de entender y seguir.",
+    icon: "🧠",
+    titulo: "Las rutinas les dan seguridad",
+    desc: "Los niños necesitan predecibilidad. Cuando saben qué sigue, hay menos ansiedad, menos berrinches y más autonomía.",
   },
   {
-    icon: "🏫",
-    title: "Para educadores",
-    desc: "Ideal para salas de kínder y primaria. Organiza el día y las tareas de manera visual y atractiva.",
+    icon: "🎨",
+    titulo: "Diseñado para que quieran usarlo",
+    desc: "Colores suaves, íconos claros, el nombre de tu hijo. No es un tablero genérico — es el suyo.",
+  },
+  {
+    icon: "📦",
+    titulo: "Nosotros nos encargamos de todo",
+    desc: "Lo diseñás en 5 minutos. Nosotros lo imprimimos, lo embalamos y lo enviamos. Vos solo colgás.",
   },
   {
     icon: "🎁",
-    title: "Como regalo",
-    desc: "Un regalo original y útil para bebés y niños. Personalizado con su nombre y colores favoritos.",
+    titulo: "El regalo perfecto",
+    desc: "Ideal para baby showers, cumpleaños o para regalarle a una familia con hijos. Original, útil y personalizado.",
   },
 ];
 
 export default function ParaQuienEs() {
   return (
-    <section className="px-6 py-16 md:py-20 bg-white">
-      <div className="max-w-4xl mx-auto">
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-12 text-[#233933]">
-          ¿Para quién es Minirutina?
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {items.map((item) => (
+    <section className="bg-[#233933] px-6 py-20 md:py-24">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-16">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#ecbc5d] mb-3 block">
+            Por qué Minirutina
+          </span>
+          <h2 className="text-3xl md:text-4xl font-bold text-white">
+            Más que un tablero
+          </h2>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {razones.map((r) => (
             <div
-              key={item.title}
-              className="bg-[#fffef6] border border-[#e5e7eb] rounded-xl p-6 text-center"
+              key={r.titulo}
+              className="bg-white/5 border border-white/10 rounded-2xl p-6 flex gap-4"
             >
-              <div className="text-4xl mb-4">{item.icon}</div>
-              <h3 className="font-bold text-lg mb-2 text-[#233933]">
-                {item.title}
-              </h3>
-              <p className="text-sm text-[#233933]/70 leading-relaxed">
-                {item.desc}
-              </p>
+              <span className="text-3xl shrink-0">{r.icon}</span>
+              <div>
+                <h3 className="font-bold text-white mb-1">{r.titulo}</h3>
+                <p className="text-white/60 text-sm leading-relaxed">{r.desc}</p>
+              </div>
             </div>
           ))}
         </div>
