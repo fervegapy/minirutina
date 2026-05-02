@@ -58,7 +58,7 @@ export default function Footer() {
             © {new Date().getFullYear()} Minirutina. Todos los derechos reservados.
           </p>
           <p className="text-white/20 text-xs">
-            Hecho con ❤️ para familias argentinas
+            Hecho con ❤️ para familias paraguayas
           </p>
         </div>
       </div>

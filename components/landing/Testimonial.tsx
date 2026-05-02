@@ -12,7 +12,7 @@ export default function Testimonial() {
           </div>
           <div className="text-left">
             <p className="font-bold text-sm text-[#233933]">Valentina M.</p>
-            <p className="text-xs text-[#233933]/50">Mamá de Tomás, 4 años — Buenos Aires</p>
+            <p className="text-xs text-[#233933]/50">Mamá de Tomás, 4 años — Asunción</p>
           </div>
         </div>
 

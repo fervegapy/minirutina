@@ -5,69 +5,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import StepIndicator from "@/components/customizer/StepIndicator";
 import ColorPicker from "@/components/customizer/ColorPicker";
+import IconPicker, { ICONOS_SEMANA } from "@/components/customizer/IconPicker";
 import PreviewSemana from "@/components/customizer/PreviewSemana";
 
-const PASOS = ["Nombre", "Color", "Actividades", "Vista previa"];
-
-const DIAS = [
-  { key: "lunes" as const, label: "Lunes" },
-  { key: "martes" as const, label: "Martes" },
-  { key: "miercoles" as const, label: "Miércoles" },
-  { key: "jueves" as const, label: "Jueves" },
-  { key: "viernes" as const, label: "Viernes" },
-  { key: "sabado" as const, label: "Sábado" },
-  { key: "domingo" as const, label: "Domingo" },
-];
-
-type DiaKey = (typeof DIAS)[number]["key"];
-
-const emptyActividades = (): Record<DiaKey, string[]> => ({
-  lunes: [],
-  martes: [],
-  miercoles: [],
-  jueves: [],
-  viernes: [],
-  sabado: [],
-  domingo: [],
-});
+const PASOS = ["Nombre", "Color", "Figuritas", "Vista previa"];
 
 export default function PersonalizarSemana() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [nombre, setNombre] = useState("");
-  const [color, setColor] = useState("#a8c5a0");
-  const [actividades, setActividades] = useState<Record<DiaKey, string[]>>(
-    emptyActividades()
-  );
+  const [color, setColor] = useState("#a8c8e8");
+  const [figuritas, setFiguritas] = useState<string[]>([]);
 
   const next = () => setStep((s) => Math.min(s + 1, PASOS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  const setActividad = (dia: DiaKey, idx: number, val: string) => {
-    setActividades((prev) => {
-      const arr = [...(prev[dia] || [])];
-      arr[idx] = val;
-      return { ...prev, [dia]: arr };
-    });
-  };
-
-  const MAX_POR_DIA = 10;
-
-  const getActividades = (dia: DiaKey) => {
-    const arr = actividades[dia] || [];
-    return Array.from({ length: MAX_POR_DIA }, (_, i) => arr[i] ?? "");
-  };
-
   const continuar = () => {
-    const clean: Record<DiaKey, string[]> = emptyActividades();
-    DIAS.forEach(({ key }) => {
-      clean[key] = (actividades[key] || []).filter((a) => a.trim());
-    });
     const params = new URLSearchParams({
       producto: "semana",
       nombre_nino: nombre,
       color_acento: color,
-      personalizacion: JSON.stringify(clean),
+      personalizacion: JSON.stringify({ figuritas }),
     });
     router.push(`/checkout?${params.toString()}`);
   };
@@ -114,33 +72,18 @@ export default function PersonalizarSemana() {
           {step === 2 && (
             <div>
               <h2 className="font-bold text-lg mb-1 text-[#233933]">
-                Actividades de la semana
+                ¿Qué hace cada día?
               </h2>
               <p className="text-xs text-[#233933]/50 mb-4">
-                Hasta 10 actividades por día
+                Elegí hasta 10 figuritas · aparecerán en cada día de la semana
               </p>
-              <div className="space-y-5 max-h-[420px] overflow-y-auto pr-1">
-                {DIAS.map((dia) => (
-                  <div key={dia.key}>
-                    <p className="font-bold text-sm text-[#233933] mb-2">
-                      {dia.label}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {getActividades(dia.key).map((val, i) => (
-                        <Input
-                          key={i}
-                          placeholder={`${i + 1}.`}
-                          value={val}
-                          onChange={(e) =>
-                            setActividad(dia.key, i, e.target.value)
-                          }
-                          className="text-sm"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <IconPicker
+                iconos={ICONOS_SEMANA}
+                selected={figuritas}
+                onChange={setFiguritas}
+                max={10}
+                accentColor={color}
+              />
             </div>
           )}
 
@@ -152,7 +95,7 @@ export default function PersonalizarSemana() {
               <PreviewSemana
                 nombreNino={nombre}
                 colorAcento={color}
-                actividades={actividades}
+                figuritas={figuritas}
               />
             </div>
           )}
@@ -182,6 +125,7 @@ export default function PersonalizarSemana() {
           ) : (
             <Button
               onClick={continuar}
+              disabled={figuritas.length === 0}
               className="bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-lg shadow-none border-0"
             >
               Continuar al pago →

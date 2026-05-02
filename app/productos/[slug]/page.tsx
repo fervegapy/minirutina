@@ -195,7 +195,7 @@ export default function ProductoPage({
           <div className="max-w-lg mx-auto">
             <span className="text-5xl mb-4 block">{producto.emoji}</span>
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-              ¿Listo para crear el de {"{nombre}"}?
+              ¿Listo para crear el tuyo?
             </h2>
             <p className="text-white/60 mb-8">
               Personalizás en 5 minutos. Nosotros lo imprimimos y enviamos.
