@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
+import LocationPicker, { LocationValue } from "@/components/checkout/LocationPicker";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas: "Tablero de Rutinas",
@@ -31,9 +32,7 @@ function CheckoutInner() {
   const [modalidad, setModalidad] = useState<"pickup" | "delivery">("pickup");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [departamento, setDepartamento] = useState("");
-  const [ciudad, setCiudad] = useState("");
-  const [barrio, setBarrio] = useState("");
+  const [location, setLocation] = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,8 +44,8 @@ function CheckoutInner() {
       return;
     }
     if (tipoEntrega === "fisico" && modalidad === "delivery") {
-      if (!departamento.trim() || !ciudad.trim()) {
-        setError("Completá el departamento y la ciudad.");
+      if (!location.departamento || !location.ciudad) {
+        setError("Seleccioná el departamento y la ciudad.");
         return;
       }
     }
@@ -66,6 +65,7 @@ function CheckoutInner() {
       if (modalidad === "pickup") {
         direccion = "Pickup — Villamorra, Asunción";
       } else {
+        const { departamento, ciudad, barrio } = location;
         direccion = `Delivery — ${departamento}, ${ciudad}${barrio ? `, ${barrio}` : ""}`;
       }
     }
@@ -250,21 +250,7 @@ function CheckoutInner() {
               <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50">
                 Datos de entrega
               </h2>
-              <Input
-                placeholder="Departamento"
-                value={departamento}
-                onChange={(e) => setDepartamento(e.target.value)}
-              />
-              <Input
-                placeholder="Ciudad"
-                value={ciudad}
-                onChange={(e) => setCiudad(e.target.value)}
-              />
-              <Input
-                placeholder="Barrio"
-                value={barrio}
-                onChange={(e) => setBarrio(e.target.value)}
-              />
+              <LocationPicker onChange={setLocation} />
             </div>
           )}
 
