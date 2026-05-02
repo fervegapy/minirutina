@@ -51,9 +51,11 @@ export default function PersonalizarSemana() {
     });
   };
 
+  const MAX_POR_DIA = 10;
+
   const getActividades = (dia: DiaKey) => {
     const arr = actividades[dia] || [];
-    return [arr[0] ?? "", arr[1] ?? "", arr[2] ?? "", arr[3] ?? ""];
+    return Array.from({ length: MAX_POR_DIA }, (_, i) => arr[i] ?? "");
   };
 
   const continuar = () => {
@@ -115,9 +117,9 @@ export default function PersonalizarSemana() {
                 Actividades de la semana
               </h2>
               <p className="text-xs text-[#233933]/50 mb-4">
-                Hasta 4 actividades por día
+                Hasta 10 actividades por día
               </p>
-              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+              <div className="space-y-5 max-h-[420px] overflow-y-auto pr-1">
                 {DIAS.map((dia) => (
                   <div key={dia.key}>
                     <p className="font-bold text-sm text-[#233933] mb-2">
@@ -127,7 +129,7 @@ export default function PersonalizarSemana() {
                       {getActividades(dia.key).map((val, i) => (
                         <Input
                           key={i}
-                          placeholder={`Actividad ${i + 1}`}
+                          placeholder={`${i + 1}.`}
                           value={val}
                           onChange={(e) =>
                             setActividad(dia.key, i, e.target.value)

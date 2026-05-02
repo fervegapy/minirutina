@@ -20,7 +20,7 @@ export const productos: Record<string, Producto> = {
     tagline: "Mañana, siesta y noche. Sin peleas, sin recordatorios.",
     emoji: "🌅",
     accentColor: "#a8c5a0",
-    precioDesde: "$9.500",
+    precioDesde: "Gs. 149.000",
     descripcion:
       "Un tablero visual que organiza el día de tu hijo en tres momentos clave: mañana, siesta y noche. Con íconos claros y el nombre de tu hijo, los chicos saben exactamente qué viene después — sin que tengas que decírselo.",
     paraQuien:
@@ -83,7 +83,7 @@ export const productos: Record<string, Producto> = {
     tagline: "Toda la semana a la vista. Lunes a domingo sin sorpresas.",
     emoji: "📅",
     accentColor: "#a8c8e8",
-    precioDesde: "$9.500",
+    precioDesde: "Gs. 149.000",
     descripcion:
       "Un tablero semanal donde podés plasmar todas las actividades de tu hijo de lunes a domingo. Ideal para colgar en la heladera o en su cuarto. Los chicos entienden el tiempo y se sienten más seguros cuando pueden anticipar su semana.",
     paraQuien:
@@ -147,7 +147,7 @@ export const productos: Record<string, Producto> = {
     tagline: "Estrellitas, hábitos y una recompensa que los motiva de verdad.",
     emoji: "⭐",
     accentColor: "#f5d78e",
-    precioDesde: "$8.500",
+    precioDesde: "Gs. 129.000",
     descripcion:
       "Un sistema de recompensas visual donde tu hijo va juntando estrellas hasta llegar a un premio que vos elegís. Funciona mucho mejor que los castigos — los chicos se enganchan, quieren completar las estrellas y los hábitos se instalan solos.",
     paraQuien:

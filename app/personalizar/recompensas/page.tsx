@@ -7,14 +7,26 @@ import StepIndicator from "@/components/customizer/StepIndicator";
 import ColorPicker from "@/components/customizer/ColorPicker";
 import PreviewRecompensas from "@/components/customizer/PreviewRecompensas";
 
-const PASOS = ["Nombre", "Color", "Estrellas", "Recompensa", "Vista previa"];
-const OPCIONES_PASOS = [5, 10, 15];
+const PASOS = ["Nombre", "Color", "Sticker", "Cantidad", "Recompensa", "Vista previa"];
+const OPCIONES_PASOS = [5, 10, 15, 20];
+
+const STICKERS = [
+  { id: "estrella",   emoji: "⭐", label: "Estrella" },
+  { id: "check",      emoji: "✅", label: "Check" },
+  { id: "corazon",    emoji: "❤️", label: "Corazón" },
+  { id: "brillante",  emoji: "🌟", label: "Brillante" },
+  { id: "trofeo",     emoji: "🏆", label: "Trofeo" },
+  { id: "cohete",     emoji: "🚀", label: "Cohete" },
+  { id: "fiesta",     emoji: "🎉", label: "Fiesta" },
+  { id: "arcoiris",   emoji: "🌈", label: "Arcoíris" },
+];
 
 export default function PersonalizarRecompensas() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [nombre, setNombre] = useState("");
-  const [color, setColor] = useState("#a8c5a0");
+  const [color, setColor] = useState("#f5d78e");
+  const [sticker, setSticker] = useState("estrella");
   const [pasos, setPasos] = useState(10);
   const [recompensa, setRecompensa] = useState("");
 
@@ -22,7 +34,7 @@ export default function PersonalizarRecompensas() {
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   const continuar = () => {
-    const personalizacion = { pasos, recompensa };
+    const personalizacion = { pasos, recompensa, sticker };
     const params = new URLSearchParams({
       producto: "recompensas",
       nombre_nino: nombre,
@@ -31,6 +43,8 @@ export default function PersonalizarRecompensas() {
     });
     router.push(`/checkout?${params.toString()}`);
   };
+
+  const stickerEmoji = STICKERS.find((s) => s.id === sticker)?.emoji ?? "⭐";
 
   return (
     <main className="min-h-screen bg-[#fffef6] px-4 py-10">
@@ -47,6 +61,7 @@ export default function PersonalizarRecompensas() {
         <StepIndicator steps={PASOS} current={step} />
 
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
+          {/* Paso 0: Nombre */}
           {step === 0 && (
             <div>
               <h2 className="font-bold text-lg mb-4 text-[#233933]">
@@ -62,6 +77,7 @@ export default function PersonalizarRecompensas() {
             </div>
           )}
 
+          {/* Paso 1: Color */}
           {step === 1 && (
             <div>
               <h2 className="font-bold text-lg mb-6 text-[#233933]">
@@ -71,56 +87,94 @@ export default function PersonalizarRecompensas() {
             </div>
           )}
 
+          {/* Paso 2: Sticker */}
           {step === 2 && (
             <div>
               <h2 className="font-bold text-lg mb-2 text-[#233933]">
-                ¿Cuántas estrellas para la recompensa?
+                ¿Qué sticker va a usar?
               </h2>
-              <p className="text-xs text-[#233933]/50 mb-6">
-                Elegí la cantidad de pasos que debe completar tu niño
+              <p className="text-xs text-[#233933]/50 mb-5">
+                Este es el que se pega cada vez que cumple un paso
               </p>
-              <div className="flex gap-4 justify-center">
-                {OPCIONES_PASOS.map((n) => (
+              <div className="grid grid-cols-4 gap-3">
+                {STICKERS.map((s) => (
                   <button
-                    key={n}
+                    key={s.id}
                     type="button"
-                    onClick={() => setPasos(n)}
-                    className={`w-20 h-20 rounded-2xl border-2 flex flex-col items-center justify-center transition-all font-bold text-[#233933] ${
-                      pasos === n
-                        ? "border-[#233933] text-[#233933]"
-                        : "border-[#e5e7eb] hover:border-[#233933]/40"
+                    onClick={() => setSticker(s.id)}
+                    className={`rounded-xl p-3 flex flex-col items-center gap-1.5 border-2 transition-all ${
+                      sticker === s.id
+                        ? "border-[#233933]"
+                        : "border-[#e5e7eb] hover:border-[#233933]/30"
                     }`}
-                    style={
-                      pasos === n ? { backgroundColor: color + "44" } : {}
-                    }
+                    style={sticker === s.id ? { backgroundColor: color + "33" } : {}}
                   >
-                    <span className="text-3xl">⭐</span>
-                    <span className="text-sm mt-1">{n}</span>
+                    <span className="text-3xl">{s.emoji}</span>
+                    <span className="text-[11px] font-semibold text-[#233933]">
+                      {s.label}
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
+          {/* Paso 3: Cantidad */}
           {step === 3 && (
+            <div>
+              <h2 className="font-bold text-lg mb-2 text-[#233933]">
+                ¿Cuántos {stickerEmoji} para la recompensa?
+              </h2>
+              <p className="text-xs text-[#233933]/50 mb-6">
+                La cantidad de pasos que debe completar tu niño
+              </p>
+              <div className="grid grid-cols-4 gap-3">
+                {OPCIONES_PASOS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setPasos(n)}
+                    className={`rounded-2xl border-2 py-4 flex flex-col items-center gap-1 transition-all font-bold text-[#233933] ${
+                      pasos === n
+                        ? "border-[#233933]"
+                        : "border-[#e5e7eb] hover:border-[#233933]/40"
+                    }`}
+                    style={pasos === n ? { backgroundColor: color + "44" } : {}}
+                  >
+                    <span className="text-2xl">{stickerEmoji}</span>
+                    <span className="text-sm mt-0.5">{n}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Paso 4: Recompensa (opcional) */}
+          {step === 4 && (
             <div>
               <h2 className="font-bold text-lg mb-2 text-[#233933]">
                 ¿Cuál es la recompensa?
               </h2>
               <p className="text-xs text-[#233933]/50 mb-4">
-                Escribí lo que gana cuando completa todas las estrellas
+                Podés escribirla o dejarlo en blanco y completarlo después a mano
               </p>
               <Input
-                placeholder="Ej: ¡Salida al parque!"
+                placeholder="Ej: ¡Salida al parque! (opcional)"
                 value={recompensa}
                 onChange={(e) => setRecompensa(e.target.value)}
                 className="text-base"
                 autoFocus
               />
+              {!recompensa.trim() && (
+                <p className="text-xs text-[#233933]/40 mt-3 text-center">
+                  Si lo dejás en blanco, el tablero tendrá un espacio para escribir a mano ✏️
+                </p>
+              )}
             </div>
           )}
 
-          {step === 4 && (
+          {/* Paso 5: Vista previa */}
+          {step === 5 && (
             <div>
               <h2 className="font-bold text-lg mb-4 text-[#233933]">
                 Vista previa
@@ -130,6 +184,7 @@ export default function PersonalizarRecompensas() {
                 colorAcento={color}
                 pasos={pasos}
                 recompensa={recompensa}
+                sticker={stickerEmoji}
               />
             </div>
           )}
