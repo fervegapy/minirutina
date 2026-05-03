@@ -1,212 +1,285 @@
-import {
-  Document,
-  Page,
-  View,
-  Text,
-  Image,
-  StyleSheet,
-} from "@react-pdf/renderer";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import React from "react";
+import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 
 export interface TableroPDFProps {
   nombreNino: string;
   colorAcento: string;
-  manana: string[];   // up to 7 icon IDs
+  manana: string[];
   siesta: string[];
   noche: string[];
-  // Pre-read image buffers (base64 data URLs), keyed by icon ID.
-  // Decoration images keyed as "deco:manana-left", "deco:noche-right", etc.
   images: Record<string, string>;
 }
 
+// ─── Unit conversion ──────────────────────────────────────────────────────────
+const pt = (mm: number) => mm * 2.83465;
+
+// ─── Colors ───────────────────────────────────────────────────────────────────
+const C_TEXT      = "#3D5240";   // dark forest green — name
+const C_SUB       = "#7A9080";   // lighter green — subtitle
+const C_CARD      = "#D7D9DA";   // gray placeholder card
+const C_BORDER    = "#DEDEDF";   // thin cell border
+const C_DOT_TEAL  = "#B2DDD5";   // scattered header dots
+const C_VELCRO_LO = "#C8CACC";   // lower zone velcro dots
+
 // ─── Layout constants (mm) ────────────────────────────────────────────────────
+const SLOT_X_MM  = [1.4, 43.9, 86.3, 128.8, 171.2, 213.6, 256.0];
+const SLOT_W_MM  = 42.4;
+const CARD_W_MM  = 39.6;
+const CARD_H_MM  = 39.9;
+const CARD_Y_MM  = 98.2;
+const BAND_Y_MM  = 70.3;
+const BAND_H_MM  = 69.6;
+const LOWER_Y_MM = 140.5;
+const LOWER_H_MM = 69.5;
+const PAD_MM     = 4;
+const VELCRO_D_MM = 11.5;  // velcro dot diameter
 
-const PAGE_W = 297;
-const PAGE_H = 210;
+// Derived positions
+const cardLeftMM   = (i: number) => SLOT_X_MM[i] + (SLOT_W_MM - CARD_W_MM) / 2;
+const dotLeftMM    = (i: number) => SLOT_X_MM[i] + SLOT_W_MM / 2 - VELCRO_D_MM / 2;
+const DOT_ROW_H_MM = CARD_Y_MM - BAND_Y_MM; // 27.9 mm
+const BAND_DOT_TOP_MM = BAND_Y_MM + DOT_ROW_H_MM / 2 - VELCRO_D_MM / 2;
+const LOWER_DOT_TOP_MM = LOWER_Y_MM + LOWER_H_MM - VELCRO_D_MM - 4;
 
-const HEADER_H = 70.3;
-const BAND_Y = 70.3;
-const BAND_H = 69.6;
-const SLOT_W = 42.4;
-const CARD_W = 39.6;
-const CARD_H = 39.9;
-const CARD_Y = 98.2;          // from page top
-const LOWER_Y = 140.5;
-const LOWER_H = PAGE_H - LOWER_Y;
-const CARD_PADDING = 4;
-const CARD_RADIUS = 3;
+// Divider x positions (between slots)
+const DIVIDER_X_MM = SLOT_X_MM.slice(0, 6).map((x) => x + SLOT_W_MM);
 
-// x offsets of each slot (mm from left edge)
-const SLOT_X = [1.4, 43.9, 86.3, 128.8, 171.2, 213.6, 256.0];
+// ─── Scattered header dots [x, y, radius] in mm ───────────────────────────────
+const HEADER_DOTS: [number, number, number][] = [
+  [55,  8,  2.8], [80,  4,  3.2], [108, 16, 2.2], [136, 5,  2.0],
+  [163, 19, 2.5], [186, 10, 2.0], [200, 36, 2.2], [222, 7,  3.0],
+  [244, 21, 2.8], [264, 14, 2.0], [280, 33, 1.8], [294, 20, 2.5],
+  [36,  50, 2.0], [88,  58, 1.8], [148, 61, 2.5], [202, 56, 2.0],
+  [256, 59, 2.0],
+];
 
-const PLACEHOLDER_COLOR = "#D7D9DA";
-const BORDER_COLOR = "#E5E7EB";
-const TEXT_COLOR = "#233933";
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
+// ─── StyleSheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
-    width: `${PAGE_W}mm`,
-    height: `${PAGE_H}mm`,
+    width:           pt(297),
+    height:          pt(210),
     backgroundColor: "#FFFFFF",
-    position: "relative",
-    fontFamily: "Helvetica",
+    position:        "relative",
   },
-  // Header
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: `${PAGE_W}mm`,
-    height: `${HEADER_H}mm`,
-    backgroundColor: "#FFFFFF",
+  // Name
+  name: {
+    position:      "absolute",
+    top:           pt(16),
+    left:          pt(60),
+    right:         pt(60),
+    textAlign:     "center",
+    fontFamily:    "Nunito",
+    fontWeight:    800,
+    fontSize:      pt(20),
+    color:         C_TEXT,
+    letterSpacing: 0.3,
   },
-  childName: {
-    position: "absolute",
-    top: "28mm",
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    fontSize: 28,
-    fontFamily: "Helvetica-Bold",
-    color: TEXT_COLOR,
-  },
+  // Subtitle
   subtitle: {
-    position: "absolute",
-    top: "44mm",
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    fontSize: 14,
-    color: TEXT_COLOR,
-    opacity: 0.6,
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
+    position:      "absolute",
+    top:           pt(42),
+    left:          0,
+    right:         0,
+    textAlign:     "center",
+    fontFamily:    "Nunito",
+    fontWeight:    400,
+    fontSize:      pt(9),
+    color:         C_SUB,
+    letterSpacing: 2,
   },
+  // Decoration images
   decoLeft: {
     position: "absolute",
-    top: "8mm",
-    left: "8mm",
-    width: "38mm",
-    height: "38mm",
+    top:      pt(6),
+    left:     pt(6),
+    width:    pt(48),
+    height:   pt(48),
   },
   decoRight: {
     position: "absolute",
-    top: "8mm",
-    right: "8mm",
-    width: "38mm",
-    height: "38mm",
+    top:      pt(6),
+    right:    pt(6),
+    width:    pt(48),
+    height:   pt(48),
   },
-  // Accent band
+  // Accent band background
   band: {
-    position: "absolute",
-    top: `${BAND_Y}mm`,
-    left: 0,
-    width: `${PAGE_W}mm`,
-    height: `${BAND_H}mm`,
-  },
-  // Icon cards
-  card: {
-    position: "absolute",
-    top: `${CARD_Y}mm`,
-    width: `${CARD_W}mm`,
-    height: `${CARD_H}mm`,
-    backgroundColor: "#FFFFFF",
-    borderRadius: CARD_RADIUS,
-    overflow: "hidden",
-  },
-  cardPlaceholder: {
-    position: "absolute",
-    top: `${CARD_Y}mm`,
-    width: `${CARD_W}mm`,
-    height: `${CARD_H}mm`,
-    backgroundColor: PLACEHOLDER_COLOR,
-    borderRadius: CARD_RADIUS,
-  },
-  cardImage: {
-    position: "absolute",
-    top: `${CARD_PADDING}mm`,
-    left: `${CARD_PADDING}mm`,
-    width: `${CARD_W - CARD_PADDING * 2}mm`,
-    height: `${CARD_H - CARD_PADDING * 2}mm`,
-    objectFit: "contain",
-  },
-  // Lower cells
-  lowerCell: {
-    position: "absolute",
-    top: `${LOWER_Y}mm`,
-    width: `${CARD_W}mm`,
-    height: `${LOWER_H}mm`,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 0.5,
-    borderColor: BORDER_COLOR,
-    borderStyle: "solid",
+    position:        "absolute",
+    top:             pt(BAND_Y_MM),
+    left:            0,
+    width:           pt(297),
+    height:          pt(BAND_H_MM),
   },
   // Branding
   brand: {
-    position: "absolute",
-    bottom: "2mm",
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    fontSize: 7,
-    color: TEXT_COLOR,
-    opacity: 0.25,
+    position:      "absolute",
+    bottom:        pt(2),
+    left:          0,
+    right:         0,
+    textAlign:     "center",
+    fontFamily:    "Nunito",
+    fontWeight:    400,
+    fontSize:      6,
+    color:         C_TEXT,
+    opacity:       0.25,
     letterSpacing: 2,
     textTransform: "uppercase",
   },
 });
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function mm(val: number) {
-  return `${val}mm` as unknown as number;
+function HeaderDots() {
+  return (
+    <>
+      {HEADER_DOTS.map(([x, y, r], i) => (
+        <View
+          key={i}
+          style={{
+            position:        "absolute",
+            top:             pt(y - r),
+            left:            pt(x - r),
+            width:           pt(r * 2),
+            height:          pt(r * 2),
+            borderRadius:    pt(r),
+            backgroundColor: C_DOT_TEAL,
+          }}
+        />
+      ))}
+    </>
+  );
 }
 
+function VelcroDotsInBand() {
+  return (
+    <>
+      {SLOT_X_MM.map((_, i) => (
+        <View
+          key={i}
+          style={{
+            position:        "absolute",
+            top:             pt(BAND_DOT_TOP_MM),
+            left:            pt(dotLeftMM(i)),
+            width:           pt(VELCRO_D_MM),
+            height:          pt(VELCRO_D_MM),
+            borderRadius:    pt(VELCRO_D_MM / 2),
+            backgroundColor: "#FFFFFF",
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
+const CARD_VELCRO_D_MM = 9; // white circle inside gray card
+
 function IconCard({
-  idx,
+  i,
   iconId,
   images,
 }: {
-  idx: number;
-  iconId: string | undefined;
+  i: number;
+  iconId?: string;
   images: Record<string, string>;
 }) {
-  const x = SLOT_X[idx];
-  const src = iconId ? images[iconId] : undefined;
-
-  if (!iconId || !src) {
-    return (
-      <View style={[s.cardPlaceholder, { left: mm(x + (SLOT_W - CARD_W) / 2) }]} />
-    );
-  }
+  const src  = iconId ? images[iconId] : undefined;
+  const left = pt(cardLeftMM(i));
+  const top  = pt(CARD_Y_MM);
+  const w    = pt(CARD_W_MM);
+  const h    = pt(CARD_H_MM);
+  const pad  = pt(PAD_MM);
+  const r    = pt(2.5);
+  const vd   = pt(CARD_VELCRO_D_MM);
 
   return (
-    <View style={[s.card, { left: mm(x + (SLOT_W - CARD_W) / 2) }]}>
-      <Image src={src} style={s.cardImage} />
+    <View
+      style={{
+        position:        "absolute",
+        top,
+        left,
+        width:           w,
+        height:          h,
+        borderRadius:    r,
+        backgroundColor: C_CARD,
+        overflow:        "hidden",
+      }}
+    >
+      {src ? (
+        <Image
+          src={src}
+          style={{
+            position:  "absolute",
+            top:       pad,
+            left:      pad,
+            width:     w - pad * 2,
+            height:    h - pad * 2,
+            objectFit: "contain",
+          }}
+        />
+      ) : (
+        /* Centered white velcro dot placeholder */
+        <View
+          style={{
+            position:        "absolute",
+            top:             h / 2 - vd / 2,
+            left:            w / 2 - vd / 2,
+            width:           vd,
+            height:          vd,
+            borderRadius:    vd / 2,
+            backgroundColor: "#FFFFFF",
+          }}
+        />
+      )}
     </View>
   );
 }
 
-function LowerCell({ idx }: { idx: number }) {
-  const x = SLOT_X[idx];
+function LowerZone() {
   return (
-    <View style={[s.lowerCell, { left: mm(x + (SLOT_W - CARD_W) / 2) }]} />
+    <>
+      {/* Vertical dividers */}
+      {DIVIDER_X_MM.map((x, i) => (
+        <View
+          key={i}
+          style={{
+            position:        "absolute",
+            top:             pt(LOWER_Y_MM),
+            left:            pt(x),
+            width:           0.8,
+            height:          pt(LOWER_H_MM),
+            backgroundColor: C_BORDER,
+          }}
+        />
+      ))}
+      {/* Velcro dots at bottom */}
+      {SLOT_X_MM.map((_, i) => (
+        <View
+          key={i}
+          style={{
+            position:        "absolute",
+            top:             pt(LOWER_DOT_TOP_MM),
+            left:            pt(dotLeftMM(i)),
+            width:           pt(VELCRO_D_MM),
+            height:          pt(VELCRO_D_MM),
+            borderRadius:    pt(VELCRO_D_MM / 2),
+            backgroundColor: C_VELCRO_LO,
+          }}
+        />
+      ))}
+    </>
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Single page ──────────────────────────────────────────────────────────────
 
 interface FranjaPageProps {
-  nombreNino: string;
+  nombreNino:  string;
   colorAcento: string;
-  subtitle: string;
+  subtitle:    string;
   decoLeftKey: string;
-  decoRightKey: string;
-  iconIds: string[];   // up to 7
-  images: Record<string, string>;
+  decoRightKey:string;
+  iconIds:     string[];
+  images:      Record<string, string>;
 }
 
 function FranjaPage({
@@ -218,30 +291,32 @@ function FranjaPage({
   iconIds,
   images,
 }: FranjaPageProps) {
-  const decoLeftSrc = images[decoLeftKey];
-  const decoRightSrc = images[decoRightKey];
-
   return (
     <Page size="A4" orientation="landscape" style={s.page}>
-      {/* ── Header ── */}
-      <View style={s.header} />
-      <Text style={s.childName}>{nombreNino}</Text>
-      <Text style={s.subtitle}>{subtitle}</Text>
-      {decoLeftSrc && <Image src={decoLeftSrc} style={s.decoLeft} />}
-      {decoRightSrc && <Image src={decoRightSrc} style={s.decoRight} />}
+      {/* Scattered header dots */}
+      <HeaderDots />
 
-      {/* ── Accent band ── */}
+      {/* Name + subtitle */}
+      <Text style={s.name}>{nombreNino}</Text>
+      <Text style={s.subtitle}>{subtitle}</Text>
+
+      {/* Decorations */}
+      {images[decoLeftKey]  && <Image src={images[decoLeftKey]}  style={s.decoLeft}  />}
+      {images[decoRightKey] && <Image src={images[decoRightKey]} style={s.decoRight} />}
+
+      {/* Accent band */}
       <View style={[s.band, { backgroundColor: colorAcento }]} />
 
-      {/* ── 7 icon slots ── */}
-      {SLOT_X.map((_, i) => (
-        <IconCard key={i} idx={i} iconId={iconIds[i]} images={images} />
+      {/* Velcro dots row inside band */}
+      <VelcroDotsInBand />
+
+      {/* Icon cards */}
+      {SLOT_X_MM.map((_, i) => (
+        <IconCard key={i} i={i} iconId={iconIds[i]} images={images} />
       ))}
 
-      {/* ── Lower cells ── */}
-      {SLOT_X.map((_, i) => (
-        <LowerCell key={i} idx={i} />
-      ))}
+      {/* Lower zone: dividers + velcro dots */}
+      <LowerZone />
 
       <Text style={s.brand}>minirutina.com</Text>
     </Page>

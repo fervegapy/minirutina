@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { renderToBuffer } from "@react-pdf/renderer";
+import { renderToBuffer, Font } from "@react-pdf/renderer";
 import React from "react";
+import path from "path";
 import { supabase } from "@/lib/supabase";
 import { loadImages } from "@/lib/pdfImages";
 import TableroPDF from "@/components/pdf/TableroPDF";
 import type { PersonalizacionRutinas } from "@/types/pedido";
+
+// Register Nunito font (local files under public/fonts/)
+const fontsDir = path.join(process.cwd(), "public", "fonts");
+Font.register({
+  family: "Nunito",
+  fonts: [
+    { src: `${fontsDir}/Nunito-Regular.woff`,   fontWeight: 400 },
+    { src: `${fontsDir}/Nunito-Bold.woff`,      fontWeight: 700 },
+    { src: `${fontsDir}/Nunito-ExtraBold.woff`, fontWeight: 800 },
+  ],
+});
 
 // Hard-coded test pedido — used when pedidoId === "test"
 const TEST_PEDIDO = {
