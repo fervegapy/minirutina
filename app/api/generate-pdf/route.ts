@@ -7,16 +7,23 @@ import { loadImages } from "@/lib/pdfImages";
 import TableroPDF from "@/components/pdf/TableroPDF";
 import type { PersonalizacionRutinas } from "@/types/pedido";
 
-// Register Nunito font (local files under public/fonts/)
 const fontsDir = path.join(process.cwd(), "public", "fonts");
-Font.register({
-  family: "Nunito",
-  fonts: [
-    { src: `${fontsDir}/Nunito-Regular.woff`,   fontWeight: 400 },
-    { src: `${fontsDir}/Nunito-Bold.woff`,      fontWeight: 700 },
-    { src: `${fontsDir}/Nunito-ExtraBold.woff`, fontWeight: 800 },
-  ],
-});
+
+Font.register({ family: "Figtree", src: `${fontsDir}/Figtree-Bold.woff`, fontWeight: 700 });
+Font.register({ family: "Nunito", fonts: [
+  { src: `${fontsDir}/Nunito-Regular.woff`,   fontWeight: 400 },
+  { src: `${fontsDir}/Nunito-Bold.woff`,      fontWeight: 700 },
+  { src: `${fontsDir}/Nunito-ExtraBold.woff`, fontWeight: 800 },
+]});
+
+// KG Primary Penmanship: place KGPrimaryPenmanship.ttf in public/fonts/ to activate
+import fs from "fs";
+const kgPath = `${fontsDir}/KGPrimaryPenmanship.ttf`;
+const KG_AVAILABLE = fs.existsSync(kgPath);
+if (KG_AVAILABLE) {
+  Font.register({ family: "KGPrimaryPenmanship", src: kgPath });
+}
+const SUBTITLE_FONT = KG_AVAILABLE ? "KGPrimaryPenmanship" : "Nunito";
 
 // Hard-coded test pedido — used when pedidoId === "test"
 const TEST_PEDIDO = {
@@ -55,12 +62,13 @@ export async function POST(req: NextRequest) {
   const images = loadImages(allIconIds);
 
   const element = React.createElement(TableroPDF, {
-    nombreNino: pedido.nombre_nino,
-    colorAcento: pedido.color_acento,
-    manana: p.manana ?? [],
-    siesta: p.siesta ?? [],
-    noche: p.noche ?? [],
+    nombreNino:   pedido.nombre_nino,
+    colorAcento:  pedido.color_acento,
+    manana:       p.manana ?? [],
+    siesta:       p.siesta ?? [],
+    noche:        p.noche ?? [],
     images,
+    subtitleFont: SUBTITLE_FONT,
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

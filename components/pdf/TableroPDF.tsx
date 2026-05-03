@@ -8,6 +8,7 @@ export interface TableroPDFProps {
   siesta: string[];
   noche: string[];
   images: Record<string, string>;
+  subtitleFont?: string;
 }
 
 // ─── Unit conversion ──────────────────────────────────────────────────────────
@@ -64,28 +65,26 @@ const s = StyleSheet.create({
   // Name
   name: {
     position:      "absolute",
-    top:           pt(16),
+    top:           pt(12),
     left:          pt(60),
     right:         pt(60),
     textAlign:     "center",
-    fontFamily:    "Nunito",
-    fontWeight:    800,
-    fontSize:      pt(20),
+    fontFamily:    "Figtree",
+    fontWeight:    700,
+    fontSize:      72,
     color:         C_TEXT,
-    letterSpacing: 0.3,
   },
   // Subtitle
   subtitle: {
     position:      "absolute",
-    top:           pt(42),
+    top:           pt(43),
     left:          0,
     right:         0,
     textAlign:     "center",
-    fontFamily:    "Nunito",
+    fontFamily:    "KGPrimaryPenmanship",
     fontWeight:    400,
-    fontSize:      pt(9),
+    fontSize:      57,
     color:         C_SUB,
-    letterSpacing: 2,
   },
   // Decoration images
   decoLeft: {
@@ -273,13 +272,14 @@ function LowerZone() {
 // ─── Single page ──────────────────────────────────────────────────────────────
 
 interface FranjaPageProps {
-  nombreNino:  string;
-  colorAcento: string;
-  subtitle:    string;
-  decoLeftKey: string;
-  decoRightKey:string;
-  iconIds:     string[];
-  images:      Record<string, string>;
+  nombreNino:   string;
+  colorAcento:  string;
+  subtitle:     string;
+  decoLeftKey:  string;
+  decoRightKey: string;
+  iconIds:      string[];
+  images:       Record<string, string>;
+  subtitleFont: string;
 }
 
 function FranjaPage({
@@ -290,6 +290,7 @@ function FranjaPage({
   decoRightKey,
   iconIds,
   images,
+  subtitleFont,
 }: FranjaPageProps) {
   return (
     <Page size="A4" orientation="landscape" style={s.page}>
@@ -298,7 +299,7 @@ function FranjaPage({
 
       {/* Name + subtitle */}
       <Text style={s.name}>{nombreNino}</Text>
-      <Text style={s.subtitle}>{subtitle}</Text>
+      <Text style={[s.subtitle, { fontFamily: subtitleFont }]}>{subtitle}</Text>
 
       {/* Decorations */}
       {images[decoLeftKey]  && <Image src={images[decoLeftKey]}  style={s.decoLeft}  />}
@@ -332,6 +333,7 @@ export default function TableroPDF({
   siesta,
   noche,
   images,
+  subtitleFont = "Nunito",
 }: TableroPDFProps) {
   return (
     <Document>
@@ -343,6 +345,7 @@ export default function TableroPDF({
         decoRightKey="deco:manana-right"
         iconIds={manana}
         images={images}
+        subtitleFont={subtitleFont}
       />
       <FranjaPage
         nombreNino={nombreNino}
@@ -352,6 +355,7 @@ export default function TableroPDF({
         decoRightKey="deco:siesta-right"
         iconIds={siesta}
         images={images}
+        subtitleFont={subtitleFont}
       />
       <FranjaPage
         nombreNino={nombreNino}
@@ -361,6 +365,7 @@ export default function TableroPDF({
         decoRightKey="deco:noche-right"
         iconIds={noche}
         images={images}
+        subtitleFont={subtitleFont}
       />
     </Document>
   );
