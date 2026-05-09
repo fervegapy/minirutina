@@ -37,9 +37,39 @@ const TEST_PEDIDO = {
   } as PersonalizacionRutinas,
 };
 
-export async function POST(req: NextRequest) {
-  const { pedidoId } = await req.json();
+async function buildBuffer(
+  nombreNino: string,
+  colorAcento: string,
+  manana: string[],
+  siesta: string[],
+  noche: string[],
+) {
+  const allIconIds = [...manana, ...siesta, ...noche];
+  const images = loadImages(allIconIds);
+  const element = React.createElement(TableroPDF, {
+    nombreNino, colorAcento, manana, siesta, noche, images, subtitleFont: SUBTITLE_FONT,
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return renderToBuffer(element as any);
+}
 
+export async function POST(req: NextRequest) {
+  const body = await req.json();
+
+  // ── Preview mode: inline data, no DB needed ───────────────────────────────
+  if (body.preview) {
+    const { nombreNino, colorAcento, manana = [], siesta = [], noche = [] } = body;
+    const buffer = await buildBuffer(nombreNino, colorAcento, manana, siesta, noche);
+    return new NextResponse(buffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="tablero-${nombreNino ?? "preview"}.pdf"`,
+      },
+    });
+  }
+
+  // ── Pedido mode: fetch from DB (or use test hardcode) ────────────────────
+  const { pedidoId } = body;
   let pedido: typeof TEST_PEDIDO;
 
   if (pedidoId === "test") {
@@ -58,21 +88,13 @@ export async function POST(req: NextRequest) {
   }
 
   const p = pedido.personalizacion as PersonalizacionRutinas;
-  const allIconIds = [...(p.manana ?? []), ...(p.siesta ?? []), ...(p.noche ?? [])];
-  const images = loadImages(allIconIds);
-
-  const element = React.createElement(TableroPDF, {
-    nombreNino:   pedido.nombre_nino,
-    colorAcento:  pedido.color_acento,
-    manana:       p.manana ?? [],
-    siesta:       p.siesta ?? [],
-    noche:        p.noche ?? [],
-    images,
-    subtitleFont: SUBTITLE_FONT,
-  });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const buffer = await renderToBuffer(element as any);
+  const buffer = await buildBuffer(
+    pedido.nombre_nino,
+    pedido.color_acento,
+    p.manana ?? [],
+    p.siesta ?? [],
+    p.noche ?? [],
+  );
 
   // Test mode: return PDF directly as download
   if (pedidoId === "test") {

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import IconPicker, {
 } from "@/components/customizer/IconPicker";
 import PreviewRutinas from "@/components/customizer/PreviewRutinas";
 
-const PASOS = ["Nombre", "Color", "Mañana", "Siesta", "Noche", "Vista previa"];
+const PASOS = ["Nombre", "Color", "Mañana", "Siesta", "Noche", "Vista previa", "Tu tablero"];
 
 export default function PersonalizarRutinas() {
   const router = useRouter();
@@ -23,8 +23,57 @@ export default function PersonalizarRutinas() {
   const [siesta, setSiesta] = useState<string[]>([]);
   const [noche, setNoche] = useState<string[]>([]);
 
+  // PDF generation state
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const generatedRef = useRef(false);
+
   const next = () => setStep((s) => Math.min(s + 1, PASOS.length - 1));
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  const back = () => {
+    if (step === PASOS.length - 1) {
+      // Reset PDF so it regenerates if user goes back and forward again
+      setPdfUrl(null);
+      generatedRef.current = false;
+    }
+    setStep((s) => Math.max(s - 1, 0));
+  };
+
+  // Auto-generate PDF when reaching the last step
+  useEffect(() => {
+    if (step === PASOS.length - 1 && !generatedRef.current) {
+      generatedRef.current = true;
+      generarPDF();
+    }
+  }, [step]);
+
+  const generarPDF = async () => {
+    setPdfLoading(true);
+    setPdfError(null);
+    setPdfUrl(null);
+    try {
+      const res = await fetch("/api/generate-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preview: true,
+          nombreNino: nombre,
+          colorAcento: color,
+          manana,
+          siesta,
+          noche,
+        }),
+      });
+      if (!res.ok) throw new Error("No se pudo generar el PDF");
+      const blob = await res.blob();
+      setPdfUrl(URL.createObjectURL(blob));
+    } catch (e: unknown) {
+      setPdfError(e instanceof Error ? e.message : "Error desconocido");
+      generatedRef.current = false;
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const continuar = () => {
     const personalizacion = { manana, siesta, noche };
@@ -135,6 +184,50 @@ export default function PersonalizarRutinas() {
               />
             </div>
           )}
+
+          {step === 6 && (
+            <div>
+              <h2 className="font-bold text-lg mb-1 text-[#233933]">
+                Tu tablero
+              </h2>
+              <p className="text-xs text-[#233933]/50 mb-5">
+                Así va a quedar impreso el tablero de {nombre || "tu niño"}
+              </p>
+
+              {pdfLoading && (
+                <div className="flex flex-col items-center justify-center py-12 gap-3">
+                  <div className="w-8 h-8 border-[3px] border-[#ecbc5d] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm text-[#233933]/50">Generando tu tablero...</p>
+                </div>
+              )}
+
+              {pdfError && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-red-500 mb-4">{pdfError}</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => { generatedRef.current = false; generarPDF(); }}
+                    className="border-[#233933] text-[#233933] rounded-lg"
+                  >
+                    Reintentar
+                  </Button>
+                </div>
+              )}
+
+              {pdfUrl && (
+                <div className="space-y-3">
+                  <a href={pdfUrl} download={`tablero-${nombre}.pdf`} className="block">
+                    <Button className="w-full bg-[#233933] hover:bg-[#1a2b26] text-white font-bold rounded-xl shadow-none border-0">
+                      📥 Descargar borrador
+                    </Button>
+                  </a>
+                  <p className="text-center text-xs text-[#233933]/40">
+                    Este es el borrador con los íconos incluidos que hayas cargado. El diseño final es idéntico.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 justify-between">
@@ -161,6 +254,7 @@ export default function PersonalizarRutinas() {
           ) : (
             <Button
               onClick={continuar}
+              disabled={pdfLoading}
               className="bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-lg shadow-none border-0"
             >
               Continuar al pago →
