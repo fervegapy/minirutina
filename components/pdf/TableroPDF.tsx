@@ -5,7 +5,6 @@ export interface TableroPDFProps {
   nombreNino: string;
   colorAcento: string;
   manana: string[];
-  siesta: string[];
   noche: string[];
   images: Record<string, string>;
   subtitleFont?: string;
@@ -294,8 +293,8 @@ function FranjaPage({
 }: FranjaPageProps) {
   return (
     <Page size="A4" orientation="landscape" style={s.page}>
-      {/* Scattered header dots */}
-      <HeaderDots />
+      {/* Scattered header dots — disabled */}
+      {/* <HeaderDots /> */}
 
       {/* Name + subtitle */}
       <Text style={s.name}>{nombreNino}</Text>
@@ -330,7 +329,6 @@ export default function TableroPDF({
   nombreNino,
   colorAcento,
   manana,
-  siesta,
   noche,
   images,
   subtitleFont = "Nunito",
@@ -344,16 +342,6 @@ export default function TableroPDF({
         decoLeftKey="deco:manana-left"
         decoRightKey="deco:manana-right"
         iconIds={manana}
-        images={images}
-        subtitleFont={subtitleFont}
-      />
-      <FranjaPage
-        nombreNino={nombreNino}
-        colorAcento={colorAcento}
-        subtitle="rutina de siesta"
-        decoLeftKey="deco:siesta-left"
-        decoRightKey="deco:siesta-right"
-        iconIds={siesta}
         images={images}
         subtitleFont={subtitleFont}
       />

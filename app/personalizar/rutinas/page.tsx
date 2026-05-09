@@ -7,12 +7,11 @@ import StepIndicator from "@/components/customizer/StepIndicator";
 import ColorPicker from "@/components/customizer/ColorPicker";
 import IconPicker, {
   ICONOS_MANANA,
-  ICONOS_SIESTA,
   ICONOS_NOCHE,
 } from "@/components/customizer/IconPicker";
 import PreviewRutinas from "@/components/customizer/PreviewRutinas";
 
-const PASOS = ["Nombre", "Color", "Mañana", "Siesta", "Noche", "Vista previa", "Tu tablero"];
+const PASOS = ["Nombre", "Color", "Mañana", "Noche", "Vista previa", "Tu tablero"];
 
 export default function PersonalizarRutinas() {
   const router = useRouter();
@@ -20,10 +19,8 @@ export default function PersonalizarRutinas() {
   const [nombre, setNombre] = useState("");
   const [color, setColor] = useState("#a8c5a0");
   const [manana, setManana] = useState<string[]>([]);
-  const [siesta, setSiesta] = useState<string[]>([]);
   const [noche, setNoche] = useState<string[]>([]);
 
-  // PDF generation state
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -32,14 +29,12 @@ export default function PersonalizarRutinas() {
   const next = () => setStep((s) => Math.min(s + 1, PASOS.length - 1));
   const back = () => {
     if (step === PASOS.length - 1) {
-      // Reset PDF so it regenerates if user goes back and forward again
       setPdfUrl(null);
       generatedRef.current = false;
     }
     setStep((s) => Math.max(s - 1, 0));
   };
 
-  // Auto-generate PDF when reaching the last step
   useEffect(() => {
     if (step === PASOS.length - 1 && !generatedRef.current) {
       generatedRef.current = true;
@@ -60,7 +55,6 @@ export default function PersonalizarRutinas() {
           nombreNino: nombre,
           colorAcento: color,
           manana,
-          siesta,
           noche,
         }),
       });
@@ -76,12 +70,11 @@ export default function PersonalizarRutinas() {
   };
 
   const continuar = () => {
-    const personalizacion = { manana, siesta, noche };
     const params = new URLSearchParams({
       producto: "rutinas",
       nombre_nino: nombre,
       color_acento: color,
-      personalizacion: JSON.stringify(personalizacion),
+      personalizacion: JSON.stringify({ manana, noche }),
     });
     router.push(`/checkout?${params.toString()}`);
   };
@@ -143,21 +136,6 @@ export default function PersonalizarRutinas() {
           {step === 3 && (
             <div>
               <h2 className="font-bold text-lg mb-2 text-[#233933]">
-                🌤️ Actividades de la siesta
-              </h2>
-              <IconPicker
-                iconos={ICONOS_SIESTA}
-                selected={siesta}
-                onChange={setSiesta}
-                max={6}
-                accentColor={color}
-              />
-            </div>
-          )}
-
-          {step === 4 && (
-            <div>
-              <h2 className="font-bold text-lg mb-2 text-[#233933]">
                 🌙 Actividades de la noche
               </h2>
               <IconPicker
@@ -170,7 +148,7 @@ export default function PersonalizarRutinas() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <div>
               <h2 className="font-bold text-lg mb-4 text-[#233933]">
                 Vista previa
@@ -179,13 +157,13 @@ export default function PersonalizarRutinas() {
                 nombreNino={nombre}
                 colorAcento={color}
                 manana={manana}
-                siesta={siesta}
+                siesta={[]}
                 noche={noche}
               />
             </div>
           )}
 
-          {step === 6 && (
+          {step === 5 && (
             <div>
               <h2 className="font-bold text-lg mb-1 text-[#233933]">
                 Tu tablero
@@ -222,7 +200,7 @@ export default function PersonalizarRutinas() {
                     </Button>
                   </a>
                   <p className="text-center text-xs text-[#233933]/40">
-                    Este es el borrador con los íconos incluidos que hayas cargado. El diseño final es idéntico.
+                    Este es el borrador con los íconos incluidos. El diseño final es idéntico.
                   </p>
                 </div>
               )}

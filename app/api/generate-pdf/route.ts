@@ -32,7 +32,6 @@ const TEST_PEDIDO = {
   color_acento: "#A5C9E8",
   personalizacion: {
     manana: ["despertar", "dientes", "desayuno", "vestirse", "mochila", "colegio", "pelo"],
-    siesta: ["almuerzo", "siesta", "lectura", "juego", "tarea", "merienda"],
     noche: ["cena", "bano", "pijama", "cuento", "dientes_noche", "dormir"],
   } as PersonalizacionRutinas,
 };
@@ -41,13 +40,12 @@ async function buildBuffer(
   nombreNino: string,
   colorAcento: string,
   manana: string[],
-  siesta: string[],
   noche: string[],
 ) {
-  const allIconIds = [...manana, ...siesta, ...noche];
+  const allIconIds = [...manana, ...noche];
   const images = loadImages(allIconIds);
   const element = React.createElement(TableroPDF, {
-    nombreNino, colorAcento, manana, siesta, noche, images, subtitleFont: SUBTITLE_FONT,
+    nombreNino, colorAcento, manana, noche, images, subtitleFont: SUBTITLE_FONT,
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -58,8 +56,8 @@ export async function POST(req: NextRequest) {
 
   // ── Preview mode: inline data, no DB needed ───────────────────────────────
   if (body.preview) {
-    const { nombreNino, colorAcento, manana = [], siesta = [], noche = [] } = body;
-    const buffer = await buildBuffer(nombreNino, colorAcento, manana, siesta, noche);
+    const { nombreNino, colorAcento, manana = [], noche = [] } = body;
+    const buffer = await buildBuffer(nombreNino, colorAcento, manana, noche);
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
@@ -92,7 +90,6 @@ export async function POST(req: NextRequest) {
     pedido.nombre_nino,
     pedido.color_acento,
     p.manana ?? [],
-    p.siesta ?? [],
     p.noche ?? [],
   );
 
