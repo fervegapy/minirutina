@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import StepIndicator from "@/components/customizer/StepIndicator";
@@ -10,6 +11,13 @@ import IconPicker, {
   ICONOS_NOCHE,
 } from "@/components/customizer/IconPicker";
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
+
+// react-pdf depends on browser DOM APIs (DOMMatrix, etc.) — load it client-only
+// to avoid breaking the static prerender.
+const PdfPagesPreview = dynamic(
+  () => import("@/components/customizer/PdfPagesPreview"),
+  { ssr: false },
+);
 
 const PASOS = ["Nombre", "Color", "Mañana", "Noche", "Vista previa"];
 const REQUIRED_ICONS = 7;
@@ -34,6 +42,12 @@ export default function PersonalizarRutinas() {
     if (step === 2 && manana.length === REQUIRED_ICONS) setValidationError(null);
     if (step === 3 && noche.length === REQUIRED_ICONS) setValidationError(null);
   }, [manana, noche, step]);
+
+  // Scroll to top whenever the step changes — long pickers leave the user
+  // halfway down the page when they advance.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   const next = () => {
     // Validation: mañana + noche must have exactly 7 icons
@@ -213,21 +227,10 @@ export default function PersonalizarRutinas() {
 
               {pdfUrl && (
                 <div className="space-y-3">
-                  {/* Inline PDF preview — A4 landscape ratio (297×210 → ≈1.414:1).
-                      The PDF itself carries a watermark; it's served inline (no
-                      download disposition) and right-click is disabled to make
-                      casual saving harder. The watermark is the real protection. */}
-                  <div
-                    className="w-full border border-[#e5e7eb] rounded-lg overflow-hidden bg-[#f8f8f5] relative select-none"
-                    style={{ aspectRatio: "297 / 210" }}
-                    onContextMenu={(e) => e.preventDefault()}
-                  >
-                    <iframe
-                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                      title="Vista previa del tablero"
-                      className="w-full h-full"
-                    />
-                  </div>
+                  {/* Renders pages as canvas via pdf.js — works on iOS Safari
+                      and scales to the container width on mobile. The PDF
+                      itself carries the watermark (real protection). */}
+                  <PdfPagesPreview url={pdfUrl} />
                   <p className="text-center text-xs text-[#233933]/50">
                     🔒 Vista previa con marca de agua. La versión final y limpia se descarga después del pago.
                   </p>
