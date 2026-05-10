@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { iconFileName, type Genero } from "./iconAssets";
 
 function toDataUrl(filePath: string, mime = "image/png"): string {
   const buffer = fs.readFileSync(filePath);
@@ -26,11 +27,21 @@ const DECO_KEYS = [
   "noche-right",
 ];
 
-export function loadImages(iconIds: string[]): Record<string, string> {
+export function loadImages(
+  iconIds: string[],
+  genero?: Genero | null,
+): Record<string, string> {
   const images: Record<string, string> = {};
 
   for (const id of iconIds) {
-    const src = tryRead(path.join(ICONS_DIR, `${id}.png`));
+    // Resolve gendered variants (e.g. agua-nino.png) when applicable.
+    // The dictionary is still keyed by the bare id so TableroPDF doesn't need to know.
+    const fileName = iconFileName(id, genero);
+    let src = tryRead(path.join(ICONS_DIR, fileName));
+    // Defensive fallback: if the gendered file is missing, try the bare id.
+    if (!src && fileName !== `${id}.png`) {
+      src = tryRead(path.join(ICONS_DIR, `${id}.png`));
+    }
     if (src) images[id] = src;
   }
 

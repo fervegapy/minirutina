@@ -9,29 +9,56 @@ import IconPicker, {
   ICONOS_MANANA,
   ICONOS_NOCHE,
 } from "@/components/customizer/IconPicker";
-import PreviewRutinas from "@/components/customizer/PreviewRutinas";
+import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
 
-const PASOS = ["Nombre", "Color", "Mañana", "Noche", "Vista previa", "Tu tablero"];
+const PASOS = ["Nombre", "Color", "Mañana", "Noche", "Vista previa"];
+const REQUIRED_ICONS = 7;
 
 export default function PersonalizarRutinas() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [nombre, setNombre] = useState("");
+  const [genero, setGenero] = useState<Genero | null>(null);
   const [color, setColor] = useState("#a8c5a0");
   const [manana, setManana] = useState<string[]>([]);
   const [noche, setNoche] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const generatedRef = useRef(false);
 
-  const next = () => setStep((s) => Math.min(s + 1, PASOS.length - 1));
+  // Clear inline error when the user fixes the count
+  useEffect(() => {
+    if (step === 2 && manana.length === REQUIRED_ICONS) setValidationError(null);
+    if (step === 3 && noche.length === REQUIRED_ICONS) setValidationError(null);
+  }, [manana, noche, step]);
+
+  const next = () => {
+    // Validation: mañana + noche must have exactly 7 icons
+    if (step === 2 && manana.length !== REQUIRED_ICONS) {
+      setValidationError(
+        `Tenés que elegir ${REQUIRED_ICONS} actividades (llevás ${manana.length}).`
+      );
+      return;
+    }
+    if (step === 3 && noche.length !== REQUIRED_ICONS) {
+      setValidationError(
+        `Tenés que elegir ${REQUIRED_ICONS} actividades (llevás ${noche.length}).`
+      );
+      return;
+    }
+    setValidationError(null);
+    setStep((s) => Math.min(s + 1, PASOS.length - 1));
+  };
+
   const back = () => {
     if (step === PASOS.length - 1) {
       setPdfUrl(null);
       generatedRef.current = false;
     }
+    setValidationError(null);
     setStep((s) => Math.max(s - 1, 0));
   };
 
@@ -56,6 +83,7 @@ export default function PersonalizarRutinas() {
           colorAcento: color,
           manana,
           noche,
+          genero,
         }),
       });
       if (!res.ok) throw new Error("No se pudo generar el PDF");
@@ -74,7 +102,7 @@ export default function PersonalizarRutinas() {
       producto: "rutinas",
       nombre_nino: nombre,
       color_acento: color,
-      personalizacion: JSON.stringify({ manana, noche }),
+      personalizacion: JSON.stringify({ manana, noche, genero }),
     });
     router.push(`/checkout?${params.toString()}`);
   };
@@ -100,12 +128,16 @@ export default function PersonalizarRutinas() {
                 ¿Cómo se llama?
               </h2>
               <Input
-                placeholder="Nombre del niño"
+                placeholder="Nombre del niño/a"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                className="text-base"
+                className="text-base mb-6"
                 autoFocus
               />
+              <h3 className="font-bold text-sm mb-3 text-[#233933]">
+                ¿Es niño o niña?
+              </h3>
+              <GenderPicker value={genero} onChange={setGenero} accentColor={color} />
             </div>
           )}
 
@@ -127,8 +159,9 @@ export default function PersonalizarRutinas() {
                 iconos={ICONOS_MANANA}
                 selected={manana}
                 onChange={setManana}
-                max={6}
+                max={REQUIRED_ICONS}
                 accentColor={color}
+                genero={genero}
               />
             </div>
           )}
@@ -142,31 +175,17 @@ export default function PersonalizarRutinas() {
                 iconos={ICONOS_NOCHE}
                 selected={noche}
                 onChange={setNoche}
-                max={6}
+                max={REQUIRED_ICONS}
                 accentColor={color}
+                genero={genero}
               />
             </div>
           )}
 
           {step === 4 && (
             <div>
-              <h2 className="font-bold text-lg mb-4 text-[#233933]">
-                Vista previa
-              </h2>
-              <PreviewRutinas
-                nombreNino={nombre}
-                colorAcento={color}
-                manana={manana}
-                siesta={[]}
-                noche={noche}
-              />
-            </div>
-          )}
-
-          {step === 5 && (
-            <div>
               <h2 className="font-bold text-lg mb-1 text-[#233933]">
-                Tu tablero
+                Vista previa
               </h2>
               <p className="text-xs text-[#233933]/50 mb-5">
                 Así va a quedar impreso el tablero de {nombre || "tu niño"}
@@ -194,19 +213,35 @@ export default function PersonalizarRutinas() {
 
               {pdfUrl && (
                 <div className="space-y-3">
-                  <a href={pdfUrl} download={`tablero-${nombre}.pdf`} className="block">
-                    <Button className="w-full bg-[#233933] hover:bg-[#1a2b26] text-white font-bold rounded-xl shadow-none border-0">
-                      📥 Descargar borrador
-                    </Button>
-                  </a>
-                  <p className="text-center text-xs text-[#233933]/40">
-                    Este es el borrador con los íconos incluidos. El diseño final es idéntico.
+                  {/* Inline PDF preview — A4 landscape ratio (297×210 → ≈1.414:1).
+                      The PDF itself carries a watermark; it's served inline (no
+                      download disposition) and right-click is disabled to make
+                      casual saving harder. The watermark is the real protection. */}
+                  <div
+                    className="w-full border border-[#e5e7eb] rounded-lg overflow-hidden bg-[#f8f8f5] relative select-none"
+                    style={{ aspectRatio: "297 / 210" }}
+                    onContextMenu={(e) => e.preventDefault()}
+                  >
+                    <iframe
+                      src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                      title="Vista previa del tablero"
+                      className="w-full h-full"
+                    />
+                  </div>
+                  <p className="text-center text-xs text-[#233933]/50">
+                    🔒 Vista previa con marca de agua. La versión final y limpia se descarga después del pago.
                   </p>
                 </div>
               )}
             </div>
           )}
         </div>
+
+        {validationError && (
+          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 text-center">
+            {validationError}
+          </div>
+        )}
 
         <div className="flex gap-3 justify-between">
           {step > 0 ? (
@@ -224,7 +259,7 @@ export default function PersonalizarRutinas() {
           {step < PASOS.length - 1 ? (
             <Button
               onClick={next}
-              disabled={step === 0 && !nombre.trim()}
+              disabled={step === 0 && (!nombre.trim() || !genero)}
               className="bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-lg shadow-none border-0"
             >
               Siguiente

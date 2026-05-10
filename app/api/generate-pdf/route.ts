@@ -4,6 +4,7 @@ import React from "react";
 import path from "path";
 import { supabase } from "@/lib/supabase";
 import { loadImages } from "@/lib/pdfImages";
+import type { Genero } from "@/lib/iconAssets";
 import TableroPDF from "@/components/pdf/TableroPDF";
 import type { PersonalizacionRutinas } from "@/types/pedido";
 
@@ -41,11 +42,15 @@ async function buildBuffer(
   colorAcento: string,
   manana: string[],
   noche: string[],
+  watermark: boolean,
+  genero: Genero | null,
 ) {
   const allIconIds = [...manana, ...noche];
-  const images = loadImages(allIconIds);
+  const images = loadImages(allIconIds, genero);
   const element = React.createElement(TableroPDF, {
-    nombreNino, colorAcento, manana, noche, images, subtitleFont: SUBTITLE_FONT,
+    nombreNino, colorAcento, manana, noche, images,
+    subtitleFont: SUBTITLE_FONT,
+    watermark,
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -54,14 +59,16 @@ async function buildBuffer(
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  // ── Preview mode: inline data, no DB needed ───────────────────────────────
+  // ── Preview mode: inline data, watermarked, served inline (not as a download) ─
   if (body.preview) {
-    const { nombreNino, colorAcento, manana = [], noche = [] } = body;
-    const buffer = await buildBuffer(nombreNino, colorAcento, manana, noche);
+    const { nombreNino, colorAcento, manana = [], noche = [], genero = null } = body;
+    const buffer = await buildBuffer(nombreNino, colorAcento, manana, noche, true, genero);
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="tablero-${nombreNino ?? "preview"}.pdf"`,
+        // inline (not attachment) so the iframe renders it; filename is irrelevant
+        "Content-Disposition": `inline; filename="preview.pdf"`,
+        "Cache-Control": "no-store",
       },
     });
   }
@@ -85,12 +92,15 @@ export async function POST(req: NextRequest) {
     pedido = data;
   }
 
-  const p = pedido.personalizacion as PersonalizacionRutinas;
+  const p = pedido.personalizacion as PersonalizacionRutinas & { genero?: Genero | null };
+  // Paid path: no watermark — this is the final printable file
   const buffer = await buildBuffer(
     pedido.nombre_nino,
     pedido.color_acento,
     p.manana ?? [],
     p.noche ?? [],
+    false,
+    p.genero ?? null,
   );
 
   // Test mode: return PDF directly as download

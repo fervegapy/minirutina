@@ -8,6 +8,7 @@ export interface TableroPDFProps {
   noche: string[];
   images: Record<string, string>;
   subtitleFont?: string;
+  watermark?: boolean;
 }
 
 // ─── Unit conversion ──────────────────────────────────────────────────────────
@@ -22,27 +23,23 @@ const C_DOT_TEAL  = "#B2DDD5";   // scattered header dots
 const C_VELCRO_LO = "#C8CACC";   // lower zone velcro dots
 
 // ─── Layout constants (mm) ────────────────────────────────────────────────────
-const SLOT_X_MM  = [1.4, 43.9, 86.3, 128.8, 171.2, 213.6, 256.0];
-const SLOT_W_MM  = 42.4;
+// Perfect symmetry: gap = (297 - 7×39.6) / 8 = 2.475 mm on all 8 inter-card gaps
 const CARD_W_MM  = 39.6;
 const CARD_H_MM  = 39.9;
+const GAP_MM     = (297 - 7 * CARD_W_MM) / 8;   // 2.475 mm
+const N_CARDS    = 7;
+
 const CARD_Y_MM  = 98.2;
 const BAND_Y_MM  = 70.3;
 const BAND_H_MM  = 69.6;
 const LOWER_Y_MM = 140.5;
 const LOWER_H_MM = 69.5;
-const PAD_MM     = 4;
 const VELCRO_D_MM = 11.5;  // velcro dot diameter
 
-// Derived positions
-const cardLeftMM   = (i: number) => SLOT_X_MM[i] + (SLOT_W_MM - CARD_W_MM) / 2;
-const dotLeftMM    = (i: number) => SLOT_X_MM[i] + SLOT_W_MM / 2 - VELCRO_D_MM / 2;
+// Derived vertical positions
 const DOT_ROW_H_MM = CARD_Y_MM - BAND_Y_MM; // 27.9 mm
 const BAND_DOT_TOP_MM = BAND_Y_MM + DOT_ROW_H_MM / 2 - VELCRO_D_MM / 2;
 const LOWER_DOT_TOP_MM = LOWER_Y_MM + LOWER_H_MM - VELCRO_D_MM - 4;
-
-// Divider x positions (between slots)
-const DIVIDER_X_MM = SLOT_X_MM.slice(0, 6).map((x) => x + SLOT_W_MM);
 
 // ─── Scattered header dots [x, y, radius] in mm ───────────────────────────────
 const HEADER_DOTS: [number, number, number][] = [
@@ -56,10 +53,10 @@ const HEADER_DOTS: [number, number, number][] = [
 // ─── StyleSheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
-    width:           pt(297),
-    height:          pt(210),
     backgroundColor: "#FFFFFF",
     position:        "relative",
+    padding:         0,
+    margin:          0,
   },
   // Name
   name: {
@@ -85,18 +82,18 @@ const s = StyleSheet.create({
     fontSize:      57,
     color:         C_SUB,
   },
-  // Decoration images
+  // Decoration images (~80px inward = ~8.6mm; left/right from pt(6) → pt(15))
   decoLeft: {
     position: "absolute",
     top:      pt(6),
-    left:     pt(6),
+    left:     pt(15),
     width:    pt(48),
     height:   pt(48),
   },
   decoRight: {
     position: "absolute",
     top:      pt(6),
-    right:    pt(6),
+    right:    pt(15),
     width:    pt(48),
     height:   pt(48),
   },
@@ -105,7 +102,7 @@ const s = StyleSheet.create({
     position:        "absolute",
     top:             pt(BAND_Y_MM),
     left:            0,
-    width:           pt(297),
+    right:           0,
     height:          pt(BAND_H_MM),
   },
   // Branding
@@ -149,78 +146,82 @@ function HeaderDots() {
 }
 
 function VelcroDotsInBand() {
+  // Flex row pinned to page edges (same frame as the band): left:0 / right:0.
+  // Each cell is one of 7 equal columns; the dot is centered horizontally.
   return (
-    <>
-      {SLOT_X_MM.map((_, i) => (
+    <View
+      style={{
+        position:       "absolute",
+        top:            pt(BAND_DOT_TOP_MM),
+        left:           0,
+        right:          0,
+        height:         pt(VELCRO_D_MM),
+        flexDirection:  "row",
+      }}
+    >
+      {Array.from({ length: N_CARDS }).map((_, i) => (
         <View
           key={i}
           style={{
-            position:        "absolute",
-            top:             pt(BAND_DOT_TOP_MM),
-            left:            pt(dotLeftMM(i)),
-            width:           pt(VELCRO_D_MM),
-            height:          pt(VELCRO_D_MM),
-            borderRadius:    pt(VELCRO_D_MM / 2),
-            backgroundColor: "#FFFFFF",
+            flex:            1,
+            alignItems:      "center",
+            justifyContent:  "center",
           }}
-        />
+        >
+          <View
+            style={{
+              width:           pt(VELCRO_D_MM),
+              height:          pt(VELCRO_D_MM),
+              borderRadius:    pt(VELCRO_D_MM / 2),
+              backgroundColor: "#FFFFFF",
+            }}
+          />
+        </View>
       ))}
-    </>
+    </View>
   );
 }
 
 const CARD_VELCRO_D_MM = 9; // white circle inside gray card
 
 function IconCard({
-  i,
   iconId,
   images,
 }: {
-  i: number;
   iconId?: string;
   images: Record<string, string>;
 }) {
-  const src  = iconId ? images[iconId] : undefined;
-  const left = pt(cardLeftMM(i));
-  const top  = pt(CARD_Y_MM);
-  const w    = pt(CARD_W_MM);
-  const h    = pt(CARD_H_MM);
-  const pad  = pt(PAD_MM);
-  const r    = pt(2.5);
-  const vd   = pt(CARD_VELCRO_D_MM);
+  const src = iconId ? images[iconId] : undefined;
+  const w   = pt(CARD_W_MM);
+  const h   = pt(CARD_H_MM);
+  const r   = pt(2.5);
+  const vd  = pt(CARD_VELCRO_D_MM);
 
   return (
     <View
       style={{
-        position:        "absolute",
-        top,
-        left,
         width:           w,
         height:          h,
         borderRadius:    r,
         backgroundColor: C_CARD,
         overflow:        "hidden",
+        alignItems:      "center",
+        justifyContent:  "center",
       }}
     >
       {src ? (
+        // Illustration fills the card edge-to-edge — the PNG itself defines the look.
         <Image
           src={src}
           style={{
-            position:  "absolute",
-            top:       pad,
-            left:      pad,
-            width:     w - pad * 2,
-            height:    h - pad * 2,
-            objectFit: "contain",
+            width:     w,
+            height:    h,
+            objectFit: "cover",
           }}
         />
       ) : (
-        /* Centered white velcro dot placeholder */
         <View
           style={{
-            position:        "absolute",
-            top:             h / 2 - vd / 2,
-            left:            w / 2 - vd / 2,
             width:           vd,
             height:          vd,
             borderRadius:    vd / 2,
@@ -232,38 +233,139 @@ function IconCard({
   );
 }
 
+// Row of 7 cards inside a flex container that spans the page edges (left:0/right:0)
+// — same frame as the accent band, so cards line up with it perfectly.
+function IconCardsRow({
+  iconIds,
+  images,
+}: {
+  iconIds: string[];
+  images: Record<string, string>;
+}) {
+  return (
+    <View
+      style={{
+        position:         "absolute",
+        top:              pt(CARD_Y_MM),
+        left:             0,
+        right:            0,
+        height:           pt(CARD_H_MM),
+        flexDirection:    "row",
+        justifyContent:   "space-between",
+        paddingHorizontal: pt(GAP_MM),
+      }}
+    >
+      {Array.from({ length: N_CARDS }).map((_, i) => (
+        <IconCard key={i} iconId={iconIds[i]} images={images} />
+      ))}
+    </View>
+  );
+}
+
 function LowerZone() {
+  const vd = pt(VELCRO_D_MM);
   return (
     <>
-      {/* Vertical dividers */}
-      {DIVIDER_X_MM.map((x, i) => (
-        <View
-          key={i}
+      {/* Vertical dividers — flex row of 7 columns; render dividers between them */}
+      <View
+        style={{
+          position:      "absolute",
+          top:           pt(LOWER_Y_MM),
+          left:          0,
+          right:         0,
+          height:        pt(LOWER_H_MM),
+          flexDirection: "row",
+        }}
+      >
+        {Array.from({ length: N_CARDS }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              flex:        1,
+              borderLeftWidth: i === 0 ? 0 : 0.8,
+              borderLeftColor: C_BORDER,
+            }}
+          />
+        ))}
+      </View>
+      {/* Velcro dots at bottom — flex row, dot centered in each column */}
+      <View
+        style={{
+          position:       "absolute",
+          top:            pt(LOWER_DOT_TOP_MM),
+          left:           0,
+          right:          0,
+          height:         vd,
+          flexDirection:  "row",
+        }}
+      >
+        {Array.from({ length: N_CARDS }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              flex:           1,
+              alignItems:     "center",
+              justifyContent: "center",
+            }}
+          >
+            <View
+              style={{
+                width:           vd,
+                height:          vd,
+                borderRadius:    vd / 2,
+                backgroundColor: C_VELCRO_LO,
+              }}
+            />
+          </View>
+        ))}
+      </View>
+    </>
+  );
+}
+
+// ─── Watermark overlay (preview only — protects pre-paid downloads) ──────────
+
+function Watermark() {
+  return (
+    <>
+      {/* Full-page semi-transparent black overlay (35% opacity) */}
+      <View
+        style={{
+          position:        "absolute",
+          top:             0,
+          left:            0,
+          right:           0,
+          bottom:          0,
+          backgroundColor: "#000000",
+          opacity:         0.35,
+        }}
+      />
+      {/* Diagonal "VISTA PREVIA" text, large, centered */}
+      <View
+        style={{
+          position:       "absolute",
+          top:            0,
+          left:           0,
+          right:          0,
+          bottom:         0,
+          alignItems:     "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text
           style={{
-            position:        "absolute",
-            top:             pt(LOWER_Y_MM),
-            left:            pt(x),
-            width:           0.8,
-            height:          pt(LOWER_H_MM),
-            backgroundColor: C_BORDER,
+            fontFamily:    "Figtree",
+            fontWeight:    700,
+            fontSize:      120,
+            color:         "#FFFFFF",
+            opacity:       0.55,
+            letterSpacing: 8,
+            transform:     "rotate(-22deg)",
           }}
-        />
-      ))}
-      {/* Velcro dots at bottom */}
-      {SLOT_X_MM.map((_, i) => (
-        <View
-          key={i}
-          style={{
-            position:        "absolute",
-            top:             pt(LOWER_DOT_TOP_MM),
-            left:            pt(dotLeftMM(i)),
-            width:           pt(VELCRO_D_MM),
-            height:          pt(VELCRO_D_MM),
-            borderRadius:    pt(VELCRO_D_MM / 2),
-            backgroundColor: C_VELCRO_LO,
-          }}
-        />
-      ))}
+        >
+          VISTA PREVIA
+        </Text>
+      </View>
     </>
   );
 }
@@ -279,6 +381,7 @@ interface FranjaPageProps {
   iconIds:      string[];
   images:       Record<string, string>;
   subtitleFont: string;
+  watermark:    boolean;
 }
 
 function FranjaPage({
@@ -290,12 +393,10 @@ function FranjaPage({
   iconIds,
   images,
   subtitleFont,
+  watermark,
 }: FranjaPageProps) {
   return (
-    <Page size="A4" orientation="landscape" style={s.page}>
-      {/* Scattered header dots — disabled */}
-      {/* <HeaderDots /> */}
-
+    <Page size={[pt(297), pt(210)]} style={s.page}>
       {/* Name + subtitle */}
       <Text style={s.name}>{nombreNino}</Text>
       <Text style={[s.subtitle, { fontFamily: subtitleFont }]}>{subtitle}</Text>
@@ -311,14 +412,15 @@ function FranjaPage({
       <VelcroDotsInBand />
 
       {/* Icon cards */}
-      {SLOT_X_MM.map((_, i) => (
-        <IconCard key={i} i={i} iconId={iconIds[i]} images={images} />
-      ))}
+      <IconCardsRow iconIds={iconIds} images={images} />
 
       {/* Lower zone: dividers + velcro dots */}
       <LowerZone />
 
       <Text style={s.brand}>minirutina.com</Text>
+
+      {/* Preview-only watermark — must be last so it overlays everything */}
+      {watermark && <Watermark />}
     </Page>
   );
 }
@@ -332,6 +434,7 @@ export default function TableroPDF({
   noche,
   images,
   subtitleFont = "Nunito",
+  watermark = false,
 }: TableroPDFProps) {
   return (
     <Document>
@@ -344,6 +447,7 @@ export default function TableroPDF({
         iconIds={manana}
         images={images}
         subtitleFont={subtitleFont}
+        watermark={watermark}
       />
       <FranjaPage
         nombreNino={nombreNino}
@@ -354,6 +458,7 @@ export default function TableroPDF({
         iconIds={noche}
         images={images}
         subtitleFont={subtitleFont}
+        watermark={watermark}
       />
     </Document>
   );

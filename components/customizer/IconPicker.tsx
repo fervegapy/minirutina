@@ -1,14 +1,21 @@
 "use client";
 
+import { useState } from "react";
+import { iconUrl, type Genero } from "@/lib/iconAssets";
+
 export const ICONOS_MANANA = [
-  { id: "despertar", label: "Despertar" },
-  { id: "dientes", label: "Dientes" },
-  { id: "desayuno", label: "Desayuno" },
-  { id: "vestirse", label: "Vestirse" },
-  { id: "mochila", label: "Mochila" },
-  { id: "colegio", label: "Colegio" },
-  { id: "pelo", label: "Peinarse" },
-  { id: "lavarse", label: "Lavarse" },
+  { id: "levantarse", label: "Levantarse" },
+  { id: "cama",       label: "Hacer cama" },
+  { id: "bano",       label: "Bañarse" },
+  { id: "cepillo",    label: "Cepillarse" },
+  { id: "vestirse",   label: "Vestirse" },
+  { id: "desayunar",  label: "Desayunar" },
+  { id: "agua",       label: "Tomar agua" },
+  { id: "remedios",   label: "Remedios" },
+  { id: "mochila",    label: "Mochila" },
+  { id: "leer",       label: "Leer" },
+  { id: "orar",       label: "Orar" },
+  { id: "guarde",     label: "Guardar" },
 ];
 
 export const ICONOS_SIESTA = [
@@ -46,14 +53,18 @@ export const ICONOS_SEMANA = [
 ];
 
 export const ICONOS_NOCHE = [
-  { id: "cena", label: "Cena" },
-  { id: "bano", label: "Baño" },
-  { id: "pijama", label: "Pijama" },
-  { id: "cuento", label: "Cuento" },
-  { id: "dientes_noche", label: "Dientes" },
-  { id: "dormir", label: "Dormir" },
-  { id: "rezar", label: "Rezar" },
-  { id: "abrazar", label: "Abrazo" },
+  { id: "mamallega",   label: "Mamá llega" },
+  { id: "papallega",   label: "Papá llega" },
+  { id: "cena",        label: "Cena" },
+  { id: "bano",        label: "Bañarse" },
+  { id: "pijama",      label: "Pijama" },
+  { id: "cepillarse",  label: "Cepillarse" },
+  { id: "leche",       label: "Leche" },
+  { id: "cuento",      label: "Cuento" },
+  { id: "cancion",     label: "Canción" },
+  { id: "orar",        label: "Orar" },
+  { id: "luces",       label: "Apagar luces" },
+  { id: "dormir",      label: "Dormir" },
 ];
 
 interface IconPickerProps {
@@ -62,6 +73,7 @@ interface IconPickerProps {
   onChange: (selected: string[]) => void;
   max?: number;
   accentColor?: string;
+  genero?: Genero | null;
 }
 
 export default function IconPicker({
@@ -70,6 +82,7 @@ export default function IconPicker({
   onChange,
   max = 6,
   accentColor = "#ecbc5d",
+  genero = null,
 }: IconPickerProps) {
   const toggle = (id: string) => {
     if (selected.includes(id)) {
@@ -84,7 +97,7 @@ export default function IconPicker({
       <p className="text-xs text-[#233933]/50 mb-3 text-center">
         Seleccioná hasta {max} actividades · el orden importa
       </p>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {iconos.map((icono) => {
           const isSelected = selected.includes(icono.id);
           const order = isSelected ? selected.indexOf(icono.id) + 1 : null;
@@ -93,22 +106,19 @@ export default function IconPicker({
               key={icono.id}
               type="button"
               onClick={() => toggle(icono.id)}
-              className={`relative rounded-xl p-3 flex flex-col items-center gap-1 border-2 transition-all text-center ${
+              className="relative w-full max-w-[200px] aspect-square mx-auto transition-all"
+              style={
                 isSelected
-                  ? "border-[#233933]"
-                  : "border-[#e5e7eb] hover:border-[#233933]/30"
-              }`}
-              style={isSelected ? { backgroundColor: accentColor + "33" } : {}}
+                  ? { outline: "3px solid #233933", backgroundColor: accentColor + "33" }
+                  : {}
+              }
             >
               {order !== null && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#233933] text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#233933] text-white text-[10px] font-bold flex items-center justify-center leading-none z-10">
                   {order}
                 </span>
               )}
-              <span className="text-2xl">{getIconEmoji(icono.id)}</span>
-              <span className="text-[11px] font-semibold text-[#233933] leading-tight">
-                {icono.label}
-              </span>
+              <IconImage id={icono.id} label={icono.label} genero={genero} />
             </button>
           );
         })}
@@ -117,16 +127,53 @@ export default function IconPicker({
   );
 }
 
+// Renders the PNG illustration at /public/icons/{id}.png; falls back to emoji
+// if the file doesn't exist yet (so the picker keeps working while you upload).
+function IconImage({
+  id,
+  label,
+  genero,
+}: {
+  id: string;
+  label: string;
+  genero: Genero | null;
+}) {
+  // Re-key on (id, genero) so changing gender re-mounts and clears the failed state
+  const src = iconUrl(id, genero);
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span className="w-full h-full flex items-center justify-center text-7xl leading-none">
+        {getIconEmoji(id)}
+      </span>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={src}
+      src={src}
+      alt={label}
+      className="absolute inset-0 w-full h-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function getIconEmoji(id: string): string {
   const map: Record<string, string> = {
-    despertar: "☀️",
-    dientes: "🦷",
-    desayuno: "🥣",
+    levantarse: "☀️",
+    cama: "🛏️",
+    bano: "🛁",
+    cepillo: "🦷",
     vestirse: "👕",
+    desayunar: "🥣",
+    agua: "💧",
+    remedios: "💊",
     mochila: "🎒",
-    colegio: "🏫",
-    pelo: "💇",
-    lavarse: "🧼",
+    leer: "📖",
+    orar: "🙏",
+    guarde: "🧸",
     almuerzo: "🍽️",
     siesta: "😴",
     lectura: "📖",
@@ -135,14 +182,16 @@ export function getIconEmoji(id: string): string {
     merienda: "🍎",
     tv: "📺",
     dibujo: "🎨",
+    mamallega: "👩",
+    papallega: "👨",
     cena: "🍜",
-    bano: "🛁",
     pijama: "🌙",
+    cepillarse: "🪥",
+    leche: "🥛",
     cuento: "📚",
-    dientes_noche: "🪥",
+    cancion: "🎵",
+    luces: "💡",
     dormir: "💤",
-    rezar: "🙏",
-    abrazar: "🤗",
     // semana variants
     dientes_s: "🦷",
     desayuno_s: "🥣",
