@@ -1,6 +1,6 @@
 export type EstadoPedido = "pendiente" | "pagado" | "enviado";
 export type TipoEntrega = "digital" | "fisico";
-export type ProductoTipo = "rutinas" | "semana" | "recompensas";
+export type ProductoTipo = "rutinas" | "recompensas";
 
 export interface Pedido {
   id: string;
@@ -8,7 +8,7 @@ export interface Pedido {
   producto: ProductoTipo;
   nombre_nino: string;
   color_acento: string;
-  personalizacion: PersonalizacionRutinas | PersonalizacionSemana | PersonalizacionRecompensas;
+  personalizacion: PersonalizacionRutinas | PersonalizacionRecompensas;
   tipo_entrega: TipoEntrega;
   contacto: string;
   direccion?: string | null;
@@ -20,16 +20,6 @@ export interface PersonalizacionRutinas {
   manana: string[];
   siesta: string[];
   noche: string[];
-}
-
-export interface PersonalizacionSemana {
-  lunes: string[];
-  martes: string[];
-  miercoles: string[];
-  jueves: string[];
-  viernes: string[];
-  sabado: string[];
-  domingo: string[];
 }
 
 export interface PersonalizacionRecompensas {

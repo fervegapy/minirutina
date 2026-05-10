@@ -12,15 +12,6 @@ const productos = [
     accent: "#a8c5a0",
   },
   {
-    emoji: "📅",
-    tag: "Ideal para la heladera",
-    nombre: "Plan de la Semana",
-    desc: "Las actividades de toda la semana a la vista. Lunes a domingo, con lo que corresponde cada día.",
-    beneficio: "Los chicos anticipan su semana y se sienten seguros.",
-    href: "/productos/semana",
-    accent: "#a8c8e8",
-  },
-  {
     emoji: "⭐",
     tag: "Super motivador",
     nombre: "Tablero de Recompensas",
@@ -37,7 +28,7 @@ export default function Productos() {
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
           <span className="text-xs font-bold uppercase tracking-widest text-[#ecbc5d] mb-3 block">
-            Tres opciones
+            Dos opciones
           </span>
           <h2 className="text-3xl md:text-4xl font-bold text-[#233933] mb-4">
             Elegí el tablero ideal
@@ -47,7 +38,7 @@ export default function Productos() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {productos.map((p) => (
             <div
               key={p.nombre}

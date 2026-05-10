@@ -12,7 +12,7 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: "Minirutina — Tableros personalizados para niños",
   description:
-    "Crea tableros de rutinas, planes semanales y tableros de recompensas personalizados para tus hijos. Imprimibles descargables.",
+    "Crea tableros de rutinas y tableros de recompensas personalizados para tus hijos. Imprimibles descargables.",
 };
 
 export default function RootLayout({

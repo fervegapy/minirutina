@@ -8,7 +8,6 @@ import LocationPicker, { LocationValue } from "@/components/checkout/LocationPic
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas: "Tablero de Rutinas",
-  semana: "Plan de la Semana",
   recompensas: "Tablero de Recompensas",
 };
 

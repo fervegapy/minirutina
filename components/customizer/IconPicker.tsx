@@ -29,29 +29,6 @@ export const ICONOS_SIESTA = [
   { id: "dibujo", label: "Dibujar" },
 ];
 
-export const ICONOS_SEMANA = [
-  { id: "dientes_s",  label: "Dientes" },
-  { id: "desayuno_s", label: "Desayuno" },
-  { id: "almuerzo_s", label: "Almuerzo" },
-  { id: "cena_s",     label: "Cena" },
-  { id: "tarea_s",    label: "Tarea" },
-  { id: "lectura_s",  label: "Leer" },
-  { id: "deporte_s",  label: "Deporte" },
-  { id: "musica_s",   label: "Música" },
-  { id: "bano_s",     label: "Baño" },
-  { id: "colegio_s",  label: "Colegio" },
-  { id: "juego_s",    label: "Jugar" },
-  { id: "dibujo_s",   label: "Dibujar" },
-  { id: "tv_s",       label: "TV" },
-  { id: "merienda_s", label: "Merienda" },
-  { id: "siesta_s",   label: "Descanso" },
-  { id: "vestirse_s", label: "Vestirse" },
-  { id: "mochila_s",  label: "Mochila" },
-  { id: "rezar_s",    label: "Rezar" },
-  { id: "abrazar_s",  label: "Abrazo" },
-  { id: "desp_s",     label: "Despertar" },
-];
-
 export const ICONOS_NOCHE = [
   { id: "mamallega",   label: "Mamá llega" },
   { id: "papallega",   label: "Papá llega" },
@@ -192,27 +169,6 @@ export function getIconEmoji(id: string): string {
     cancion: "🎵",
     luces: "💡",
     dormir: "💤",
-    // semana variants
-    dientes_s: "🦷",
-    desayuno_s: "🥣",
-    almuerzo_s: "🍽️",
-    cena_s: "🍜",
-    tarea_s: "✏️",
-    lectura_s: "📖",
-    deporte_s: "⚽",
-    musica_s: "🎵",
-    bano_s: "🛁",
-    colegio_s: "🏫",
-    juego_s: "🎮",
-    dibujo_s: "🎨",
-    tv_s: "📺",
-    merienda_s: "🍎",
-    siesta_s: "😴",
-    vestirse_s: "👕",
-    mochila_s: "🎒",
-    rezar_s: "🙏",
-    abrazar_s: "🤗",
-    desp_s: "☀️",
   };
   return map[id] ?? "⭐";
 }

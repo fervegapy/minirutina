@@ -26,9 +26,6 @@ export default function Footer() {
                 <Link href="/personalizar/rutinas" className="block text-white/60 hover:text-white transition-colors">
                   Tablero de Rutinas
                 </Link>
-                <Link href="/personalizar/semana" className="block text-white/60 hover:text-white transition-colors">
-                  Plan de la Semana
-                </Link>
                 <Link href="/personalizar/recompensas" className="block text-white/60 hover:text-white transition-colors">
                   Tablero de Recompensas
                 </Link>
