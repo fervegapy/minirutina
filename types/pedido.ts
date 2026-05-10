@@ -23,8 +23,12 @@ export interface PersonalizacionRutinas {
 }
 
 export interface PersonalizacionRecompensas {
-  pasos: number;
-  recompensa: string;
+  cantidad: 10 | 20;
+  genero?: "nino" | "nina";
+  // Legacy fields kept optional for backward compatibility with old pedidos.
+  pasos?: number;
+  recompensa?: string;
+  sticker?: string;
 }
 
 export interface Database {
