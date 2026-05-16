@@ -372,7 +372,7 @@ function Watermark() {
 
 // ─── Single page ──────────────────────────────────────────────────────────────
 
-interface FranjaPageProps {
+export interface FranjaPageProps {
   nombreNino:   string;
   colorAcento:  string;
   subtitle:     string;
@@ -384,7 +384,7 @@ interface FranjaPageProps {
   watermark:    boolean;
 }
 
-function FranjaPage({
+export function FranjaPage({
   nombreNino,
   colorAcento,
   subtitle,

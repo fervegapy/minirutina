@@ -1,4 +1,9 @@
-export type EstadoPedido = "pendiente" | "pagado" | "enviado";
+export type EstadoPedido =
+  | "pendiente"      // creado, esperando confirmación de pago
+  | "pagado"         // pago confirmado, listo para mandar a imprenta
+  | "en_produccion"  // enviado a imprenta
+  | "enviado"        // despachado al cliente
+  | "entregado";     // confirmado en mano del cliente
 export type TipoEntrega = "digital" | "fisico";
 export type ProductoTipo = "rutinas" | "recompensas";
 

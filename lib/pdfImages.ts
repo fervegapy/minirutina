@@ -17,6 +17,7 @@ function tryRead(filePath: string): string | null {
 
 const ICONS_DIR = path.join(process.cwd(), "public", "icons");
 const DECO_DIR = path.join(process.cwd(), "public", "decorations");
+const RECOMPENSAS_DIR = path.join(process.cwd(), "public", "recompensas");
 
 const DECO_KEYS = [
   "manana-left",
@@ -25,6 +26,16 @@ const DECO_KEYS = [
   "siesta-right",
   "noche-left",
   "noche-right",
+];
+
+// Asset keys for the Tablero de Recompensas. Files live in /public/recompensas/
+// and are loaded into a flat dict keyed by these names.
+const RECOMPENSAS_KEYS = [
+  "comienza-aqui",
+  "lo-lograste-nino",
+  "lo-lograste-nina",
+  "circulo-nino",
+  "circulo-nina",
 ];
 
 export function loadImages(
@@ -51,4 +62,19 @@ export function loadImages(
   }
 
   return images;
+}
+
+/** Loads the Tablero de Recompensas asset set. Keys come back without prefix. */
+export function loadRecompensaImages(): Record<string, string> {
+  const images: Record<string, string> = {};
+  for (const key of RECOMPENSAS_KEYS) {
+    const src = tryRead(path.join(RECOMPENSAS_DIR, `${key}.png`));
+    if (src) images[key] = src;
+  }
+  return images;
+}
+
+/** Loads a single sticker PNG from /public/recompensas/stickers/{id}.png. */
+export function loadStickerImage(stickerId: string): string | null {
+  return tryRead(path.join(RECOMPENSAS_DIR, "stickers", `${stickerId}.png`));
 }

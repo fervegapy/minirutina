@@ -13,8 +13,16 @@ const PdfPagesPreview = dynamic(
   { ssr: false },
 );
 
-const PASOS = ["Nombre", "Cantidad", "Vista previa"];
+const PASOS = ["Nombre", "Cantidad", "Sticker", "Vista previa"];
 const OPCIONES: (10 | 20)[] = [10, 20];
+
+type StickerId = "estrella" | "check" | "corazon" | "brillante";
+const STICKERS: { id: StickerId; emoji: string; label: string }[] = [
+  { id: "estrella",  emoji: "⭐", label: "Estrella" },
+  { id: "check",     emoji: "✅", label: "Check" },
+  { id: "corazon",   emoji: "❤️", label: "Corazón" },
+  { id: "brillante", emoji: "🌟", label: "Estrella con carita" },
+];
 
 export default function PersonalizarRecompensas() {
   const router = useRouter();
@@ -22,6 +30,7 @@ export default function PersonalizarRecompensas() {
   const [nombre, setNombre] = useState("");
   const [genero, setGenero] = useState<Genero | null>(null);
   const [cantidad, setCantidad] = useState<10 | 20>(10);
+  const [sticker, setSticker] = useState<StickerId>("estrella");
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -84,7 +93,7 @@ export default function PersonalizarRecompensas() {
       nombre_nino: nombre,
       // Color de acento se decide por género — guardamos el del género para compat.
       color_acento: genero === "nina" ? "#B86F60" : "#3D5C7E",
-      personalizacion: JSON.stringify({ cantidad, genero }),
+      personalizacion: JSON.stringify({ cantidad, genero, sticker }),
     });
     router.push(`/checkout?${params.toString()}`);
   };
@@ -153,8 +162,39 @@ export default function PersonalizarRecompensas() {
             </div>
           )}
 
-          {/* Paso 2: Vista previa */}
+          {/* Paso 2: Sticker */}
           {step === 2 && (
+            <div>
+              <h2 className="font-bold text-lg mb-2 text-[#233933]">
+                ¿Qué sticker va a usar?
+              </h2>
+              <p className="text-xs text-[#233933]/50 mb-6">
+                Este es el que se pega cada vez que cumple un paso.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {STICKERS.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSticker(s.id)}
+                    className={`relative rounded-2xl border-2 py-5 flex flex-col items-center gap-2 transition-all ${
+                      sticker === s.id
+                        ? "border-[#233933] bg-[#ecbc5d]/20"
+                        : "border-[#e5e7eb] hover:border-[#233933]/40"
+                    }`}
+                  >
+                    <StickerImage id={s.id} emoji={s.emoji} />
+                    <span className="text-sm font-semibold text-[#233933]">
+                      {s.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Paso 3: Vista previa */}
+          {step === 3 && (
             <div>
               <h2 className="font-bold text-lg mb-1 text-[#233933]">
                 Vista previa
@@ -228,5 +268,24 @@ export default function PersonalizarRecompensas() {
         </div>
       </div>
     </main>
+  );
+}
+
+// Renders the sticker illustration from /public/recompensas/stickers/{id}.png.
+// Falls back to the emoji while the PNG hasn't been uploaded yet so the
+// picker keeps working during the asset migration.
+function StickerImage({ id, emoji }: { id: string; emoji: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <span className="text-5xl leading-none">{emoji}</span>;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/recompensas/stickers/${id}.png`}
+      alt=""
+      className="w-16 h-16 object-contain"
+      onError={() => setFailed(true)}
+    />
   );
 }
