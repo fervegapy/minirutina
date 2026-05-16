@@ -52,16 +52,20 @@ const styles = StyleSheet.create({
   },
 });
 
+// Cut line: subtle 0.5pt gray stroke around each sticker.
+const CUT_LINE_WIDTH = 0.5;
+const CUT_LINE_COLOR = "#B0B0B0";
+
 /**
- * Layout for the sticker sheet:
- * - 10 cantidad: 3 cols × 4 rows = 12 slots, use 10. Sticker D=36mm.
- * - 20 cantidad: 4 cols × 5 rows = 20 slots, use 20. Sticker D=24mm.
+ * Layout for the sticker sheet — sticker size = cut-circle diameter:
+ * - 10 cantidad: 4.0 cm circles. 3 cols × 4 rows.
+ * - 20 cantidad: 2.6 cm circles. 4 cols × 5 rows.
  */
 function stickerGrid(cantidad: 10 | 20) {
   if (cantidad === 10) {
-    return { COLS: 3, ROWS: 4, CELL: 50, STICKER: 36 };
+    return { COLS: 3, ROWS: 4, CELL: 50, STICKER: 40 };
   }
-  return   { COLS: 4, ROWS: 5, CELL: 36, STICKER: 24 };
+  return   { COLS: 4, ROWS: 5, CELL: 36, STICKER: 26 };
 }
 
 function FichasStickersPage({
@@ -89,7 +93,7 @@ function FichasStickersPage({
           Fichas de logrado — {nombreNino}
         </Text>
         <Text style={styles.pageHeaderSub}>
-          Recortar y pegar sobre cada círculo del tablero. {cantidad} unidades.
+          Recortar por la línea gris. {cantidad} unidades · Ø {cantidad === 10 ? "4 cm" : "2.6 cm"}.
         </Text>
       </View>
 
@@ -98,24 +102,8 @@ function FichasStickersPage({
         const row = Math.floor(i / COLS);
         const left = GRID_LEFT + col * CELL + (CELL - STICKER) / 2;
         const top  = GRID_TOP  + row * CELL + (CELL - STICKER) / 2;
-        if (stickerSrc) {
-          return (
-            <Image
-              key={i}
-              src={stickerSrc}
-              style={{
-                position: "absolute",
-                top:      pt(top),
-                left:     pt(left),
-                width:    pt(STICKER),
-                height:   pt(STICKER),
-                objectFit: "contain",
-              }}
-            />
-          );
-        }
-        // Fallback: a faint circle with the sticker id (so the imprenta
-        // sees we owe them a sticker asset).
+
+        // Circular cut-line frame — same diameter as the sticker.
         return (
           <View
             key={i}
@@ -126,16 +114,28 @@ function FichasStickersPage({
               width:           pt(STICKER),
               height:          pt(STICKER),
               borderRadius:    pt(STICKER / 2),
-              backgroundColor: "#F4F4F4",
-              borderWidth:     0.5,
-              borderColor:     "#D4D4D4",
+              borderWidth:     CUT_LINE_WIDTH,
+              borderColor:     CUT_LINE_COLOR,
+              backgroundColor: stickerSrc ? "transparent" : "#F4F4F4",
               alignItems:      "center",
               justifyContent:  "center",
+              overflow:        "hidden",
             }}
           >
-            <Text style={{ fontFamily: "Nunito", fontSize: 7, color: "#999" }}>
-              {stickerId}
-            </Text>
+            {stickerSrc ? (
+              <Image
+                src={stickerSrc}
+                style={{
+                  width:     pt(STICKER),
+                  height:    pt(STICKER),
+                  objectFit: "contain",
+                }}
+              />
+            ) : (
+              <Text style={{ fontFamily: "Nunito", fontSize: 7, color: "#999" }}>
+                {stickerId}
+              </Text>
+            )}
           </View>
         );
       })}

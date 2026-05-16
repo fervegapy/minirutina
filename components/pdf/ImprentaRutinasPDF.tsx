@@ -1,11 +1,12 @@
 // Imprenta-bound PDF for the Rutinas product.
-// 4 pages: morning tablero, night tablero, activity-fichas sheet,
-// check-fichas sheet (back side of the activity cards).
+// 3 pages: morning tablero, night tablero, and a sheet of "check" fichas
+// (the actividad fichas no longer go in the imprenta PDF — they're printed
+// on the tablero itself).
 //
 // Reuses <FranjaPage> from TableroPDF so the tablero rendering stays
 // identical to the customer file (just no watermark).
 import React from "react";
-import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { FranjaPage } from "./TableroPDF";
 
 const pt = (mm: number) => mm * 2.83465;
@@ -13,18 +14,19 @@ const pt = (mm: number) => mm * 2.83465;
 const PAGE_W_MM = 210;
 const PAGE_H_MM = 297;
 
-// 4×4 grid (14 used, 2 empty in the last row).
+// Checks grid — 3×3 cm cards on a 4×4 layout (room for up to 16 checks).
 const COLS = 4;
 const ROWS = 4;
-const CELL_MM = 40;     // cell size
-const CARD_MM = 36;     // visible card inside cell (4mm gutter)
-const GRID_W   = COLS * CELL_MM;
-const GRID_H   = ROWS * CELL_MM;
+const CARD_MM = 30;     // cut size = 3×3 cm
+const GUTTER_MM = 8;    // breathing room between cuts (avoids blade overlap)
+const CELL_MM = CARD_MM + GUTTER_MM;
+const GRID_W   = COLS * CELL_MM - GUTTER_MM;
 const GRID_LEFT = (PAGE_W_MM - GRID_W) / 2;
-const GRID_TOP  = 38;   // leaves room for a small header
+const GRID_TOP  = 38;
 
-const CARD_BG    = "#FFFFFF";
-const CARD_BORDER = "#E5E5E5";
+// Cut line: subtle 0.5pt gray stroke.
+const CUT_LINE_WIDTH = 0.5;
+const CUT_LINE_COLOR = "#B0B0B0";
 
 export interface ImprentaRutinasPDFProps {
   nombreNino: string;
@@ -67,76 +69,9 @@ const styles = StyleSheet.create({
 function cellTopLeft(i: number) {
   const col = i % COLS;
   const row = Math.floor(i / COLS);
-  const left = GRID_LEFT + col * CELL_MM + (CELL_MM - CARD_MM) / 2;
-  const top  = GRID_TOP  + row * CELL_MM + (CELL_MM - CARD_MM) / 2;
+  const left = GRID_LEFT + col * CELL_MM;
+  const top  = GRID_TOP  + row * CELL_MM;
   return { left, top };
-}
-
-function CardFrame({
-  index,
-  children,
-}: {
-  index: number;
-  children: React.ReactNode;
-}) {
-  const { left, top } = cellTopLeft(index);
-  return (
-    <View
-      style={{
-        position:        "absolute",
-        left:            pt(left),
-        top:             pt(top),
-        width:           pt(CARD_MM),
-        height:          pt(CARD_MM),
-        backgroundColor: CARD_BG,
-        borderWidth:     0.5,
-        borderColor:     CARD_BORDER,
-        borderRadius:    pt(2.5),
-        overflow:        "hidden",
-        alignItems:      "center",
-        justifyContent:  "center",
-      }}
-    >
-      {children}
-    </View>
-  );
-}
-
-function FichasActividadesPage({
-  nombreNino,
-  iconIds,
-  images,
-}: {
-  nombreNino: string;
-  iconIds: string[];
-  images: Record<string, string>;
-}) {
-  return (
-    <Page size={[pt(PAGE_W_MM), pt(PAGE_H_MM)]} style={styles.page}>
-      <View style={styles.pageHeader}>
-        <Text style={styles.pageHeaderTitle}>
-          Fichas de actividades — {nombreNino}
-        </Text>
-        <Text style={styles.pageHeaderSub}>
-          Recortar y pegar sobre los cuadros del tablero (lado de la ilustración)
-        </Text>
-      </View>
-      {iconIds.map((id, i) => {
-        const src = images[id];
-        return (
-          <CardFrame key={i} index={i}>
-            {src ? (
-              <Image src={src} style={{ width: pt(CARD_MM), height: pt(CARD_MM), objectFit: "cover" }} />
-            ) : (
-              <Text style={{ fontFamily: "Nunito", fontSize: 8, color: "#999" }}>
-                {id}
-              </Text>
-            )}
-          </CardFrame>
-        );
-      })}
-    </Page>
-  );
 }
 
 function FichasChecksPage({
@@ -152,19 +87,26 @@ function FichasChecksPage({
     <Page size={[pt(PAGE_W_MM), pt(PAGE_H_MM)]} style={styles.page}>
       <View style={styles.pageHeader}>
         <Text style={styles.pageHeaderTitle}>
-          Fichas de check — {nombreNino}
+          Fichas de cumplido — {nombreNino}
         </Text>
         <Text style={styles.pageHeaderSub}>
-          Reverso de las fichas anteriores (lado del velcro)
+          Recortar por la línea gris. Tamaño 3×3 cm.
         </Text>
       </View>
-      {Array.from({ length: count }).map((_, i) => (
-        <CardFrame key={i} index={i}>
+      {Array.from({ length: count }).map((_, i) => {
+        const { left, top } = cellTopLeft(i);
+        return (
           <View
+            key={i}
             style={{
+              position:        "absolute",
+              left:            pt(left),
+              top:             pt(top),
               width:           pt(CARD_MM),
               height:          pt(CARD_MM),
               backgroundColor: colorAcento,
+              borderWidth:     CUT_LINE_WIDTH,
+              borderColor:     CUT_LINE_COLOR,
               alignItems:      "center",
               justifyContent:  "center",
             }}
@@ -173,15 +115,15 @@ function FichasChecksPage({
               style={{
                 fontFamily: "Figtree",
                 fontWeight: 700,
-                fontSize:   72,
+                fontSize:   54,
                 color:      "#FFFFFF",
               }}
             >
               ✓
             </Text>
           </View>
-        </CardFrame>
-      ))}
+        );
+      })}
     </Page>
   );
 }
@@ -194,7 +136,7 @@ export default function ImprentaRutinasPDF({
   images,
   subtitleFont = "Nunito",
 }: ImprentaRutinasPDFProps) {
-  const allFichas = [...manana, ...noche];
+  const totalChecks = manana.length + noche.length;
   return (
     <Document>
       <FranjaPage
@@ -219,14 +161,9 @@ export default function ImprentaRutinasPDF({
         subtitleFont={subtitleFont}
         watermark={false}
       />
-      <FichasActividadesPage
-        nombreNino={nombreNino}
-        iconIds={allFichas}
-        images={images}
-      />
       <FichasChecksPage
         nombreNino={nombreNino}
-        count={allFichas.length}
+        count={totalChecks}
         colorAcento={colorAcento}
       />
     </Document>
