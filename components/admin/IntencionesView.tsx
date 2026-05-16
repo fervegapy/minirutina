@@ -80,7 +80,7 @@ export default function IntencionesView({
       last:      EventoRow;
       filled:    EventoRow;
     }[] = [];
-    for (const [sid, events] of sessionEvents) {
+    for (const [sid, events] of Array.from(sessionEvents)) {
       if (events.has("checkout_filled") && !events.has("pedido_created")) {
         const last = sessionLast.get(sid)!;
         const filled = sessionFilled.get(sid)!;
