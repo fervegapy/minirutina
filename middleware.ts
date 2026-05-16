@@ -31,20 +31,20 @@ export async function middleware(req: NextRequest) {
     },
   );
 
-  // Refresh the session if needed.
-  const { data: { user } } = await supabase.auth.getUser();
-
   const pathname = req.nextUrl.pathname;
 
   // Supabase sometimes falls back to the Site URL (e.g. /?code=xxx) when the
-  // redirect URL isn't in the allowlist. Catch it here and forward to the
-  // real callback handler so the session exchange always works.
+  // redirect URL isn't in the allowlist. Redirect BEFORE calling getUser()
+  // so we don't accidentally clear the PKCE code-verifier cookie.
   const code = req.nextUrl.searchParams.get("code");
   if (code && pathname !== "/auth/callback") {
     const url = req.nextUrl.clone();
     url.pathname = "/auth/callback";
     return NextResponse.redirect(url);
   }
+
+  // Refresh the session if needed.
+  const { data: { user } } = await supabase.auth.getUser();
 
   const isAdminRoute = pathname.startsWith("/admin");
   const isLoginRoute = pathname === "/admin/login";
