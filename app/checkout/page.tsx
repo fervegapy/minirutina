@@ -170,6 +170,23 @@ function CheckoutInner() {
       pedidoId: data.id,
     });
 
+    // Send confirmation email in the background — don't block the redirect.
+    if (email.trim()) {
+      fetch("/api/email/confirmacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email:       email.trim(),
+          nombreNino,
+          producto,
+          tipoEntrega,
+          modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
+          total:       precioTotal,
+          pedidoId:    data.id,
+        }),
+      }).catch(() => {/* silent — no bloquea el flujo del cliente */});
+    }
+
     const confirmParams = new URLSearchParams({
       nombre_nino: nombreNino,
       tipo_entrega: tipoEntrega,

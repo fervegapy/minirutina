@@ -35,6 +35,17 @@ export async function middleware(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const pathname = req.nextUrl.pathname;
+
+  // Supabase sometimes falls back to the Site URL (e.g. /?code=xxx) when the
+  // redirect URL isn't in the allowlist. Catch it here and forward to the
+  // real callback handler so the session exchange always works.
+  const code = req.nextUrl.searchParams.get("code");
+  if (code && pathname !== "/auth/callback") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
+
   const isAdminRoute = pathname.startsWith("/admin");
   const isLoginRoute = pathname === "/admin/login";
   const isAuthCallback = pathname.startsWith("/auth/callback");
