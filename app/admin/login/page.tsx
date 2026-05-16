@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,18 +10,21 @@ const ERROR_MESSAGES: Record<string, string> = {
   not_allowed:
     "Ese email no está autorizado para acceder al admin. Pedí permiso al equipo.",
   invalid_link:
-    "El link expiró o no es válido. Pedí uno nuevo.",
+    "El código expiró o no es válido. Pedí uno nuevo.",
 };
 
 function LoginInner() {
+  const router = useRouter();
   const params = useSearchParams();
   const error = params.get("error");
 
+  const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [code, setCode] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "verifying">("idle");
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
-  const enviarMagicLink = async (e: React.FormEvent) => {
+  const enviarCodigo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     setStatus("sending");
@@ -30,15 +33,48 @@ function LoginInner() {
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        options: { shouldCreateUser: true },
       });
       if (error) throw error;
-      setStatus("sent");
+      setStep("code");
+      setStatus("idle");
     } catch (e: unknown) {
       setErrMsg(e instanceof Error ? e.message : "Error desconocido");
-      setStatus("error");
+      setStatus("idle");
+    }
+  };
+
+  const verificarCodigo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setStatus("verifying");
+    setErrMsg(null);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: code.trim(),
+        type: "email",
+      });
+      if (error || !data.session) throw error ?? new Error("Sesión inválida.");
+
+      // Allowlist check (client-side; server middleware enforces too).
+      const userEmail = data.session.user.email ?? "";
+      const allowed = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? "")
+        .split(",")
+        .map((e) => e.trim().toLowerCase())
+        .includes(userEmail.toLowerCase());
+
+      if (!allowed) {
+        await supabase.auth.signOut();
+        router.replace("/admin/login?error=not_allowed");
+        return;
+      }
+
+      router.replace("/admin");
+    } catch (e: unknown) {
+      setErrMsg(e instanceof Error ? e.message : "Código inválido");
+      setStatus("idle");
     }
   };
 
@@ -55,7 +91,9 @@ function LoginInner() {
           </div>
           <h1 className="text-xl font-semibold tracking-tight">Iniciá sesión</h1>
           <p className="text-sm text-zinc-500 mt-1">
-            Te mandamos un link al email para entrar.
+            {step === "email"
+              ? "Te mandamos un código de 6 dígitos al email."
+              : `Pegá el código que mandamos a ${email}.`}
           </p>
         </div>
 
@@ -65,18 +103,9 @@ function LoginInner() {
           </div>
         )}
 
-        {status === "sent" ? (
-          <div className="bg-white border border-zinc-200 rounded-xl p-6 text-center">
-            <div className="text-4xl mb-3">📩</div>
-            <p className="font-semibold text-zinc-900 mb-2">Revisá tu email</p>
-            <p className="text-sm text-zinc-500">
-              Mandamos el link a <strong className="text-zinc-900">{email}</strong>.
-              Hacé click ahí para entrar.
-            </p>
-          </div>
-        ) : (
+        {step === "email" ? (
           <form
-            onSubmit={enviarMagicLink}
+            onSubmit={enviarCodigo}
             className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4"
           >
             <Input
@@ -93,8 +122,43 @@ function LoginInner() {
               disabled={!email.trim() || status === "sending"}
               className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-md shadow-none border-0"
             >
-              {status === "sending" ? "Enviando..." : "Mandame el link"}
+              {status === "sending" ? "Enviando..." : "Mandame el código"}
             </Button>
+            {errMsg && (
+              <p className="text-xs text-red-500 text-center">{errMsg}</p>
+            )}
+          </form>
+        ) : (
+          <form
+            onSubmit={verificarCodigo}
+            className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4"
+          >
+            <Input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              placeholder="123456"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              className="text-base text-center tracking-widest font-mono"
+              maxLength={6}
+              required
+              autoFocus
+            />
+            <Button
+              type="submit"
+              disabled={code.length < 6 || status === "verifying"}
+              className="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-md shadow-none border-0"
+            >
+              {status === "verifying" ? "Verificando..." : "Entrar"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => { setStep("email"); setCode(""); setErrMsg(null); }}
+              className="block mx-auto text-xs text-zinc-500 hover:text-zinc-900"
+            >
+              ← Cambiar email
+            </button>
             {errMsg && (
               <p className="text-xs text-red-500 text-center">{errMsg}</p>
             )}
