@@ -16,7 +16,7 @@ export default async function CmsPage() {
 
   const [preciosRes, configRes, faqsRes, testimoniosRes] = await Promise.all([
     supabase.from("precios").select("producto, precio_impreso, precio_digital"),
-    supabase.from("productos_config").select("producto, activo"),
+    supabase.from("productos_config").select("producto, activo, nombre, tagline"),
     supabase.from("faqs").select("*").order("producto").order("orden"),
     supabase.from("testimonios").select("*").order("orden"),
   ]);

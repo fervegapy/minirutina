@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Save, EyeOff, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   actualizarPrecios,
   setProductoActivo,
+  actualizarLabelsProducto,
   crearFaq,
   actualizarFaq,
   eliminarFaq,
@@ -26,6 +27,8 @@ export interface PrecioRow {
 export interface ProductoConfigRow {
   producto: string;
   activo:   boolean;
+  nombre:   string | null;
+  tagline:  string | null;
 }
 export interface Faq {
   id:        string;
@@ -67,6 +70,19 @@ export default function CmsView({ data }: { data: CmsData }) {
 
 // ─── Precios + activación por producto ───────────────────────────────────────
 
+// Default fallback labels — must stay in sync with lib/productos.ts.
+// Shown as placeholders + hint text on the CMS inputs.
+const FALLBACK_LABELS: Record<string, { nombre: string; tagline: string }> = {
+  rutinas: {
+    nombre:  "Tablero de Rutinas",
+    tagline: "Una rutina visual para que tu hijo sepa qué sigue sin que tengas que recordárselo.",
+  },
+  recompensas: {
+    nombre:  "Tablero de Recompensas",
+    tagline: "Estrellitas, hábitos y una recompensa que los motiva de verdad.",
+  },
+};
+
 function PreciosSection({
   precios,
   config,
@@ -77,7 +93,7 @@ function PreciosSection({
   return (
     <Card className="bg-white">
       <CardHeader>
-        <CardTitle className="text-base">Precios y disponibilidad</CardTitle>
+        <CardTitle className="text-base">Productos</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         {PRODUCTOS.map((p) => {
@@ -90,6 +106,8 @@ function PreciosSection({
               precioImpreso={precio?.precio_impreso ?? 0}
               precioDigital={precio?.precio_digital ?? 0}
               activo={cfg?.activo ?? true}
+              nombre={cfg?.nombre ?? null}
+              tagline={cfg?.tagline ?? null}
             />
           );
         })}
@@ -103,20 +121,53 @@ function ProductoRow({
   precioImpreso,
   precioDigital,
   activo,
+  nombre,
+  tagline,
 }: {
   producto: string;
   precioImpreso: number;
   precioDigital: number;
   activo: boolean;
+  nombre: string | null;
+  tagline: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+
+  // Prices
   const [impreso, setImpreso] = useState(precioImpreso);
   const [digital, setDigital] = useState(precioDigital);
+  const preciosDirty = impreso !== precioImpreso || digital !== precioDigital;
 
-  const guardar = () => {
+  // Labels — empty input → vuelve al fallback hardcoded
+  const fallback = FALLBACK_LABELS[producto] ?? { nombre: "", tagline: "" };
+  const [nombreVal, setNombreVal]   = useState(nombre  ?? "");
+  const [taglineVal, setTaglineVal] = useState(tagline ?? "");
+  const labelsDirty =
+    (nombreVal.trim()  || null) !== (nombre  ?? null) ||
+    (taglineVal.trim() || null) !== (tagline ?? null);
+
+  // Precio "desde" — derivado del menor entre los precios actuales
+  const precioDesde = useMemo(() => {
+    const valores = [impreso, digital].filter((n) => n > 0);
+    if (valores.length === 0) return null;
+    return Math.min(...valores);
+  }, [impreso, digital]);
+
+  const guardarPrecios = () => {
     startTransition(async () => {
       const r = await actualizarPrecios(producto, impreso, digital);
+      if (r.ok) router.refresh();
+      else alert(r.error ?? "Error");
+    });
+  };
+  const guardarLabels = () => {
+    startTransition(async () => {
+      const r = await actualizarLabelsProducto(
+        producto,
+        nombreVal.trim()  || null,
+        taglineVal.trim() || null,
+      );
       if (r.ok) router.refresh();
       else alert(r.error ?? "Error");
     });
@@ -130,14 +181,18 @@ function ProductoRow({
   };
 
   return (
-    <div className="border border-zinc-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="border border-zinc-200 rounded-lg p-4 space-y-5">
+      {/* Encabezado del producto */}
+      <div className="flex items-center justify-between">
         <div>
           <p className="font-semibold text-zinc-900">
-            {PRODUCTO_LABEL[producto] ?? producto}
+            {nombreVal || fallback.nombre || (PRODUCTO_LABEL[producto] ?? producto)}
           </p>
           <p className="text-xs text-zinc-500">
             {activo ? "Visible en el catálogo" : "Pausado — oculto en el catálogo"}
+            {precioDesde !== null && (
+              <> · desde Gs. {precioDesde.toLocaleString("es-PY")}</>
+            )}
           </p>
         </div>
         <Button
@@ -159,25 +214,77 @@ function ProductoRow({
           )}
         </Button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-        <PriceField
-          label="Impreso (Gs.)"
-          value={impreso}
-          onChange={setImpreso}
-        />
-        <PriceField
-          label="Digital (Gs.)"
-          value={digital}
-          onChange={setDigital}
-        />
-        <Button
-          onClick={guardar}
-          disabled={pending}
-          className="bg-zinc-900 hover:bg-zinc-800 text-white text-sm h-9 rounded-md"
-        >
-          <Save className="w-3.5 h-3.5 mr-1.5" />
-          {pending ? "Guardando..." : "Guardar precios"}
-        </Button>
+
+      {/* Etiquetas */}
+      <div className="space-y-3 pt-2 border-t border-zinc-100">
+        <div>
+          <label className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium block mb-1">
+            Nombre
+          </label>
+          <Input
+            value={nombreVal}
+            onChange={(e) => setNombreVal(e.target.value)}
+            placeholder={fallback.nombre}
+            className="text-sm bg-white"
+          />
+        </div>
+        <div>
+          <label className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium block mb-1">
+            Tagline
+          </label>
+          <textarea
+            value={taglineVal}
+            onChange={(e) => setTaglineVal(e.target.value)}
+            placeholder={fallback.tagline}
+            rows={2}
+            className="w-full text-sm px-3 py-2 rounded-md border border-zinc-200 bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400/50 focus:border-zinc-400 resize-y"
+          />
+          <p className="text-[10px] text-zinc-400 mt-1">
+            Dejá los campos vacíos para usar el texto por defecto del código.
+          </p>
+        </div>
+        {labelsDirty && (
+          <Button
+            onClick={guardarLabels}
+            disabled={pending}
+            className="bg-zinc-900 hover:bg-zinc-800 text-white text-sm h-8 rounded-md"
+          >
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            {pending ? "Guardando..." : "Guardar etiquetas"}
+          </Button>
+        )}
+      </div>
+
+      {/* Precios */}
+      <div className="space-y-3 pt-2 border-t border-zinc-100">
+        <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">
+          Precios
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+          <PriceField
+            label="Impreso (Gs.)"
+            value={impreso}
+            onChange={setImpreso}
+          />
+          <PriceField
+            label="Digital (Gs.)"
+            value={digital}
+            onChange={setDigital}
+          />
+          {preciosDirty && (
+            <Button
+              onClick={guardarPrecios}
+              disabled={pending}
+              className="bg-zinc-900 hover:bg-zinc-800 text-white text-sm h-9 rounded-md"
+            >
+              <Save className="w-3.5 h-3.5 mr-1.5" />
+              {pending ? "Guardando..." : "Guardar precios"}
+            </Button>
+          )}
+        </div>
+        <p className="text-[10px] text-zinc-400">
+          &quot;Desde&quot; en el catálogo se calcula automáticamente del menor de los dos.
+        </p>
       </div>
     </div>
   );

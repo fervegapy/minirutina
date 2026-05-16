@@ -56,6 +56,34 @@ export async function setProductoActivo(producto: string, activo: boolean) {
   }
 }
 
+// ─── Etiquetas del producto (nombre / tagline) ───────────────────────────────
+// Null/blank → vuelve al fallback hardcoded en lib/productos.ts.
+export async function actualizarLabelsProducto(
+  producto: string,
+  nombre: string | null,
+  tagline: string | null,
+) {
+  try {
+    const supabase = await asegurarAdmin();
+    const normalizar = (v: string | null) =>
+      v && v.trim().length > 0 ? v.trim() : null;
+    const { error } = await supabase
+      .from("productos_config")
+      .upsert({
+        producto,
+        nombre:  normalizar(nombre),
+        tagline: normalizar(tagline),
+        updated_at: new Date().toISOString(),
+      });
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/admin/cms");
+    revalidarPublicas();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
 // ─── FAQs ────────────────────────────────────────────────────────────────────
 
 export async function crearFaq(producto: string, pregunta: string, respuesta: string) {

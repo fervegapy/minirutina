@@ -18,11 +18,16 @@ export default async function ProductoPage({
   const producto = productos[params.slug];
   if (!producto) notFound();
 
-  // CMS lookups: pull both in parallel.
-  const [{ data: cfg }, { data: faqRows }] = await Promise.all([
+  // CMS lookups: config (active + label overrides), faqs, precios — all in
+  // parallel.
+  const [
+    { data: cfg },
+    { data: faqRows },
+    { data: precioRow },
+  ] = await Promise.all([
     supabase
       .from("productos_config")
-      .select("activo")
+      .select("activo, nombre, tagline")
       .eq("producto", params.slug)
       .maybeSingle(),
     supabase
@@ -30,6 +35,11 @@ export default async function ProductoPage({
       .select("id, pregunta, respuesta, orden")
       .eq("producto", params.slug)
       .order("orden", { ascending: true }),
+    supabase
+      .from("precios")
+      .select("precio_impreso, precio_digital")
+      .eq("producto", params.slug)
+      .maybeSingle(),
   ]);
 
   // Product paused → behave like it doesn't exist.
@@ -41,6 +51,20 @@ export default async function ProductoPage({
     faqRows && faqRows.length > 0
       ? faqRows.map((r) => ({ q: r.pregunta, a: r.respuesta }))
       : producto.faqs;
+
+  // Merge CMS overrides + derived precioDesde over the hardcoded base.
+  const precioDesdeDb = (() => {
+    if (!precioRow) return null;
+    const candidatos = [precioRow.precio_impreso, precioRow.precio_digital].filter(
+      (n) => typeof n === "number" && n > 0,
+    );
+    if (candidatos.length === 0) return null;
+    return "Gs. " + Math.min(...candidatos).toLocaleString("es-PY");
+  })();
+
+  const nombre      = (cfg?.nombre  && cfg.nombre.trim())  || producto.nombre;
+  const tagline     = (cfg?.tagline && cfg.tagline.trim()) || producto.tagline;
+  const precioDesde = precioDesdeDb ?? producto.precioDesde;
 
   return (
     <div className="min-h-screen bg-[#fffef6]">
@@ -70,17 +94,17 @@ export default async function ProductoPage({
               </Link>
 
               <h1 className="text-3xl md:text-4xl font-bold text-[#233933] mt-2 mb-3">
-                {producto.nombre}
+                {nombre}
               </h1>
               <p className="text-[#233933]/60 text-lg mb-6 leading-relaxed">
-                {producto.tagline}
+                {tagline}
               </p>
 
               {/* Precio */}
               <div className="flex items-baseline gap-2 mb-6">
                 <span className="text-sm text-[#233933]/50 font-medium">desde</span>
                 <span className="text-4xl font-bold text-[#233933]">
-                  {producto.precioDesde}
+                  {precioDesde}
                 </span>
               </div>
 
@@ -227,11 +251,11 @@ export default async function ProductoPage({
             </p>
             <Link href={producto.customizerHref}>
               <Button className="bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl shadow-none border-0 text-base px-10 py-3">
-                Crear mi {producto.nombre} →
+                Crear mi {nombre} →
               </Button>
             </Link>
             <p className="text-white/30 text-xs mt-4">
-              desde {producto.precioDesde} · envío incluido
+              desde {precioDesde} · envío incluido
             </p>
           </div>
         </section>
