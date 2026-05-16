@@ -68,7 +68,7 @@ export default function IntencionesView({
 
     const stageCounts = STAGES.map((s) => {
       let n = 0;
-      for (const events of sessionEvents.values()) {
+      for (const events of Array.from(sessionEvents.values())) {
         if (s.eventos.some((id) => events.has(id))) n++;
       }
       return { ...s, count: n };
