@@ -2,20 +2,45 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { productos } from "@/lib/productos";
+import { supabase } from "@/lib/supabase";
 import Header from "@/components/landing/Header";
 import Footer from "@/components/landing/Footer";
 
-export function generateStaticParams() {
-  return Object.keys(productos).map((slug) => ({ slug }));
-}
+// Force per-request so admin edits to FAQs and the "pause product"
+// toggle are visible immediately (no stale SSG/ISR cache).
+export const dynamic = "force-dynamic";
 
-export default function ProductoPage({
+export default async function ProductoPage({
   params,
 }: {
   params: { slug: string };
 }) {
   const producto = productos[params.slug];
   if (!producto) notFound();
+
+  // CMS lookups: pull both in parallel.
+  const [{ data: cfg }, { data: faqRows }] = await Promise.all([
+    supabase
+      .from("productos_config")
+      .select("activo")
+      .eq("producto", params.slug)
+      .maybeSingle(),
+    supabase
+      .from("faqs")
+      .select("id, pregunta, respuesta, orden")
+      .eq("producto", params.slug)
+      .order("orden", { ascending: true }),
+  ]);
+
+  // Product paused → behave like it doesn't exist.
+  if (cfg && cfg.activo === false) notFound();
+
+  // Use DB faqs if present, otherwise fall back to the hardcoded ones
+  // (covers the case where the CMS table hasn't been seeded yet).
+  const faqs =
+    faqRows && faqRows.length > 0
+      ? faqRows.map((r) => ({ q: r.pregunta, a: r.respuesta }))
+      : producto.faqs;
 
   return (
     <div className="min-h-screen bg-[#fffef6]">
@@ -173,7 +198,7 @@ export default function ProductoPage({
               Preguntas sobre este tablero
             </h2>
             <div className="space-y-4">
-              {producto.faqs.map((faq) => (
+              {faqs.map((faq) => (
                 <div
                   key={faq.q}
                   className="border border-[#e5e7eb] rounded-xl p-5"
