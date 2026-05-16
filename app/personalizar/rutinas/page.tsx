@@ -11,6 +11,7 @@ import IconPicker, {
   ICONOS_NOCHE,
 } from "@/components/customizer/IconPicker";
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
+import { track } from "@/lib/tracking";
 
 // react-pdf depends on browser DOM APIs (DOMMatrix, etc.) — load it client-only
 // to avoid breaking the static prerender.
@@ -49,6 +50,12 @@ export default function PersonalizarRutinas() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
+  // Funnel: customizer entered (fires once on mount).
+  useEffect(() => {
+    track({ evento: "customizer_started", producto: "rutinas" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const next = () => {
     // Validation: mañana + noche must have exactly 7 icons
     if (step === 2 && manana.length !== REQUIRED_ICONS) {
@@ -64,6 +71,13 @@ export default function PersonalizarRutinas() {
       return;
     }
     setValidationError(null);
+    // Track step completion (uses the current step's PASO label so we can
+    // see which step the user finished, not which one they entered).
+    track({
+      evento: "step_completed",
+      producto: "rutinas",
+      paso: PASOS[step],
+    });
     setStep((s) => Math.min(s + 1, PASOS.length - 1));
   };
 
@@ -103,6 +117,7 @@ export default function PersonalizarRutinas() {
       if (!res.ok) throw new Error("No se pudo generar el PDF");
       const blob = await res.blob();
       setPdfUrl(URL.createObjectURL(blob));
+      track({ evento: "preview_generated", producto: "rutinas" });
     } catch (e: unknown) {
       setPdfError(e instanceof Error ? e.message : "Error desconocido");
       generatedRef.current = false;
@@ -112,6 +127,7 @@ export default function PersonalizarRutinas() {
   };
 
   const continuar = () => {
+    track({ evento: "checkout_started", producto: "rutinas" });
     const params = new URLSearchParams({
       producto: "rutinas",
       nombre_nino: nombre,

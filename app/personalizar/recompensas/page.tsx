@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import StepIndicator from "@/components/customizer/StepIndicator";
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
+import { track } from "@/lib/tracking";
 
 // react-pdf needs DOM APIs at module load — client-only.
 const PdfPagesPreview = dynamic(
@@ -42,6 +43,11 @@ export default function PersonalizarRecompensas() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
+  // Funnel: customizer entered (fires once on mount).
+  useEffect(() => {
+    track({ evento: "customizer_started", producto: "recompensas" });
+  }, []);
+
   // Auto-generate PDF when entering preview step
   useEffect(() => {
     if (step === PASOS.length - 1 && !generatedRef.current) {
@@ -51,7 +57,14 @@ export default function PersonalizarRecompensas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
-  const next = () => setStep((s) => Math.min(s + 1, PASOS.length - 1));
+  const next = () => {
+    track({
+      evento:   "step_completed",
+      producto: "recompensas",
+      paso:     PASOS[step],
+    });
+    setStep((s) => Math.min(s + 1, PASOS.length - 1));
+  };
   const back = () => {
     if (step === PASOS.length - 1) {
       setPdfUrl(null);
@@ -79,6 +92,7 @@ export default function PersonalizarRecompensas() {
       if (!res.ok) throw new Error("No se pudo generar el PDF");
       const blob = await res.blob();
       setPdfUrl(URL.createObjectURL(blob));
+      track({ evento: "preview_generated", producto: "recompensas" });
     } catch (e: unknown) {
       setPdfError(e instanceof Error ? e.message : "Error desconocido");
       generatedRef.current = false;
@@ -88,6 +102,7 @@ export default function PersonalizarRecompensas() {
   };
 
   const continuar = () => {
+    track({ evento: "checkout_started", producto: "recompensas" });
     const params = new URLSearchParams({
       producto: "recompensas",
       nombre_nino: nombre,

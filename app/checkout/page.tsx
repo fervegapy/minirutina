@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import LocationPicker, { LocationValue } from "@/components/checkout/LocationPicker";
+import { track } from "@/lib/tracking";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas: "Tablero de Rutinas",
@@ -61,6 +62,38 @@ function CheckoutInner() {
         setLoadingPrecios(false);
       });
   }, [producto]);
+
+  // Funnel: landed on /checkout (fires once).
+  useEffect(() => {
+    const validProducto = producto === "rutinas" || producto === "recompensas"
+      ? (producto as "rutinas" | "recompensas")
+      : undefined;
+    track({ evento: "checkout_started", producto: validProducto });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fire checkout_filled the FIRST time the user provides any contact info.
+  // Captures the email/whatsapp in the event payload so we can follow up
+  // with abandoned carts. Debounced via a ref-style boolean so we only
+  // emit one event per session even if they keep typing.
+  const [filledFired, setFilledFired] = useState(false);
+  useEffect(() => {
+    if (filledFired) return;
+    if (!email.trim() && !whatsapp.trim()) return;
+    setFilledFired(true);
+    const validProducto = producto === "rutinas" || producto === "recompensas"
+      ? (producto as "rutinas" | "recompensas")
+      : undefined;
+    track({
+      evento:   "checkout_filled",
+      producto: validProducto,
+      data: {
+        email: email.trim() || null,
+        whatsapp: whatsapp.trim() || null,
+        nombre_nino: nombreNino,
+      },
+    });
+  }, [email, whatsapp, filledFired, producto, nombreNino]);
 
   const precioBase = tipoEntrega === "digital" ? precioDigital : precioImpreso;
   const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery" ? PRECIO_DELIVERY : 0;
@@ -127,6 +160,15 @@ function CheckoutInner() {
       setError("Hubo un error al guardar tu pedido. Intentá de nuevo.");
       return;
     }
+
+    const validProducto = producto === "rutinas" || producto === "recompensas"
+      ? (producto as "rutinas" | "recompensas")
+      : undefined;
+    track({
+      evento:   "pedido_created",
+      producto: validProducto,
+      pedidoId: data.id,
+    });
 
     const confirmParams = new URLSearchParams({
       nombre_nino: nombreNino,
