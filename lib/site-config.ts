@@ -41,10 +41,16 @@ export async function getSiteConfig(): Promise<SiteConfig> {
         cache: "no-store", // never cache — needs to be fresh per request
       },
     );
-    if (!res.ok) return FALLBACK;
+    if (!res.ok) {
+      console.warn("[site-config] HTTP", res.status, await res.text().catch(() => ""));
+      return FALLBACK;
+    }
     const rows = (await res.json()) as Partial<SiteConfig>[];
     const row = rows[0];
-    if (!row) return FALLBACK;
+    if (!row) {
+      console.warn("[site-config] no rows returned — table empty or RLS blocking");
+      return FALLBACK;
+    }
     return {
       site_name:         row.site_name        || FALLBACK.site_name,
       site_description:  row.site_description || FALLBACK.site_description,
