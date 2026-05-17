@@ -3,6 +3,10 @@ import { Rubik, Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteConfig } from "@/lib/site-config";
 
+// Force dynamic rendering so generateMetadata() always reads the latest
+// site_config (logo/favicon/title change → next request, not next deploy).
+export const dynamic = "force-dynamic";
+
 // Inter = body / subtítulos. Rubik = títulos (h1–h6).
 const inter = Inter({
   subsets: ["latin"],

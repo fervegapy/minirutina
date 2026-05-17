@@ -1,8 +1,9 @@
 // Singleton site config fetcher. Used by app/layout.tsx (metadata) and
 // the public Header/Footer so logos + meta tags update without a redeploy.
-import { unstable_noStore as noStore } from "next/cache";
-import { supabase } from "@/lib/supabase";
-
+//
+// Uses raw fetch with `cache: "no-store"` against Supabase's REST API to
+// bypass Next's data cache entirely — admin edits MUST surface on the
+// next request, not after the next deploy.
 export interface SiteConfig {
   site_name:          string;
   site_description:   string;
@@ -24,22 +25,36 @@ const FALLBACK: SiteConfig = {
 };
 
 export async function getSiteConfig(): Promise<SiteConfig> {
-  // Opt out of Next's fetch cache — admin edits should be visible on the
-  // next request, not after the next deploy.
-  noStore();
-  const { data } = await supabase
-    .from("site_config")
-    .select("site_name, site_description, logo_url, favicon_url, og_image_url, support_image_url, theme_color")
-    .eq("id", 1)
-    .maybeSingle();
-  if (!data) return FALLBACK;
-  return {
-    site_name:         data.site_name        ?? FALLBACK.site_name,
-    site_description:  data.site_description ?? FALLBACK.site_description,
-    logo_url:          data.logo_url,
-    favicon_url:       data.favicon_url,
-    og_image_url:      data.og_image_url,
-    support_image_url: data.support_image_url,
-    theme_color:       data.theme_color      ?? FALLBACK.theme_color,
-  };
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return FALLBACK;
+
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/site_config?id=eq.1&select=site_name,site_description,logo_url,favicon_url,og_image_url,support_image_url,theme_color`,
+      {
+        headers: {
+          apikey:        key,
+          Authorization: `Bearer ${key}`,
+          Accept:        "application/json",
+        },
+        cache: "no-store", // never cache — needs to be fresh per request
+      },
+    );
+    if (!res.ok) return FALLBACK;
+    const rows = (await res.json()) as Partial<SiteConfig>[];
+    const row = rows[0];
+    if (!row) return FALLBACK;
+    return {
+      site_name:         row.site_name        || FALLBACK.site_name,
+      site_description:  row.site_description || FALLBACK.site_description,
+      logo_url:          row.logo_url         ?? null,
+      favicon_url:       row.favicon_url      ?? null,
+      og_image_url:      row.og_image_url     ?? null,
+      support_image_url: row.support_image_url ?? null,
+      theme_color:       row.theme_color      || FALLBACK.theme_color,
+    };
+  } catch {
+    return FALLBACK;
+  }
 }
