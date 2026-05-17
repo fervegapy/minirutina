@@ -231,7 +231,7 @@ export default function PersonalizarRecompensas() {
                   <Button
                     variant="outline"
                     onClick={() => { generatedRef.current = false; generarPDF(); }}
-                    className="border-[#22244e] text-[#22244e] rounded-lg"
+                    className="border-[#22244e] text-[#22244e] rounded-lg h-12 px-5"
                   >
                     Reintentar
                   </Button>
@@ -255,7 +255,7 @@ export default function PersonalizarRecompensas() {
             <Button
               variant="outline"
               onClick={back}
-              className="border-[#22244e] text-[#22244e] rounded-lg"
+              className="border-[#22244e] text-[#22244e] rounded-lg h-12 px-5"
             >
               Atrás
             </Button>
@@ -267,7 +267,7 @@ export default function PersonalizarRecompensas() {
             <Button
               onClick={next}
               disabled={step === 0 && (!nombre.trim() || !genero)}
-              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0"
+              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
             >
               Siguiente
             </Button>
@@ -275,9 +275,9 @@ export default function PersonalizarRecompensas() {
             <Button
               onClick={continuar}
               disabled={pdfLoading}
-              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0"
+              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
             >
-              Continuar al pago →
+              Continuar al pago
             </Button>
           )}
         </div>

@@ -65,7 +65,7 @@ function ConfirmacionInner() {
             <Button
               onClick={handleDescargar}
               disabled={loading}
-              className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0"
+              className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 h-12"
             >
               {loading ? "Generando..." : "📥 Descargar mi tablero"}
             </Button>
@@ -88,7 +88,7 @@ function ConfirmacionInner() {
         <Link href="/">
           <Button
             variant="outline"
-            className="border-[#22244e] text-[#22244e] rounded-xl font-semibold"
+            className="border-[#22244e] text-[#22244e] rounded-xl font-semibold h-12 px-6"
           >
             Volver al inicio
           </Button>

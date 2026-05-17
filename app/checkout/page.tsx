@@ -396,9 +396,9 @@ function CheckoutInner() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3"
+                className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3 h-12"
               >
-                {loading ? "Guardando..." : "Ir a pagar →"}
+                {loading ? "Guardando..." : "Ir a pagar"}
               </Button>
             </div>
           </div>

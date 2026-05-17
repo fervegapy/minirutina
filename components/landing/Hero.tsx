@@ -26,7 +26,7 @@ export default function Hero() {
               </Button>
             </Link>
             <Link href="#como-funciona">
-              <Button variant="outline" className="border-[#22244e]/30 text-[#22244e] hover:bg-[#22244e]/5 rounded-lg font-semibold text-base px-8 py-3 w-full sm:w-auto">
+              <Button variant="outline" className="border-[#22244e]/30 text-[#22244e] hover:bg-[#22244e]/5 rounded-lg font-semibold text-base px-8 h-12 w-full sm:w-auto">
                 Ver cómo funciona
               </Button>
             </Link>
