@@ -42,7 +42,7 @@ export default function Productos() {
           {productos.map((p) => (
             <div
               key={p.nombre}
-              className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden flex flex-col group hover:border-[#22244e]/20 transition-colors"
+              className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden flex flex-col group hover:border-[#22244e]/20 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:shadow-[#22244e]/5"
             >
               {/* Color bar */}
               <div
@@ -74,7 +74,7 @@ export default function Productos() {
                 </div>
 
                 <Link href={p.href}>
-                  <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12">
+                  <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#336aea]/30 active:translate-y-0 active:scale-[0.98]">
                     Personalizar tablero
                   </Button>
                 </Link>
