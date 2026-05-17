@@ -17,20 +17,20 @@ export const productos: Record<string, Producto> = {
   rutinas: {
     slug: "rutinas",
     nombre: "Tablero de Rutinas",
-    tagline: "Mañana, siesta y noche. Sin peleas, sin recordatorios.",
+    tagline: "Dos tableros: rutina al despertarse y a la hora de dormir. Sin peleas, sin recordatorios.",
     emoji: "🌅",
     accentColor: "#a8c5a0",
     precioDesde: "Gs. 149.000",
     descripcion:
-      "Un tablero visual que organiza el día de tu hijo en tres momentos clave: mañana, siesta y noche. Con íconos claros y el nombre de tu hijo, los chicos saben exactamente qué viene después — sin que tengas que decírselo.",
+      "Dos tableros visuales que organizan los dos momentos más complicados del día: uno para la rutina al despertarse y otro para la hora de dormir. Con íconos claros y el nombre de tu hijo, los chicos saben exactamente qué viene después — sin que tengas que decírselo.",
     paraQuien:
       "Ideal para niños de 2 a 8 años que están aprendiendo a ser más autónomos. Funciona especialmente bien en la mañana antes del colegio y en la rutina de antes de dormir.",
     incluye: [
-      "Tablero impreso en papel couché 300g",
+      "2 tableros impresos en papel couché 300g (mañana + noche)",
       "Plastificado mate anti-reflejo",
-      "Tamaño A4 (21 x 29 cm) o A3 (29 x 42 cm)",
+      "Tamaño A4 (21 x 29 cm) cada uno",
       "Nombre personalizado del niño",
-      "Hasta 6 íconos por bloque horario",
+      "Hasta 7 actividades por tablero",
       "Color de acento a elección",
       "Envío a domicilio incluido",
     ],

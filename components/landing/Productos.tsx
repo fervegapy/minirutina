@@ -6,7 +6,7 @@ const productos = [
     emoji: "🌅",
     tag: "El más pedido",
     nombre: "Tablero de Rutinas",
-    desc: "Mañana, siesta y noche. Tu hijo sabe qué sigue en cada momento del día sin que tengas que recordárselo.",
+    desc: "Dos tableros: rutina al despertarse y a la hora de dormir. Tu hijo sabe qué sigue sin que tengas que recordárselo.",
     beneficio: "Menos conflictos a la hora de dormir y levantarse.",
     href: "/productos/rutinas",
     accent: "#a8c5a0",
