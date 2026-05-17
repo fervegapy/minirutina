@@ -24,7 +24,7 @@ export default function PreviewRutinas({
   const selected = { manana, siesta, noche };
 
   return (
-    <div style={{ fontFamily: "Nunito, sans-serif" }}>
+    <div className="font-sans">
       {/* Title header */}
       <div
         className="rounded-xl px-4 py-3 mb-4 text-center"
