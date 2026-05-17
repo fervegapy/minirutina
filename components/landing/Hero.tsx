@@ -21,8 +21,8 @@ export default function Hero() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link href="#productos">
-              <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 text-base px-8 py-3 w-full sm:w-auto">
-                Crear mi tablero →
+              <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 text-base px-8 h-12 w-full sm:w-auto">
+                Personalizar tablero
               </Button>
             </Link>
             <Link href="#como-funciona">

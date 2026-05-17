@@ -74,8 +74,8 @@ export default function Productos() {
                 </div>
 
                 <Link href={p.href}>
-                  <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0">
-                    Personalizar →
+                  <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12">
+                    Personalizar tablero
                   </Button>
                 </Link>
               </div>

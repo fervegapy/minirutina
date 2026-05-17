@@ -128,8 +128,8 @@ export default async function ProductoPage({
 
               {/* CTA */}
               <Link href={producto.customizerHref}>
-                <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base py-3">
-                  Personalizar mi tablero →
+                <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base h-12">
+                  Personalizar tablero
                 </Button>
               </Link>
               <p className="text-center text-xs text-[#22244e]/40 mt-3">
@@ -250,8 +250,8 @@ export default async function ProductoPage({
               Personalizás en 5 minutos. Nosotros lo imprimimos y enviamos.
             </p>
             <Link href={producto.customizerHref}>
-              <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base px-10 py-3">
-                Crear mi {nombre} →
+              <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base px-10 h-12">
+                Personalizar tablero
               </Button>
             </Link>
             <p className="text-white/30 text-xs mt-4">

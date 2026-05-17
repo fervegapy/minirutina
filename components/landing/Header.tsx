@@ -48,8 +48,8 @@ export default async function Header() {
 
         {/* CTA */}
         <Link href="#productos">
-          <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 text-sm px-5">
-            Crear mi tablero
+          <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 text-sm px-5 h-12">
+            Personalizar tablero
           </Button>
         </Link>
       </div>
