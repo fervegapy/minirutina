@@ -1,5 +1,6 @@
 // Singleton site config fetcher. Used by app/layout.tsx (metadata) and
 // the public Header/Footer so logos + meta tags update without a redeploy.
+import { unstable_noStore as noStore } from "next/cache";
 import { supabase } from "@/lib/supabase";
 
 export interface SiteConfig {
@@ -23,6 +24,9 @@ const FALLBACK: SiteConfig = {
 };
 
 export async function getSiteConfig(): Promise<SiteConfig> {
+  // Opt out of Next's fetch cache — admin edits should be visible on the
+  // next request, not after the next deploy.
+  noStore();
   const { data } = await supabase
     .from("site_config")
     .select("site_name, site_description, logo_url, favicon_url, og_image_url, support_image_url, theme_color")
