@@ -32,7 +32,7 @@ function buildHtml({
   const entregaTexto = esDigital
     ? "🖥️ Versión digital (te lo enviamos por email)"
     : modalidad === "delivery"
-    ? "📦 Impreso con envío a domicilio (3-5 días hábiles)"
+    ? "📦 Impreso con envío a domicilio (en 48 horas)"
     : "🏪 Impreso con retiro en Villamorra, Asunción";
 
   const proximoPaso = esDigital

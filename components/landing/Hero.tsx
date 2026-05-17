@@ -68,7 +68,7 @@ export default function Hero() {
           </div>
           {/* Floating color badge */}
           <div className="absolute -top-4 -right-4 bg-[#336aea] rounded-2xl px-4 py-3">
-            <p className="text-xs font-bold text-[#22244e]">Listo en 3-5 días</p>
+            <p className="text-xs font-bold text-[#22244e]">Te llega en 48 hs</p>
           </div>
         </div>
       </div>

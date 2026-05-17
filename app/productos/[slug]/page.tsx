@@ -133,7 +133,7 @@ export default async function ProductoPage({
                 </Button>
               </Link>
               <p className="text-center text-xs text-[#22244e]/40 mt-3">
-                Listo en 5 minutos · Enviamos en 3-5 días hábiles
+                Listo en 5 minutos · Te llega en 48 horas
               </p>
             </div>
           </div>
@@ -255,7 +255,7 @@ export default async function ProductoPage({
               </Button>
             </Link>
             <p className="text-white/30 text-xs mt-4">
-              desde {precioDesde} · envío incluido
+              desde {precioDesde} · entrega en 48 hs
             </p>
           </div>
         </section>

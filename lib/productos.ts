@@ -16,13 +16,13 @@ export interface Producto {
 export const productos: Record<string, Producto> = {
   rutinas: {
     slug: "rutinas",
-    nombre: "Tablero de Rutinas",
-    tagline: "Dos tableros: rutina al despertarse y a la hora de dormir. Sin peleas, sin recordatorios.",
+    nombre: "Tablero de Rutinas (×2)",
+    tagline: "Son DOS tableros: uno para la rutina al despertarse y otro para la hora de dormir. Sin peleas, sin recordatorios.",
     emoji: "🌅",
     accentColor: "#a8c5a0",
     precioDesde: "Gs. 149.000",
     descripcion:
-      "Dos tableros visuales que organizan los dos momentos más complicados del día: uno para la rutina al despertarse y otro para la hora de dormir. Con íconos claros y el nombre de tu hijo, los chicos saben exactamente qué viene después — sin que tengas que decírselo.",
+      "El producto incluye DOS tableros visuales — uno para cada momento clave del día. El primero organiza la rutina al despertarse (vestirse, lavarse los dientes, desayunar, mochila). El segundo, la rutina a la hora de dormir (baño, pijama, cuento, luz apagada). Con íconos claros y el nombre de tu hijo, los chicos saben qué viene después sin que tengas que decírselo.",
     paraQuien:
       "Ideal para niños de 2 a 8 años que están aprendiendo a ser más autónomos. Funciona especialmente bien en la mañana antes del colegio y en la rutina de antes de dormir.",
     incluye: [
@@ -32,7 +32,7 @@ export const productos: Record<string, Producto> = {
       "Nombre personalizado del niño",
       "Hasta 7 actividades por tablero",
       "Color de acento a elección",
-      "Envío a domicilio incluido",
+      "Tiempo de entrega: 48 horas",
     ],
     beneficios: [
       {
@@ -59,7 +59,7 @@ export const productos: Record<string, Producto> = {
     faqs: [
       {
         q: "¿En cuánto tiempo llega?",
-        a: "Entre 3 y 5 días hábiles desde que confirmamos el pago. Te mandamos el seguimiento por WhatsApp.",
+        a: "En 48 horas desde que confirmamos el pago. Te mandamos el seguimiento por WhatsApp.",
       },
       {
         q: "¿Qué tamaño tiene?",
@@ -80,23 +80,24 @@ export const productos: Record<string, Producto> = {
   recompensas: {
     slug: "recompensas",
     nombre: "Tablero de Recompensas",
-    tagline: "Estrellitas, hábitos y una recompensa que los motiva de verdad.",
+    tagline: "Un tablero de 10 o 20 pasos con figuritas a elección. Para instalar un hábito o motivar un comportamiento.",
     emoji: "⭐",
     accentColor: "#f5d78e",
-    precioDesde: "Gs. 129.000",
+    precioDesde: "Gs. 149.000",
     descripcion:
-      "Un sistema de recompensas visual donde tu hijo va juntando estrellas hasta llegar a un premio que vos elegís. Funciona mucho mejor que los castigos — los chicos se enganchan, quieren completar las estrellas y los hábitos se instalan solos.",
+      "Un tablero visual con 10 o 20 pasos (vos elegís cuántos), donde tu hijo va juntando figuritas hasta llegar a la recompensa que vos definís. Las figuritas las elegís a gusto y se compran aparte. Funciona mucho mejor que los castigos — los chicos se enganchan, quieren llenar el tablero y los hábitos se instalan solos.",
     paraQuien:
       "Para niños de 3 a 9 años. Ideal para instalar un hábito nuevo, atravesar un momento difícil (destete, mudanza, hermano nuevo) o simplemente como sistema de motivación cotidiano.",
     incluye: [
-      "Tablero impreso en papel couché 300g",
+      "1 tablero impreso en papel couché 300g",
       "Plastificado mate anti-reflejo",
       "Tamaño A4 (21 x 29 cm)",
       "Nombre personalizado del niño",
-      "Elección de 5, 10 o 15 estrellas",
+      "Elección de 10 o 20 pasos",
       "Texto de recompensa personalizado",
       "Color de acento a elección",
-      "Envío a domicilio incluido",
+      "Figuritas a elección (se compran aparte)",
+      "Tiempo de entrega: 48 horas",
     ],
     beneficios: [
       {
@@ -122,12 +123,12 @@ export const productos: Record<string, Producto> = {
     ],
     faqs: [
       {
-        q: "¿Cuántas estrellas recomiendan?",
-        a: "Para niños menores de 5 años, 5 estrellas. Para 5-7 años, 10. Para mayores de 7, 15. La idea es que el premio no tarde demasiado.",
+        q: "¿Cuántos pasos recomiendan?",
+        a: "Para niños menores de 5 años, 10 pasos. Para mayores de 5, 20. La idea es que el premio no tarde demasiado en llegar.",
       },
       {
-        q: "¿Cómo marcan las estrellas?",
-        a: "El tablero viene con espacios para pegar stickers (los más populares son los de estrellitas doradas), o podés usar un marcador de pizarra si lo plastificás extra.",
+        q: "¿Cómo marcan los pasos?",
+        a: "El tablero viene con espacios para pegar las figuritas que vos elegís y comprás aparte. Las figuritas doradas o de personajes son las que más enganchan.",
       },
       {
         q: "¿Se puede usar para más de un hábito?",
@@ -135,7 +136,7 @@ export const productos: Record<string, Producto> = {
       },
       {
         q: "¿En cuánto tiempo llega?",
-        a: "Entre 3 y 5 días hábiles desde que confirmamos el pago.",
+        a: "En 48 horas desde que confirmamos el pago.",
       },
     ],
     customizerHref: "/personalizar/recompensas",

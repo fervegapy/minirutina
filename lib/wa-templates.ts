@@ -33,7 +33,7 @@ Tu ${producto} para ${nombre} ya está en cola de producción. Te avisamos cuand
     case "en_produccion":
       return (
 `Tu ${producto} ya está en imprenta. 🖨️
-En 2–3 días hábiles te avisamos cuando salga listo para envío.
+En 48 horas te avisamos cuando salga listo para envío.
 
 — Minirutina`
       );

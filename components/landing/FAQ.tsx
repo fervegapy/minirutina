@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: "¿Cuánto tarda en llegar?",
-    a: "Entre 3 y 5 días hábiles desde que confirmamos el pago. Te avisamos por WhatsApp con el seguimiento del envío.",
+    a: "En 48 horas desde que confirmamos el pago. Te avisamos por WhatsApp con el seguimiento del envío.",
   },
   {
     q: "¿Puedo elegir imprimir yo mismo?",

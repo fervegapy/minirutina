@@ -15,7 +15,7 @@ const pasos = [
     num: "03",
     icon: "📦",
     titulo: "Lo recibís en casa",
-    desc: "Te lo enviamos a domicilio en 3 a 5 días hábiles. Solo tenés que colgarlo.",
+    desc: "Te lo enviamos a domicilio en 48 horas. Solo tenés que colgarlo.",
   },
 ];
 
