@@ -25,7 +25,7 @@ interface Props {
 }
 
 const selectClass =
-  "w-full h-10 px-3 pr-8 rounded-lg border border-[#e5e7eb] bg-white text-sm text-[#233933] focus:outline-none focus:border-[#233933] transition-colors appearance-none disabled:opacity-40 disabled:cursor-not-allowed";
+  "w-full h-10 px-3 pr-8 rounded-lg border border-[#e5e7eb] bg-white text-sm text-[#22244e] focus:outline-none focus:border-[#22244e] transition-colors appearance-none disabled:opacity-40 disabled:cursor-not-allowed";
 
 export default function LocationPicker({ onChange }: Props) {
   const [departamentos, setDepartamentos] = useState<{ id: number; nombre: string }[]>([]);
@@ -156,7 +156,7 @@ function Chevron() {
         fill="none"
         stroke="currentColor"
         strokeWidth="2.5"
-        className="text-[#233933]/40"
+        className="text-[#22244e]/40"
       >
         <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
       </svg>

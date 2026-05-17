@@ -30,7 +30,7 @@ export default function PreviewRutinas({
         className="rounded-xl px-4 py-3 mb-4 text-center"
         style={{ backgroundColor: colorAcento + "44" }}
       >
-        <h3 className="font-bold text-base text-[#233933]">
+        <h3 className="font-bold text-base text-[#22244e]">
           Rutina de {nombreNino || "tu niño"}
         </h3>
       </div>
@@ -50,7 +50,7 @@ export default function PreviewRutinas({
             >
               {/* Block header */}
               <div
-                className="px-4 py-2 text-sm font-bold text-[#233933]"
+                className="px-4 py-2 text-sm font-bold text-[#22244e]"
                 style={{ backgroundColor: colorAcento + "55" }}
               >
                 {bloque.label}
@@ -59,7 +59,7 @@ export default function PreviewRutinas({
               {/* Icons row */}
               <div className="bg-white px-4 py-3">
                 {iconosSeleccionados.length === 0 ? (
-                  <span className="text-xs text-[#233933]/30 italic">
+                  <span className="text-xs text-[#22244e]/30 italic">
                     Sin actividades seleccionadas
                   </span>
                 ) : (
@@ -75,7 +75,7 @@ export default function PreviewRutinas({
                         >
                           {getIconEmoji(ic.id)}
                         </div>
-                        <span className="text-[9px] font-bold text-[#233933]/50 w-12 text-center leading-tight">
+                        <span className="text-[9px] font-bold text-[#22244e]/50 w-12 text-center leading-tight">
                           {i + 1}. {ic.label}
                         </span>
                       </div>
@@ -88,7 +88,7 @@ export default function PreviewRutinas({
         })}
       </div>
 
-      <p className="text-center text-[9px] text-[#233933]/30 mt-4 uppercase tracking-widest">
+      <p className="text-center text-[9px] text-[#22244e]/30 mt-4 uppercase tracking-widest">
         minirutina.com
       </p>
     </div>

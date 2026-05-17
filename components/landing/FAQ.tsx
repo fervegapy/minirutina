@@ -31,13 +31,13 @@ const faqs = [
 
 export default function FAQ() {
   return (
-    <section id="faq" className="bg-[#fffef6] px-6 py-20 md:py-24">
+    <section id="faq" className="bg-[#faf6e7] px-6 py-20 md:py-24">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-12">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#ecbc5d] mb-3 block">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#336aea] mb-3 block">
             Dudas frecuentes
           </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#233933]">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#22244e]">
             Preguntas frecuentes
           </h2>
         </div>
@@ -48,10 +48,10 @@ export default function FAQ() {
               value={`item-${i}`}
               className="bg-white border border-[#e5e7eb] rounded-xl px-5"
             >
-              <AccordionTrigger className="text-left font-semibold text-[#233933] hover:no-underline py-4 text-sm">
+              <AccordionTrigger className="text-left font-semibold text-[#22244e] hover:no-underline py-4 text-sm">
                 {faq.q}
               </AccordionTrigger>
-              <AccordionContent className="text-sm text-[#233933]/70 pb-4 leading-relaxed">
+              <AccordionContent className="text-sm text-[#22244e]/70 pb-4 leading-relaxed">
                 {faq.a}
               </AccordionContent>
             </AccordionItem>

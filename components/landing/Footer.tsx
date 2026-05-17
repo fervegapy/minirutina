@@ -1,18 +1,36 @@
 import Link from "next/link";
+import Image from "next/image";
+import { getSiteConfig } from "@/lib/site-config";
 
-export default function Footer() {
+export default async function Footer() {
+  const cfg = await getSiteConfig();
   return (
-    <footer className="bg-[#233933] px-6 py-12">
+    <footer className="bg-[#22244e] px-6 py-12">
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between gap-10 mb-10">
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl">🌿</span>
-              <span className="font-bold text-xl text-white">minirutina</span>
+              {cfg.logo_url ? (
+                <Image
+                  src={cfg.logo_url}
+                  alt={cfg.site_name}
+                  width={160}
+                  height={40}
+                  unoptimized
+                  className="h-8 w-auto object-contain brightness-0 invert"
+                />
+              ) : (
+                <>
+                  <span className="text-2xl">🌿</span>
+                  <span className="font-bold text-xl text-white">
+                    {cfg.site_name.toLowerCase()}
+                  </span>
+                </>
+              )}
             </div>
             <p className="text-white/50 text-sm max-w-xs leading-relaxed">
-              Tableros personalizados para que los niños construyan hábitos con alegría.
+              {cfg.site_description}
             </p>
           </div>
 

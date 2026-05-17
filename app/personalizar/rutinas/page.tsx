@@ -138,13 +138,13 @@ export default function PersonalizarRutinas() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fffef6] px-4 py-10">
+    <main className="min-h-screen bg-[#faf6e7] px-4 py-10">
       <div className="max-w-lg mx-auto">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-[#233933] mb-1">
+          <h1 className="text-2xl font-bold text-[#22244e] mb-1">
             Tablero de Rutinas
           </h1>
-          <p className="text-sm text-[#233933]/60">
+          <p className="text-sm text-[#22244e]/60">
             Personalizá el tablero para {nombre || "tu niño"}
           </p>
         </div>
@@ -154,7 +154,7 @@ export default function PersonalizarRutinas() {
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
           {step === 0 && (
             <div>
-              <h2 className="font-bold text-lg mb-4 text-[#233933]">
+              <h2 className="font-bold text-lg mb-4 text-[#22244e]">
                 ¿Cómo se llama?
               </h2>
               <Input
@@ -164,7 +164,7 @@ export default function PersonalizarRutinas() {
                 className="text-base mb-6"
                 autoFocus
               />
-              <h3 className="font-bold text-sm mb-3 text-[#233933]">
+              <h3 className="font-bold text-sm mb-3 text-[#22244e]">
                 ¿Es niño o niña?
               </h3>
               <GenderPicker value={genero} onChange={setGenero} accentColor={color} />
@@ -173,7 +173,7 @@ export default function PersonalizarRutinas() {
 
           {step === 1 && (
             <div>
-              <h2 className="font-bold text-lg mb-6 text-[#233933]">
+              <h2 className="font-bold text-lg mb-6 text-[#22244e]">
                 Elegí un color
               </h2>
               <ColorPicker value={color} onChange={setColor} />
@@ -182,7 +182,7 @@ export default function PersonalizarRutinas() {
 
           {step === 2 && (
             <div>
-              <h2 className="font-bold text-lg mb-2 text-[#233933]">
+              <h2 className="font-bold text-lg mb-2 text-[#22244e]">
                 ☀️ Actividades de la mañana
               </h2>
               <IconPicker
@@ -198,7 +198,7 @@ export default function PersonalizarRutinas() {
 
           {step === 3 && (
             <div>
-              <h2 className="font-bold text-lg mb-2 text-[#233933]">
+              <h2 className="font-bold text-lg mb-2 text-[#22244e]">
                 🌙 Actividades de la noche
               </h2>
               <IconPicker
@@ -214,17 +214,17 @@ export default function PersonalizarRutinas() {
 
           {step === 4 && (
             <div>
-              <h2 className="font-bold text-lg mb-1 text-[#233933]">
+              <h2 className="font-bold text-lg mb-1 text-[#22244e]">
                 Vista previa
               </h2>
-              <p className="text-xs text-[#233933]/50 mb-5">
+              <p className="text-xs text-[#22244e]/50 mb-5">
                 Así va a quedar impreso el tablero de {nombre || "tu niño"}
               </p>
 
               {pdfLoading && (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
-                  <div className="w-8 h-8 border-[3px] border-[#ecbc5d] border-t-transparent rounded-full animate-spin" />
-                  <p className="text-sm text-[#233933]/50">Generando tu tablero...</p>
+                  <div className="w-8 h-8 border-[3px] border-[#336aea] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm text-[#22244e]/50">Generando tu tablero...</p>
                 </div>
               )}
 
@@ -234,7 +234,7 @@ export default function PersonalizarRutinas() {
                   <Button
                     variant="outline"
                     onClick={() => { generatedRef.current = false; generarPDF(); }}
-                    className="border-[#233933] text-[#233933] rounded-lg"
+                    className="border-[#22244e] text-[#22244e] rounded-lg"
                   >
                     Reintentar
                   </Button>
@@ -247,7 +247,7 @@ export default function PersonalizarRutinas() {
                       and scales to the container width on mobile. The PDF
                       itself carries the watermark (real protection). */}
                   <PdfPagesPreview url={pdfUrl} />
-                  <p className="text-center text-xs text-[#233933]/50">
+                  <p className="text-center text-xs text-[#22244e]/50">
                     🔒 Vista previa con marca de agua. La versión final y limpia se descarga después del pago.
                   </p>
                 </div>
@@ -267,7 +267,7 @@ export default function PersonalizarRutinas() {
             <Button
               variant="outline"
               onClick={back}
-              className="border-[#233933] text-[#233933] rounded-lg"
+              className="border-[#22244e] text-[#22244e] rounded-lg"
             >
               Atrás
             </Button>
@@ -279,7 +279,7 @@ export default function PersonalizarRutinas() {
             <Button
               onClick={next}
               disabled={step === 0 && (!nombre.trim() || !genero)}
-              className="bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-lg shadow-none border-0"
+              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0"
             >
               Siguiente
             </Button>
@@ -287,7 +287,7 @@ export default function PersonalizarRutinas() {
             <Button
               onClick={continuar}
               disabled={pdfLoading}
-              className="bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-lg shadow-none border-0"
+              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0"
             >
               Continuar al pago →
             </Button>

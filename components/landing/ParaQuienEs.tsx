@@ -23,10 +23,10 @@ const razones = [
 
 export default function ParaQuienEs() {
   return (
-    <section className="bg-[#233933] px-6 py-20 md:py-24">
+    <section className="bg-[#22244e] px-6 py-20 md:py-24">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#ecbc5d] mb-3 block">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#336aea] mb-3 block">
             Por qué Minirutina
           </span>
           <h2 className="text-3xl md:text-4xl font-bold text-white">

@@ -46,8 +46,8 @@ export default function PdfPagesPreview({ url }: Props) {
           file={url}
           loading={
             <div className="flex flex-col items-center justify-center py-10 gap-2">
-              <div className="w-6 h-6 border-[3px] border-[#ecbc5d] border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-[#233933]/50">Cargando vista previa...</p>
+              <div className="w-6 h-6 border-[3px] border-[#336aea] border-t-transparent rounded-full animate-spin" />
+              <p className="text-xs text-[#22244e]/50">Cargando vista previa...</p>
             </div>
           }
           onLoadSuccess={({ numPages }) => setNumPages(numPages)}

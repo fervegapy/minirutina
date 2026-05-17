@@ -46,17 +46,17 @@ function buildHtml({
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pedido recibido — Minirutina</title>
 </head>
-<body style="margin:0;padding:0;background:#fffef6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#233933;">
+<body style="margin:0;padding:0;background:#faf6e7;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#22244e;">
 
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffef6;padding:32px 16px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#faf6e7;padding:32px 16px;">
     <tr>
       <td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
 
           <!-- Logo / header -->
           <tr>
-            <td style="background:#233933;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
-              <p style="margin:0;font-size:28px;font-weight:800;color:#ecbc5d;letter-spacing:-0.5px;">
+            <td style="background:#22244e;border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
+              <p style="margin:0;font-size:28px;font-weight:800;color:#336aea;letter-spacing:-0.5px;">
                 Minirutina
               </p>
               <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.5);">
@@ -72,7 +72,7 @@ function buildHtml({
               <p style="margin:0 0 8px;font-size:22px;font-weight:700;">
                 ¡Tu pedido fue recibido! 🎉
               </p>
-              <p style="margin:0 0 24px;font-size:15px;color:#233933cc;line-height:1.6;">
+              <p style="margin:0 0 24px;font-size:15px;color:#22244ecc;line-height:1.6;">
                 Hola, recibimos tu pedido del <strong>${nombreProducto}</strong> para
                 <strong>${nombreNino}</strong>. Estamos muy contentos de ayudarte a organizar
                 la rutina de tu pequeño.
@@ -80,24 +80,24 @@ function buildHtml({
 
               <!-- Resumen del pedido -->
               <table width="100%" cellpadding="0" cellspacing="0"
-                style="background:#fffef6;border:1px solid #e5e7eb;border-radius:12px;padding:0;margin-bottom:24px;">
+                style="background:#faf6e7;border:1px solid #e5e7eb;border-radius:12px;padding:0;margin-bottom:24px;">
                 <tr>
                   <td style="padding:20px 24px;">
-                    <p style="margin:0 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#23393355;">
+                    <p style="margin:0 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22244e55;">
                       Resumen del pedido
                     </p>
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
-                        <td style="font-size:14px;color:#233933cc;padding:4px 0;">Producto</td>
-                        <td align="right" style="font-size:14px;font-weight:600;color:#233933;padding:4px 0;">${nombreProducto}</td>
+                        <td style="font-size:14px;color:#22244ecc;padding:4px 0;">Producto</td>
+                        <td align="right" style="font-size:14px;font-weight:600;color:#22244e;padding:4px 0;">${nombreProducto}</td>
                       </tr>
                       <tr>
-                        <td style="font-size:14px;color:#233933cc;padding:4px 0;">Para</td>
-                        <td align="right" style="font-size:14px;font-weight:600;color:#233933;padding:4px 0;">${nombreNino}</td>
+                        <td style="font-size:14px;color:#22244ecc;padding:4px 0;">Para</td>
+                        <td align="right" style="font-size:14px;font-weight:600;color:#22244e;padding:4px 0;">${nombreNino}</td>
                       </tr>
                       <tr>
-                        <td style="font-size:14px;color:#233933cc;padding:4px 0;">Entrega</td>
-                        <td align="right" style="font-size:14px;font-weight:600;color:#233933;padding:4px 0;">${entregaTexto}</td>
+                        <td style="font-size:14px;color:#22244ecc;padding:4px 0;">Entrega</td>
+                        <td align="right" style="font-size:14px;font-weight:600;color:#22244e;padding:4px 0;">${entregaTexto}</td>
                       </tr>
                       <tr>
                         <td colspan="2" style="padding:8px 0;">
@@ -105,8 +105,8 @@ function buildHtml({
                         </td>
                       </tr>
                       <tr>
-                        <td style="font-size:15px;font-weight:700;color:#233933;padding:4px 0;">Total</td>
-                        <td align="right" style="font-size:18px;font-weight:800;color:#233933;padding:4px 0;">${fmt(total)}</td>
+                        <td style="font-size:15px;font-weight:700;color:#22244e;padding:4px 0;">Total</td>
+                        <td align="right" style="font-size:18px;font-weight:800;color:#22244e;padding:4px 0;">${fmt(total)}</td>
                       </tr>
                     </table>
                   </td>
@@ -115,13 +115,13 @@ function buildHtml({
 
               <!-- Próximo paso -->
               <table width="100%" cellpadding="0" cellspacing="0"
-                style="background:#ecbc5d22;border:1px solid #ecbc5d55;border-radius:12px;margin-bottom:24px;">
+                style="background:#336aea22;border:1px solid #336aea55;border-radius:12px;margin-bottom:24px;">
                 <tr>
                   <td style="padding:18px 24px;">
-                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#23393355;">
+                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22244e55;">
                       Próximo paso
                     </p>
-                    <p style="margin:0;font-size:14px;color:#233933cc;line-height:1.6;">
+                    <p style="margin:0;font-size:14px;color:#22244ecc;line-height:1.6;">
                       ${proximoPaso}
                     </p>
                   </td>
@@ -133,20 +133,20 @@ function buildHtml({
                 style="background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:28px;">
                 <tr>
                   <td style="padding:18px 24px;">
-                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#23393355;">
+                    <p style="margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22244e55;">
                       Cómo pagar
                     </p>
-                    <p style="margin:0;font-size:14px;color:#233933cc;line-height:1.6;">
+                    <p style="margin:0;font-size:14px;color:#22244ecc;line-height:1.6;">
                       Podés pagar por transferencia bancaria o billetera digital.
                       Escribinos por WhatsApp al
-                      <a href="https://wa.me/595981000000" style="color:#233933;font-weight:600;">+595 981 000 000</a>
+                      <a href="https://wa.me/595981000000" style="color:#22244e;font-weight:600;">+595 981 000 000</a>
                       y te confirmamos los datos.
                     </p>
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0;font-size:13px;color:#23393366;">
+              <p style="margin:0;font-size:13px;color:#22244e66;">
                 Número de pedido: <code style="font-size:12px;background:#f3f4f6;padding:2px 6px;border-radius:4px;">${pedidoId.slice(0, 8).toUpperCase()}</code>
               </p>
 
@@ -156,9 +156,9 @@ function buildHtml({
           <!-- Footer -->
           <tr>
             <td style="background:#f9fafb;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#23393366;line-height:1.6;">
+              <p style="margin:0;font-size:12px;color:#22244e66;line-height:1.6;">
                 Minirutina · Villamorra, Asunción, Paraguay<br />
-                <a href="https://minirutina.com" style="color:#233933;text-decoration:none;">minirutina.com</a>
+                <a href="https://minirutina.com" style="color:#22244e;text-decoration:none;">minirutina.com</a>
               </p>
             </td>
           </tr>

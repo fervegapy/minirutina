@@ -67,7 +67,7 @@ export default async function ProductoPage({
   const precioDesde = precioDesdeDb ?? producto.precioDesde;
 
   return (
-    <div className="min-h-screen bg-[#fffef6]">
+    <div className="min-h-screen bg-[#faf6e7]">
       <Header />
       <main>
         {/* Hero del producto */}
@@ -79,7 +79,7 @@ export default async function ProductoPage({
               style={{ backgroundColor: producto.accentColor + "22" }}
             >
               <span className="text-8xl mb-4">{producto.emoji}</span>
-              <p className="text-sm text-[#233933]/30 font-medium">
+              <p className="text-sm text-[#22244e]/30 font-medium">
                 Foto del producto
               </p>
             </div>
@@ -88,22 +88,22 @@ export default async function ProductoPage({
             <div>
               <Link
                 href="/#productos"
-                className="text-xs font-semibold text-[#233933]/40 hover:text-[#233933] uppercase tracking-widest mb-4 inline-flex items-center gap-1"
+                className="text-xs font-semibold text-[#22244e]/40 hover:text-[#22244e] uppercase tracking-widest mb-4 inline-flex items-center gap-1"
               >
                 ← Todos los productos
               </Link>
 
-              <h1 className="text-3xl md:text-4xl font-bold text-[#233933] mt-2 mb-3">
+              <h1 className="text-3xl md:text-4xl font-bold text-[#22244e] mt-2 mb-3">
                 {nombre}
               </h1>
-              <p className="text-[#233933]/60 text-lg mb-6 leading-relaxed">
+              <p className="text-[#22244e]/60 text-lg mb-6 leading-relaxed">
                 {tagline}
               </p>
 
               {/* Precio */}
               <div className="flex items-baseline gap-2 mb-6">
-                <span className="text-sm text-[#233933]/50 font-medium">desde</span>
-                <span className="text-4xl font-bold text-[#233933]">
+                <span className="text-sm text-[#22244e]/50 font-medium">desde</span>
+                <span className="text-4xl font-bold text-[#22244e]">
                   {precioDesde}
                 </span>
               </div>
@@ -111,9 +111,9 @@ export default async function ProductoPage({
               {/* Lo que incluye (resumen) */}
               <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-6 space-y-2">
                 {producto.incluye.slice(0, 4).map((item) => (
-                  <div key={item} className="flex items-start gap-2 text-sm text-[#233933]/70">
+                  <div key={item} className="flex items-start gap-2 text-sm text-[#22244e]/70">
                     <span
-                      className="mt-0.5 shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-[#233933]"
+                      className="mt-0.5 shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold text-[#22244e]"
                       style={{ backgroundColor: producto.accentColor + "66" }}
                     >
                       ✓
@@ -121,18 +121,18 @@ export default async function ProductoPage({
                     {item}
                   </div>
                 ))}
-                <p className="text-xs text-[#233933]/40 pt-1">
+                <p className="text-xs text-[#22244e]/40 pt-1">
                   + {producto.incluye.length - 4} incluidos más
                 </p>
               </div>
 
               {/* CTA */}
               <Link href={producto.customizerHref}>
-                <Button className="w-full bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl shadow-none border-0 text-base py-3">
+                <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base py-3">
                   Personalizar mi tablero →
                 </Button>
               </Link>
-              <p className="text-center text-xs text-[#233933]/40 mt-3">
+              <p className="text-center text-xs text-[#22244e]/40 mt-3">
                 Listo en 5 minutos · Enviamos en 3-5 días hábiles
               </p>
             </div>
@@ -143,10 +143,10 @@ export default async function ProductoPage({
         <section className="bg-white px-6 py-16">
           <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-16 items-start">
             <div>
-              <h2 className="text-2xl font-bold text-[#233933] mb-4">
+              <h2 className="text-2xl font-bold text-[#22244e] mb-4">
                 ¿Qué es?
               </h2>
-              <p className="text-[#233933]/70 leading-relaxed mb-6">
+              <p className="text-[#22244e]/70 leading-relaxed mb-6">
                 {producto.descripcion}
               </p>
               <div
@@ -156,10 +156,10 @@ export default async function ProductoPage({
                   borderColor: producto.accentColor + "55",
                 }}
               >
-                <p className="text-xs font-bold uppercase tracking-widest text-[#233933]/50 mb-1">
+                <p className="text-xs font-bold uppercase tracking-widest text-[#22244e]/50 mb-1">
                   Para quién es
                 </p>
-                <p className="text-sm text-[#233933]/80 leading-relaxed">
+                <p className="text-sm text-[#22244e]/80 leading-relaxed">
                   {producto.paraQuien}
                 </p>
               </div>
@@ -167,17 +167,17 @@ export default async function ProductoPage({
 
             {/* Incluye completo */}
             <div>
-              <h2 className="text-2xl font-bold text-[#233933] mb-4">
+              <h2 className="text-2xl font-bold text-[#22244e] mb-4">
                 Qué incluye
               </h2>
               <div className="space-y-3">
                 {producto.incluye.map((item) => (
                   <div
                     key={item}
-                    className="flex items-start gap-3 text-sm text-[#233933]/70"
+                    className="flex items-start gap-3 text-sm text-[#22244e]/70"
                   >
                     <span
-                      className="mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-[#233933]"
+                      className="mt-0.5 shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold text-[#22244e]"
                       style={{ backgroundColor: producto.accentColor + "66" }}
                     >
                       ✓
@@ -191,9 +191,9 @@ export default async function ProductoPage({
         </section>
 
         {/* Beneficios */}
-        <section className="px-6 py-16 bg-[#fffef6]">
+        <section className="px-6 py-16 bg-[#faf6e7]">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold text-[#233933] text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-bold text-[#22244e] text-center mb-10">
               Por qué funciona
             </h2>
             <div className="grid md:grid-cols-2 gap-5">
@@ -204,8 +204,8 @@ export default async function ProductoPage({
                 >
                   <span className="text-3xl shrink-0">{b.icono}</span>
                   <div>
-                    <h3 className="font-bold text-[#233933] mb-1">{b.titulo}</h3>
-                    <p className="text-sm text-[#233933]/60 leading-relaxed">
+                    <h3 className="font-bold text-[#22244e] mb-1">{b.titulo}</h3>
+                    <p className="text-sm text-[#22244e]/60 leading-relaxed">
                       {b.desc}
                     </p>
                   </div>
@@ -218,7 +218,7 @@ export default async function ProductoPage({
         {/* FAQ del producto */}
         <section className="bg-white px-6 py-16">
           <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-[#233933] text-center mb-8">
+            <h2 className="text-2xl font-bold text-[#22244e] text-center mb-8">
               Preguntas sobre este tablero
             </h2>
             <div className="space-y-4">
@@ -227,10 +227,10 @@ export default async function ProductoPage({
                   key={faq.q}
                   className="border border-[#e5e7eb] rounded-xl p-5"
                 >
-                  <p className="font-bold text-sm text-[#233933] mb-2">
+                  <p className="font-bold text-sm text-[#22244e] mb-2">
                     {faq.q}
                   </p>
-                  <p className="text-sm text-[#233933]/60 leading-relaxed">
+                  <p className="text-sm text-[#22244e]/60 leading-relaxed">
                     {faq.a}
                   </p>
                 </div>
@@ -240,7 +240,7 @@ export default async function ProductoPage({
         </section>
 
         {/* CTA final */}
-        <section className="bg-[#233933] px-6 py-16 text-center">
+        <section className="bg-[#22244e] px-6 py-16 text-center">
           <div className="max-w-lg mx-auto">
             <span className="text-5xl mb-4 block">{producto.emoji}</span>
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
@@ -250,7 +250,7 @@ export default async function ProductoPage({
               Personalizás en 5 minutos. Nosotros lo imprimimos y enviamos.
             </p>
             <Link href={producto.customizerHref}>
-              <Button className="bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl shadow-none border-0 text-base px-10 py-3">
+              <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base px-10 py-3">
                 Crear mi {nombre} →
               </Button>
             </Link>

@@ -58,7 +58,7 @@ export default function IconPicker({
   selected,
   onChange,
   max = 6,
-  accentColor = "#ecbc5d",
+  accentColor = "#336aea",
   genero = null,
 }: IconPickerProps) {
   const toggle = (id: string) => {
@@ -71,7 +71,7 @@ export default function IconPicker({
 
   return (
     <div>
-      <p className="text-xs text-[#233933]/50 mb-3 text-center">
+      <p className="text-xs text-[#22244e]/50 mb-3 text-center">
         Seleccioná hasta {max} actividades · el orden importa
       </p>
       <div className="grid grid-cols-2 gap-3">
@@ -86,12 +86,12 @@ export default function IconPicker({
               className="relative w-full max-w-[200px] aspect-square mx-auto transition-all"
               style={
                 isSelected
-                  ? { outline: "3px solid #233933", backgroundColor: accentColor + "33" }
+                  ? { outline: "3px solid #22244e", backgroundColor: accentColor + "33" }
                   : {}
               }
             >
               {order !== null && (
-                <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#233933] text-white text-[10px] font-bold flex items-center justify-center leading-none z-10">
+                <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#22244e] text-white text-[10px] font-bold flex items-center justify-center leading-none z-10">
                   {order}
                 </span>
               )}

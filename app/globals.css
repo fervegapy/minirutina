@@ -4,24 +4,24 @@
 
 @theme inline {
   /* Minirutina brand colors */
-  --color-background: oklch(0.993 0.011 95);       /* #fffef6 warm cream */
-  --color-foreground: oklch(0.243 0.041 170);      /* #233933 deep green-gray */
-  --color-card: oklch(0.993 0.011 95);
-  --color-card-foreground: oklch(0.243 0.041 170);
-  --color-popover: oklch(0.993 0.011 95);
-  --color-popover-foreground: oklch(0.243 0.041 170);
-  --color-primary: oklch(0.795 0.127 71);          /* #ecbc5d golden mustard */
-  --color-primary-foreground: oklch(0.243 0.041 170);
-  --color-secondary: oklch(0.96 0.008 95);
-  --color-secondary-foreground: oklch(0.243 0.041 170);
-  --color-muted: oklch(0.96 0.008 95);
-  --color-muted-foreground: oklch(0.52 0.025 170);
-  --color-accent: oklch(0.795 0.127 71);
-  --color-accent-foreground: oklch(0.243 0.041 170);
+  --color-background: oklch(0.964 0.024 95);       /* #faf6e7 off white */
+  --color-foreground: oklch(0.220 0.061 280);      /* #22244e deep blue */
+  --color-card: oklch(0.964 0.024 95);
+  --color-card-foreground: oklch(0.220 0.061 280);
+  --color-popover: oklch(0.964 0.024 95);
+  --color-popover-foreground: oklch(0.220 0.061 280);
+  --color-primary: oklch(0.563 0.213 264);         /* #336aea piki blue */
+  --color-primary-foreground: oklch(1 0 0);        /* white text on blue */
+  --color-secondary: oklch(0.94 0.016 95);
+  --color-secondary-foreground: oklch(0.220 0.061 280);
+  --color-muted: oklch(0.94 0.016 95);
+  --color-muted-foreground: oklch(0.48 0.035 280);
+  --color-accent: oklch(0.563 0.213 264);
+  --color-accent-foreground: oklch(1 0 0);
   --color-destructive: oklch(0.577 0.245 27.325);
   --color-border: oklch(0.921 0.003 264);          /* #e5e7eb */
   --color-input: oklch(0.921 0.003 264);
-  --color-ring: oklch(0.795 0.127 71);
+  --color-ring: oklch(0.563 0.213 264);
 
   --radius: 0.75rem;
   --radius-sm: calc(var(--radius) - 4px);

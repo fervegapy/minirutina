@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Package, BarChart3, Search, FileText, LogOut } from "lucide-react";
+import { Package, BarChart3, Search, FileText, ImageIcon, LogOut } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin/ventas",      label: "Ventas",      Icon: BarChart3 },
   { href: "/admin/intenciones", label: "Intenciones", Icon: Search },
   { href: "/admin/cms",         label: "Contenido",   Icon: FileText },
+  { href: "/admin/branding",    label: "Branding",    Icon: ImageIcon },
 ];
 
 export default function AdminSidebar({ email }: { email: string }) {

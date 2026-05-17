@@ -20,7 +20,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
           onClick={() => onChange(c.value)}
           className={`w-14 h-14 rounded-xl border-4 transition-all focus:outline-none ${
             value === c.value
-              ? "border-[#233933] scale-110 shadow-sm"
+              ? "border-[#22244e] scale-110 shadow-sm"
               : "border-transparent hover:border-[#e5e7eb]"
           }`}
           style={{ backgroundColor: c.bg }}

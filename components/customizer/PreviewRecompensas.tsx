@@ -19,18 +19,18 @@ export default function PreviewRecompensas({
         className="rounded-xl px-4 py-2 mb-5 text-center"
         style={{ backgroundColor: colorAcento + "44" }}
       >
-        <h3 className="font-bold text-base text-[#233933]">
+        <h3 className="font-bold text-base text-[#22244e]">
           ¡Tablero de {nombreNino || "tu niño"}!
         </h3>
       </div>
-      <p className="text-center text-xs text-[#233933]/60 mb-4">
+      <p className="text-center text-xs text-[#22244e]/60 mb-4">
         Completá los {pasos} {sticker} para ganar tu recompensa
       </p>
       <div className="flex flex-wrap gap-2 justify-center mb-5">
         {Array.from({ length: pasos }).map((_, i) => (
           <div
             key={i}
-            className="w-10 h-10 rounded-xl border-2 border-[#e5e7eb] flex items-center justify-center text-xl bg-[#fffef6]"
+            className="w-10 h-10 rounded-xl border-2 border-[#e5e7eb] flex items-center justify-center text-xl bg-[#faf6e7]"
           >
             {sticker}
           </div>
@@ -41,23 +41,23 @@ export default function PreviewRecompensas({
           className="rounded-xl px-4 py-3 text-center"
           style={{ backgroundColor: colorAcento + "33" }}
         >
-          <p className="text-xs font-bold text-[#233933]/60 uppercase tracking-wide mb-1">
+          <p className="text-xs font-bold text-[#22244e]/60 uppercase tracking-wide mb-1">
             Tu recompensa
           </p>
-          <p className="font-bold text-[#233933] text-sm">{recompensa}</p>
+          <p className="font-bold text-[#22244e] text-sm">{recompensa}</p>
         </div>
       ) : (
         <div
-          className="rounded-xl px-4 py-3 text-center border border-dashed border-[#233933]/20"
+          className="rounded-xl px-4 py-3 text-center border border-dashed border-[#22244e]/20"
           style={{ backgroundColor: colorAcento + "11" }}
         >
-          <p className="text-xs font-bold text-[#233933]/40 uppercase tracking-wide mb-1">
+          <p className="text-xs font-bold text-[#22244e]/40 uppercase tracking-wide mb-1">
             Tu recompensa
           </p>
-          <p className="text-xs text-[#233933]/30 italic">Se completa a mano ✏️</p>
+          <p className="text-xs text-[#22244e]/30 italic">Se completa a mano ✏️</p>
         </div>
       )}
-      <p className="text-center text-[9px] text-[#233933]/30 mt-4 uppercase tracking-widest">
+      <p className="text-center text-[9px] text-[#22244e]/30 mt-4 uppercase tracking-widest">
         minirutina.com
       </p>
     </div>

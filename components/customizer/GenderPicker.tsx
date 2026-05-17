@@ -19,7 +19,7 @@ interface GenderPickerProps {
 export default function GenderPicker({
   value,
   onChange,
-  accentColor = "#ecbc5d",
+  accentColor = "#336aea",
 }: GenderPickerProps) {
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -33,7 +33,7 @@ export default function GenderPicker({
             className="relative w-full max-w-[200px] aspect-square mx-auto transition-all"
             style={
               isSelected
-                ? { outline: "3px solid #233933", backgroundColor: accentColor + "33" }
+                ? { outline: "3px solid #22244e", backgroundColor: accentColor + "33" }
                 : {}
             }
           >
@@ -60,7 +60,7 @@ function GenderImage({
     return (
       <span className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-2">
         <span className="text-7xl leading-none">{emoji}</span>
-        <span className="text-sm font-semibold text-[#233933]">{label}</span>
+        <span className="text-sm font-semibold text-[#22244e]">{label}</span>
       </span>
     );
   }

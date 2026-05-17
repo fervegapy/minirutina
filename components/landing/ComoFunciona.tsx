@@ -24,10 +24,10 @@ export default function ComoFunciona() {
     <section id="como-funciona" className="bg-white px-6 py-20 md:py-24">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#ecbc5d] mb-3 block">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#336aea] mb-3 block">
             Sin complicaciones
           </span>
-          <h2 className="text-3xl md:text-4xl font-bold text-[#233933]">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#22244e]">
             Así de simple funciona
           </h2>
         </div>
@@ -39,17 +39,17 @@ export default function ComoFunciona() {
               {i < pasos.length - 1 && (
                 <div className="hidden md:block absolute top-10 left-[calc(100%-16px)] w-8 border-t-2 border-dashed border-[#e5e7eb] z-10" />
               )}
-              <div className="bg-[#fffef6] border border-[#e5e7eb] rounded-2xl p-6">
+              <div className="bg-[#faf6e7] border border-[#e5e7eb] rounded-2xl p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="text-3xl">{paso.icon}</span>
-                  <span className="text-4xl font-bold text-[#ecbc5d]/30 leading-none">
+                  <span className="text-4xl font-bold text-[#336aea]/30 leading-none">
                     {paso.num}
                   </span>
                 </div>
-                <h3 className="font-bold text-lg text-[#233933] mb-2">
+                <h3 className="font-bold text-lg text-[#22244e] mb-2">
                   {paso.titulo}
                 </h3>
-                <p className="text-sm text-[#233933]/60 leading-relaxed">
+                <p className="text-sm text-[#22244e]/60 leading-relaxed">
                   {paso.desc}
                 </p>
               </div>
@@ -58,7 +58,7 @@ export default function ComoFunciona() {
         </div>
 
         {/* Note about digital */}
-        <p className="text-center text-sm text-[#233933]/40 mt-10">
+        <p className="text-center text-sm text-[#22244e]/40 mt-10">
           ¿Preferís imprimir vos? También ofrecemos descarga digital a menor precio.
         </p>
       </div>

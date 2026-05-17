@@ -196,46 +196,46 @@ function CheckoutInner() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fffef6] px-4 py-10 pb-44">
+    <main className="min-h-screen bg-[#faf6e7] px-4 py-10 pb-44">
       <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold text-[#233933] mb-8 text-center">
+        <h1 className="text-2xl font-bold text-[#22244e] mb-8 text-center">
           Resumen del pedido
         </h1>
 
         {/* Order summary */}
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-5">
-          <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50 mb-3">
+          <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-3">
             Tu pedido
           </h2>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-[#233933]/70">Producto</span>
-              <span className="font-semibold text-[#233933]">
+              <span className="text-[#22244e]/70">Producto</span>
+              <span className="font-semibold text-[#22244e]">
                 {NOMBRE_PRODUCTO[producto] ?? producto}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-[#233933]/70">Nombre</span>
-              <span className="font-semibold text-[#233933]">{nombreNino}</span>
+              <span className="text-[#22244e]/70">Nombre</span>
+              <span className="font-semibold text-[#22244e]">{nombreNino}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[#233933]/70">Color</span>
+              <span className="text-[#22244e]/70">Color</span>
               <div className="flex items-center gap-2">
                 <div
                   className="w-4 h-4 rounded-full border border-[#e5e7eb]"
                   style={{ backgroundColor: colorAcento }}
                 />
-                <span className="font-semibold text-[#233933]">
+                <span className="font-semibold text-[#22244e]">
                   {NOMBRE_COLOR[colorAcento] ?? colorAcento}
                 </span>
               </div>
             </div>
             <div className="flex justify-between pt-2 border-t border-[#e5e7eb] mt-2">
-              <span className="text-[#233933]/70">Precio del tablero</span>
+              <span className="text-[#22244e]/70">Precio del tablero</span>
               {loadingPrecios ? (
                 <span className="w-20 h-4 bg-[#e5e7eb] rounded animate-pulse" />
               ) : (
-                <span className="font-bold text-[#233933]">{fmt(precioImpreso)}</span>
+                <span className="font-bold text-[#22244e]">{fmt(precioImpreso)}</span>
               )}
             </div>
           </div>
@@ -244,20 +244,20 @@ function CheckoutInner() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Tipo de entrega */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-            <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50 mb-4">
+            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-4">
               Tipo de entrega
             </h2>
 
             {tipoEntrega === "fisico" ? (
               <>
-                <div className="rounded-xl border-2 border-[#233933] bg-[#ecbc5d]/10 p-4 flex items-start gap-3">
+                <div className="rounded-xl border-2 border-[#22244e] bg-[#336aea]/10 p-4 flex items-start gap-3">
                   <span className="text-2xl shrink-0">📦</span>
                   <div className="flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <p className="font-bold text-sm text-[#233933]">Impreso y enviado</p>
-                      <p className="font-bold text-sm text-[#233933] shrink-0">{loadingPrecios ? "—" : fmt(precioImpreso)}</p>
+                      <p className="font-bold text-sm text-[#22244e]">Impreso y enviado</p>
+                      <p className="font-bold text-sm text-[#22244e] shrink-0">{loadingPrecios ? "—" : fmt(precioImpreso)}</p>
                     </div>
-                    <p className="text-xs text-[#233933]/60 mt-0.5">
+                    <p className="text-xs text-[#22244e]/60 mt-0.5">
                       Imprimimos en alta calidad y lo entregamos listo para colgar.
                     </p>
                   </div>
@@ -265,7 +265,7 @@ function CheckoutInner() {
                 <button
                   type="button"
                   onClick={() => setTipoEntrega("digital")}
-                  className="mt-3 text-xs text-[#233933]/40 hover:text-[#233933] underline underline-offset-2 w-full text-center transition-colors"
+                  className="mt-3 text-xs text-[#22244e]/40 hover:text-[#22244e] underline underline-offset-2 w-full text-center transition-colors"
                 >
                   ¿Preferís solo el archivo digital para imprimir vos?
                 </button>
@@ -276,10 +276,10 @@ function CheckoutInner() {
                   <span className="text-2xl shrink-0">📲</span>
                   <div className="flex-1">
                     <div className="flex items-baseline justify-between gap-2">
-                      <p className="font-bold text-sm text-[#233933]">Archivo digital</p>
-                      <p className="font-bold text-sm text-[#233933] shrink-0">{loadingPrecios ? "—" : fmt(precioDigital)}</p>
+                      <p className="font-bold text-sm text-[#22244e]">Archivo digital</p>
+                      <p className="font-bold text-sm text-[#22244e] shrink-0">{loadingPrecios ? "—" : fmt(precioDigital)}</p>
                     </div>
-                    <p className="text-xs text-[#233933]/60 mt-0.5">
+                    <p className="text-xs text-[#22244e]/60 mt-0.5">
                       Recibís el PDF listo para imprimir donde quieras.
                     </p>
                   </div>
@@ -287,7 +287,7 @@ function CheckoutInner() {
                 <button
                   type="button"
                   onClick={() => { setTipoEntrega("fisico"); setModalidad("pickup"); }}
-                  className="mt-3 text-xs text-[#233933]/40 hover:text-[#233933] underline underline-offset-2 w-full text-center transition-colors"
+                  className="mt-3 text-xs text-[#22244e]/40 hover:text-[#22244e] underline underline-offset-2 w-full text-center transition-colors"
                 >
                   ← Volver a impreso y enviado
                 </button>
@@ -298,7 +298,7 @@ function CheckoutInner() {
           {/* Modalidad de entrega (solo físico) */}
           {tipoEntrega === "fisico" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-              <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50 mb-4">
+              <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-4">
                 Modalidad de entrega
               </h2>
               <div className="grid grid-cols-2 gap-3">
@@ -307,14 +307,14 @@ function CheckoutInner() {
                   onClick={() => setModalidad("pickup")}
                   className={`rounded-xl p-4 border-2 text-left transition-all ${
                     modalidad === "pickup"
-                      ? "border-[#233933] bg-[#ecbc5d]/10"
-                      : "border-[#e5e7eb] hover:border-[#233933]/30"
+                      ? "border-[#22244e] bg-[#336aea]/10"
+                      : "border-[#e5e7eb] hover:border-[#22244e]/30"
                   }`}
                 >
                   <div className="text-xl mb-1">🏠</div>
-                  <div className="font-bold text-sm text-[#233933]">Pickup</div>
+                  <div className="font-bold text-sm text-[#22244e]">Pickup</div>
                   <div className="text-xs font-bold text-[#a8c5a0] mt-0.5">Gs. 0</div>
-                  <div className="text-xs text-[#233933]/50 mt-1 leading-relaxed">
+                  <div className="text-xs text-[#22244e]/50 mt-1 leading-relaxed">
                     Retirás en Villamorra, Asunción. Dirección exacta por WhatsApp.
                   </div>
                 </button>
@@ -323,14 +323,14 @@ function CheckoutInner() {
                   onClick={() => setModalidad("delivery")}
                   className={`rounded-xl p-4 border-2 text-left transition-all ${
                     modalidad === "delivery"
-                      ? "border-[#233933] bg-[#ecbc5d]/10"
-                      : "border-[#e5e7eb] hover:border-[#233933]/30"
+                      ? "border-[#22244e] bg-[#336aea]/10"
+                      : "border-[#e5e7eb] hover:border-[#22244e]/30"
                   }`}
                 >
                   <div className="text-xl mb-1">🛵</div>
-                  <div className="font-bold text-sm text-[#233933]">Delivery</div>
-                  <div className="text-xs font-bold text-[#233933]/70 mt-0.5">{fmt(PRECIO_DELIVERY)}</div>
-                  <div className="text-xs text-[#233933]/50 mt-1 leading-relaxed">
+                  <div className="font-bold text-sm text-[#22244e]">Delivery</div>
+                  <div className="text-xs font-bold text-[#22244e]/70 mt-0.5">{fmt(PRECIO_DELIVERY)}</div>
+                  <div className="text-xs text-[#22244e]/50 mt-1 leading-relaxed">
                     A tu puerta. Zona a confirmar por WhatsApp.
                   </div>
                 </button>
@@ -341,7 +341,7 @@ function CheckoutInner() {
           {/* Datos de entrega (solo delivery) */}
           {tipoEntrega === "fisico" && modalidad === "delivery" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-              <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50">
+              <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
                 Datos de entrega
               </h2>
               <LocationPicker onChange={setLocation} />
@@ -350,7 +350,7 @@ function CheckoutInner() {
 
           {/* Datos de contacto */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-            <h2 className="font-bold text-xs uppercase tracking-wide text-[#233933]/50">
+            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
               Datos de contacto
             </h2>
             <Input
@@ -365,7 +365,7 @@ function CheckoutInner() {
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
             />
-            <p className="text-xs text-[#233933]/50">
+            <p className="text-xs text-[#22244e]/50">
               Te contactamos para confirmar y coordinar tu pedido.
             </p>
           </div>
@@ -377,15 +377,15 @@ function CheckoutInner() {
           {/* Sticky summary bar */}
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e7eb] shadow-[0_-4px_24px_rgba(0,0,0,0.07)] px-4 pt-4 pb-6 z-50">
             <div className="max-w-md mx-auto space-y-1.5">
-              <div className="flex justify-between text-sm text-[#233933]/60">
+              <div className="flex justify-between text-sm text-[#22244e]/60">
                 <span>Tablero {tipoEntrega === "fisico" ? "Impreso" : "Digital"}</span>
                 <span>{fmt(precioBase)}</span>
               </div>
-              <div className="flex justify-between text-sm text-[#233933]/60">
+              <div className="flex justify-between text-sm text-[#22244e]/60">
                 <span>Envío ({tipoEntrega === "fisico" ? (modalidad === "delivery" ? "Delivery" : "Pickup") : "Digital"})</span>
                 <span>{precioEnvio === 0 ? "Gs. 0" : fmt(precioEnvio)}</span>
               </div>
-              <div className="flex justify-between font-bold text-[#233933] pt-2 border-t border-[#e5e7eb]">
+              <div className="flex justify-between font-bold text-[#22244e] pt-2 border-t border-[#e5e7eb]">
                 <span>Total</span>
                 {loadingPrecios ? (
                   <span className="w-24 h-5 bg-[#e5e7eb] rounded animate-pulse" />
@@ -396,7 +396,7 @@ function CheckoutInner() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#ecbc5d] hover:bg-[#e5b04e] text-[#233933] font-bold rounded-xl text-base shadow-none border-0 mt-3"
+                className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3"
               >
                 {loading ? "Guardando..." : "Ir a pagar →"}
               </Button>

@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nunito } from "next/font/google";
 import "./globals.css";
+import { getSiteConfig } from "@/lib/site-config";
 
 const nunito = Nunito({
   subsets: ["latin"],
@@ -9,11 +10,37 @@ const nunito = Nunito({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Minirutina — Tableros personalizados para niños",
-  description:
-    "Crea tableros de rutinas y tableros de recompensas personalizados para tus hijos. Imprimibles descargables.",
-};
+// Pulls site name / description / OG image / favicon from site_config so
+// admin edits surface in the browser tab + social previews without a redeploy.
+export async function generateMetadata(): Promise<Metadata> {
+  const cfg = await getSiteConfig();
+  const title = `${cfg.site_name} — Tableros personalizados para niños`;
+  return {
+    title:       { default: title, template: `%s · ${cfg.site_name}` },
+    description: cfg.site_description,
+    icons: cfg.favicon_url
+      ? { icon: cfg.favicon_url, shortcut: cfg.favicon_url, apple: cfg.favicon_url }
+      : undefined,
+    openGraph: {
+      title,
+      description: cfg.site_description,
+      type:        "website",
+      siteName:    cfg.site_name,
+      images:      cfg.og_image_url ? [{ url: cfg.og_image_url, width: 1200, height: 630 }] : [],
+    },
+    twitter: {
+      card:        "summary_large_image",
+      title,
+      description: cfg.site_description,
+      images:      cfg.og_image_url ? [cfg.og_image_url] : [],
+    },
+  };
+}
+
+export async function generateViewport(): Promise<Viewport> {
+  const cfg = await getSiteConfig();
+  return { themeColor: cfg.theme_color };
+}
 
 export default function RootLayout({
   children,

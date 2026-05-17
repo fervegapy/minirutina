@@ -11,16 +11,16 @@ export default function StepIndicator({ steps, current }: StepIndicatorProps) {
       {/* Progress bar */}
       <div className="h-1.5 bg-[#e5e7eb] rounded-full mb-3 overflow-hidden">
         <div
-          className="h-full bg-[#ecbc5d] rounded-full transition-all duration-300"
+          className="h-full bg-[#336aea] rounded-full transition-all duration-300"
           style={{ width: `${pct}%` }}
         />
       </div>
       {/* Step label */}
       <div className="flex justify-between items-center">
-        <span className="text-xs font-semibold text-[#233933]/50 uppercase tracking-wide">
+        <span className="text-xs font-semibold text-[#22244e]/50 uppercase tracking-wide">
           Paso {current + 1} de {steps.length}
         </span>
-        <span className="text-xs font-bold text-[#233933]">
+        <span className="text-xs font-bold text-[#22244e]">
           {steps[current]}
         </span>
       </div>
