@@ -41,16 +41,25 @@ export async function actualizarSiteConfig(
 ) {
   try {
     const supabase = await asegurarAdmin();
-    const { error } = await supabase
+    const { data: rows, error } = await supabase
       .from("site_config")
-      .update({
+      .upsert({
+        id:               1,
         site_name:        site_name.trim() || "Minirutina",
         site_description: site_description.trim(),
         theme_color:      theme_color.trim() || "#336aea",
         updated_at:       new Date().toISOString(),
       })
-      .eq("id", 1);
+      .select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) {
+      return {
+        ok: false,
+        error:
+          "Guardado falló silenciosamente (probablemente RLS). " +
+          "Corré supabase/site_config_rls.sql en Supabase.",
+      };
+    }
     revalidarPublicas();
     revalidatePath("/admin/branding");
     return { ok: true };
@@ -85,14 +94,25 @@ export async function subirAsset(kind: AssetKind, formData: FormData) {
     const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
     const publicUrl = pub.publicUrl;
 
-    const { error: updErr } = await supabase
+    // upsert (not update) so we don't silently no-op if id=1 doesn't exist
+    // yet. Also use .select() so we can detect when RLS hides the row.
+    const { data: rows, error: updErr } = await supabase
       .from("site_config")
-      .update({
+      .upsert({
+        id:                     1,
         [COLUMN_BY_KIND[kind]]: publicUrl,
         updated_at:             new Date().toISOString(),
       })
-      .eq("id", 1);
-    if (updErr) return { ok: false, error: updErr.message };
+      .select("id");
+    if (updErr) return { ok: false, error: `DB: ${updErr.message}` };
+    if (!rows || rows.length === 0) {
+      return {
+        ok: false,
+        error:
+          "El archivo se subió pero el guardado en la base falló (probablemente RLS). " +
+          "Asegurate de haber corrido supabase/site_config_rls.sql en Supabase.",
+      };
+    }
 
     revalidarPublicas();
     revalidatePath("/admin/branding");
@@ -105,14 +125,18 @@ export async function subirAsset(kind: AssetKind, formData: FormData) {
 export async function quitarAsset(kind: AssetKind) {
   try {
     const supabase = await asegurarAdmin();
-    const { error } = await supabase
+    const { data: rows, error } = await supabase
       .from("site_config")
-      .update({
+      .upsert({
+        id:                     1,
         [COLUMN_BY_KIND[kind]]: null,
         updated_at:             new Date().toISOString(),
       })
-      .eq("id", 1);
+      .select("id");
     if (error) return { ok: false, error: error.message };
+    if (!rows || rows.length === 0) {
+      return { ok: false, error: "No se pudo guardar (revisá RLS)." };
+    }
     revalidarPublicas();
     revalidatePath("/admin/branding");
     return { ok: true };
