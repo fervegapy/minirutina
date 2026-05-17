@@ -5,6 +5,9 @@ export interface Producto {
   emoji: string;
   accentColor: string;
   precioDesde: string;
+  /** Optional original/list price shown struck-through alongside precioDesde
+   *  to communicate a discount. Null to hide. */
+  precioAnteriorDesde?: string;
   descripcion: string;
   paraQuien: string;
   incluye: string[];
@@ -20,7 +23,8 @@ export const productos: Record<string, Producto> = {
     tagline: "Son DOS tableros: uno para la rutina al despertarse y otro para la hora de dormir. Sin peleas, sin recordatorios.",
     emoji: "🌅",
     accentColor: "#a8c5a0",
-    precioDesde: "Gs. 149.000",
+    precioDesde:          "Gs. 149.000",
+    precioAnteriorDesde:  "Gs. 199.000",
     descripcion:
       "El producto incluye DOS tableros visuales — uno para cada momento clave del día. El primero organiza la rutina al despertarse (vestirse, lavarse los dientes, desayunar, mochila). El segundo, la rutina a la hora de dormir (baño, pijama, cuento, luz apagada). Con íconos claros y el nombre de tu hijo, los chicos saben qué viene después sin que tengas que decírselo.",
     paraQuien:
@@ -83,7 +87,8 @@ export const productos: Record<string, Producto> = {
     tagline: "Un tablero de 10 o 20 pasos con figuritas a elección. Para instalar un hábito o motivar un comportamiento.",
     emoji: "⭐",
     accentColor: "#f5d78e",
-    precioDesde: "Gs. 149.000",
+    precioDesde:          "Gs. 149.000",
+    precioAnteriorDesde:  "Gs. 199.000",
     descripcion:
       "Un tablero visual con 10 o 20 pasos (vos elegís cuántos), donde tu hijo va juntando figuritas hasta llegar a la recompensa que vos definís. Las figuritas las elegís a gusto y se compran aparte. Funciona mucho mejor que los castigos — los chicos se enganchan, quieren llenar el tablero y los hábitos se instalan solos.",
     paraQuien:

@@ -1,28 +1,70 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { productos as productosData } from "@/lib/productos";
+import { supabase } from "@/lib/supabase";
 
-const productos = [
-  {
-    emoji: "🌅",
-    tag: "El más pedido",
-    nombre: "Tablero de Rutinas",
-    desc: "Dos tableros: rutina al despertarse y a la hora de dormir. Tu hijo sabe qué sigue sin que tengas que recordárselo.",
+interface CardData {
+  slug:                 string;
+  emoji:                string;
+  tag:                  string;
+  nombre:               string;
+  desc:                 string;
+  beneficio:            string;
+  href:                 string;
+  accent:               string;
+  precioDesde:          string;
+  precioAnteriorDesde:  string | null;
+}
+
+const COPY: Record<string, Pick<CardData, "tag" | "desc" | "beneficio">> = {
+  rutinas: {
+    tag:       "El más pedido",
+    desc:      "Dos tableros: rutina al despertarse y a la hora de dormir. Tu hijo sabe qué sigue sin que tengas que recordárselo.",
     beneficio: "Menos conflictos a la hora de dormir y levantarse.",
-    href: "/productos/rutinas",
-    accent: "#a8c5a0",
   },
-  {
-    emoji: "⭐",
-    tag: "Super motivador",
-    nombre: "Tablero de Recompensas",
-    desc: "Un sistema de estrellitas con una recompensa especial al final. Funciona mejor que cualquier castigo.",
+  recompensas: {
+    tag:       "Super motivador",
+    desc:      "Un tablero de 10 o 20 pasos con figuritas a elección. Para instalar un hábito o motivar un comportamiento.",
     beneficio: "Hábitos nuevos en menos de 3 semanas.",
-    href: "/productos/recompensas",
-    accent: "#f5d78e",
   },
-];
+};
 
-export default function Productos() {
+async function getCards(): Promise<CardData[]> {
+  const slugs = ["rutinas", "recompensas"] as const;
+  const { data: precios } = await supabase
+    .from("precios")
+    .select("producto, precio_impreso, precio_digital, precio_anterior_impreso, precio_anterior_digital");
+  const preciosBySlug = new Map(
+    (precios ?? []).map((p) => [p.producto as string, p]),
+  );
+
+  const minPositive = (vs: (number | null | undefined)[]) => {
+    const nums = vs.filter((n): n is number => typeof n === "number" && n > 0);
+    return nums.length > 0 ? Math.min(...nums) : null;
+  };
+  const fmt = (n: number) => "Gs. " + n.toLocaleString("es-PY");
+
+  return slugs.map((slug) => {
+    const base = productosData[slug];
+    const row  = preciosBySlug.get(slug);
+    const cur  = row ? minPositive([row.precio_impreso, row.precio_digital]) : null;
+    const ant  = row ? minPositive([row.precio_anterior_impreso, row.precio_anterior_digital]) : null;
+    return {
+      slug,
+      emoji:               base.emoji,
+      nombre:              base.nombre,
+      href:                `/productos/${slug}`,
+      accent:              base.accentColor,
+      precioDesde:         cur !== null ? fmt(cur) : base.precioDesde,
+      precioAnteriorDesde: ant !== null ? fmt(ant) : (base.precioAnteriorDesde ?? null),
+      ...COPY[slug],
+    };
+  });
+}
+
+export default async function Productos() {
+  const productos = await getCards();
+
   return (
     <section id="productos" className="bg-[#faf6e7] px-6 py-20 md:py-24">
       <div className="max-w-5xl mx-auto">
@@ -67,10 +109,30 @@ export default function Productos() {
 
                 {/* Benefit pill */}
                 <div
-                  className="rounded-xl px-3 py-2 text-xs font-semibold text-[#22244e]/70 mb-5"
+                  className="rounded-xl px-3 py-2 text-xs font-semibold text-[#22244e]/70 mb-4"
                   style={{ backgroundColor: p.accent + "33" }}
                 >
                   💡 {p.beneficio}
+                </div>
+
+                {/* Precio */}
+                <div className="flex flex-wrap items-baseline gap-2 mb-5">
+                  <span className="text-[11px] uppercase tracking-widest text-[#22244e]/50 font-bold">
+                    desde
+                  </span>
+                  <span className="text-2xl font-bold text-[#22244e]">
+                    {p.precioDesde}
+                  </span>
+                  {p.precioAnteriorDesde && p.precioAnteriorDesde !== p.precioDesde && (
+                    <>
+                      <span className="text-sm text-[#22244e]/40 line-through">
+                        {p.precioAnteriorDesde}
+                      </span>
+                      <span className="inline-flex items-center text-[9px] font-bold uppercase tracking-widest bg-[#336aea] text-white px-1.5 py-0.5 rounded-full">
+                        Oferta
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <Link href={p.href}>

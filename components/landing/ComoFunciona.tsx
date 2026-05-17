@@ -57,10 +57,6 @@ export default function ComoFunciona() {
           ))}
         </div>
 
-        {/* Note about digital */}
-        <p className="text-center text-sm text-[#22244e]/40 mt-10">
-          ¿Preferís imprimir vos? También ofrecemos descarga digital a menor precio.
-        </p>
       </div>
     </section>
   );

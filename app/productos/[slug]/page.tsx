@@ -37,7 +37,7 @@ export default async function ProductoPage({
       .order("orden", { ascending: true }),
     supabase
       .from("precios")
-      .select("precio_impreso, precio_digital")
+      .select("precio_impreso, precio_digital, precio_anterior_impreso, precio_anterior_digital")
       .eq("producto", params.slug)
       .maybeSingle(),
   ]);
@@ -53,18 +53,30 @@ export default async function ProductoPage({
       : producto.faqs;
 
   // Merge CMS overrides + derived precioDesde over the hardcoded base.
+  const minPositive = (values: (number | null | undefined)[]) => {
+    const nums = values.filter((n): n is number => typeof n === "number" && n > 0);
+    return nums.length > 0 ? Math.min(...nums) : null;
+  };
+
   const precioDesdeDb = (() => {
     if (!precioRow) return null;
-    const candidatos = [precioRow.precio_impreso, precioRow.precio_digital].filter(
-      (n) => typeof n === "number" && n > 0,
-    );
-    if (candidatos.length === 0) return null;
-    return "Gs. " + Math.min(...candidatos).toLocaleString("es-PY");
+    const m = minPositive([precioRow.precio_impreso, precioRow.precio_digital]);
+    return m !== null ? "Gs. " + m.toLocaleString("es-PY") : null;
   })();
 
-  const nombre      = (cfg?.nombre  && cfg.nombre.trim())  || producto.nombre;
-  const tagline     = (cfg?.tagline && cfg.tagline.trim()) || producto.tagline;
-  const precioDesde = precioDesdeDb ?? producto.precioDesde;
+  const precioAnteriorDb = (() => {
+    if (!precioRow) return null;
+    const m = minPositive([
+      precioRow.precio_anterior_impreso,
+      precioRow.precio_anterior_digital,
+    ]);
+    return m !== null ? "Gs. " + m.toLocaleString("es-PY") : null;
+  })();
+
+  const nombre              = (cfg?.nombre  && cfg.nombre.trim())  || producto.nombre;
+  const tagline             = (cfg?.tagline && cfg.tagline.trim()) || producto.tagline;
+  const precioDesde         = precioDesdeDb     ?? producto.precioDesde;
+  const precioAnteriorDesde = precioAnteriorDb  ?? producto.precioAnteriorDesde ?? null;
 
   return (
     <div className="min-h-screen bg-[#faf6e7]">
@@ -101,11 +113,21 @@ export default async function ProductoPage({
               </p>
 
               {/* Precio */}
-              <div className="flex items-baseline gap-2 mb-6">
+              <div className="flex flex-wrap items-baseline gap-2 mb-6">
                 <span className="text-sm text-[#22244e]/50 font-medium">desde</span>
                 <span className="text-4xl font-bold text-[#22244e]">
                   {precioDesde}
                 </span>
+                {precioAnteriorDesde && precioAnteriorDesde !== precioDesde && (
+                  <>
+                    <span className="text-lg text-[#22244e]/40 line-through font-medium">
+                      {precioAnteriorDesde}
+                    </span>
+                    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest bg-[#336aea] text-white px-2 py-1 rounded-full">
+                      Oferta
+                    </span>
+                  </>
+                )}
               </div>
 
               {/* Lo que incluye (resumen) */}

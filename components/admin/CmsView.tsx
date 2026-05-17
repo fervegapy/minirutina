@@ -20,9 +20,11 @@ import {
 } from "@/app/admin/(dashboard)/cms/actions";
 
 export interface PrecioRow {
-  producto:       string;
-  precio_impreso: number;
-  precio_digital: number;
+  producto:                string;
+  precio_impreso:          number;
+  precio_digital:          number;
+  precio_anterior_impreso: number | null;
+  precio_anterior_digital: number | null;
 }
 export interface ProductoConfigRow {
   producto: string;
@@ -105,6 +107,8 @@ function PreciosSection({
               producto={p}
               precioImpreso={precio?.precio_impreso ?? 0}
               precioDigital={precio?.precio_digital ?? 0}
+              precioAnteriorImpreso={precio?.precio_anterior_impreso ?? 0}
+              precioAnteriorDigital={precio?.precio_anterior_digital ?? 0}
               activo={cfg?.activo ?? true}
               nombre={cfg?.nombre ?? null}
               tagline={cfg?.tagline ?? null}
@@ -120,6 +124,8 @@ function ProductoRow({
   producto,
   precioImpreso,
   precioDigital,
+  precioAnteriorImpreso,
+  precioAnteriorDigital,
   activo,
   nombre,
   tagline,
@@ -127,6 +133,8 @@ function ProductoRow({
   producto: string;
   precioImpreso: number;
   precioDigital: number;
+  precioAnteriorImpreso: number;
+  precioAnteriorDigital: number;
   activo: boolean;
   nombre: string | null;
   tagline: string | null;
@@ -137,7 +145,13 @@ function ProductoRow({
   // Prices
   const [impreso, setImpreso] = useState(precioImpreso);
   const [digital, setDigital] = useState(precioDigital);
-  const preciosDirty = impreso !== precioImpreso || digital !== precioDigital;
+  const [antImpreso, setAntImpreso] = useState(precioAnteriorImpreso);
+  const [antDigital, setAntDigital] = useState(precioAnteriorDigital);
+  const preciosDirty =
+    impreso     !== precioImpreso     ||
+    digital     !== precioDigital     ||
+    antImpreso  !== precioAnteriorImpreso ||
+    antDigital  !== precioAnteriorDigital;
 
   // Labels — empty input → vuelve al fallback hardcoded
   const fallback = FALLBACK_LABELS[producto] ?? { nombre: "", tagline: "" };
@@ -156,7 +170,13 @@ function ProductoRow({
 
   const guardarPrecios = () => {
     startTransition(async () => {
-      const r = await actualizarPrecios(producto, impreso, digital);
+      const r = await actualizarPrecios(
+        producto,
+        impreso,
+        digital,
+        antImpreso || null,
+        antDigital || null,
+      );
       if (r.ok) router.refresh();
       else alert(r.error ?? "Error");
     });
@@ -260,7 +280,7 @@ function ProductoRow({
         <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">
           Precios
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <PriceField
             label="Impreso (Gs.)"
             value={impreso}
@@ -271,17 +291,32 @@ function ProductoRow({
             value={digital}
             onChange={setDigital}
           />
-          {preciosDirty && (
-            <Button
-              onClick={guardarPrecios}
-              disabled={pending}
-              className="bg-zinc-900 hover:bg-zinc-800 text-white text-sm h-9 rounded-md"
-            >
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              {pending ? "Guardando..." : "Guardar precios"}
-            </Button>
-          )}
         </div>
+        <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium mt-3">
+          Precio anterior (se muestra tachado al lado del actual)
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <PriceField
+            label="Anterior impreso (Gs.) — 0 = oculto"
+            value={antImpreso}
+            onChange={setAntImpreso}
+          />
+          <PriceField
+            label="Anterior digital (Gs.) — 0 = oculto"
+            value={antDigital}
+            onChange={setAntDigital}
+          />
+        </div>
+        {preciosDirty && (
+          <Button
+            onClick={guardarPrecios}
+            disabled={pending}
+            className="bg-zinc-900 hover:bg-zinc-800 text-white text-sm h-9 rounded-md"
+          >
+            <Save className="w-3.5 h-3.5 mr-1.5" />
+            {pending ? "Guardando..." : "Guardar precios"}
+          </Button>
+        )}
         <p className="text-[10px] text-zinc-400">
           &quot;Desde&quot; en el catálogo se calcula automáticamente del menor de los dos.
         </p>

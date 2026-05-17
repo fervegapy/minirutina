@@ -24,15 +24,27 @@ export async function actualizarPrecios(
   producto: string,
   precio_impreso: number,
   precio_digital: number,
+  precio_anterior_impreso: number | null = null,
+  precio_anterior_digital: number | null = null,
 ) {
   try {
     const supabase = await asegurarAdmin();
     const { error } = await supabase
       .from("precios")
-      .upsert({ producto, precio_impreso, precio_digital, updated_at: new Date().toISOString() });
+      .upsert({
+        producto,
+        precio_impreso,
+        precio_digital,
+        precio_anterior_impreso,
+        precio_anterior_digital,
+        updated_at: new Date().toISOString(),
+      });
     if (error) return { ok: false, error: error.message };
     revalidatePath("/admin/cms");
     revalidatePath("/checkout");
+    revalidatePath("/");
+    revalidatePath("/productos/rutinas");
+    revalidatePath("/productos/recompensas");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error" };
