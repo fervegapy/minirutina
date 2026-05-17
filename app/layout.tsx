@@ -1,12 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Nunito } from "next/font/google";
+import { Rubik, Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteConfig } from "@/lib/site-config";
 
-const nunito = Nunito({
+// Inter = body / subtítulos. Rubik = títulos (h1–h6).
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-nunito",
-  weight: ["400", "600", "700"],
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const rubik = Rubik({
+  subsets: ["latin"],
+  variable: "--font-rubik",
+  weight: ["400", "500", "700"],
   display: "swap",
 });
 
@@ -46,7 +54,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={nunito.variable}>
+    <html lang="es" className={`${inter.variable} ${rubik.variable}`}>
       <body className="antialiased">{children}</body>
     </html>
   );
