@@ -1,11 +1,9 @@
 // Imprenta-bound PDF for the Rutinas product.
-// 3 pages: morning tablero, night tablero, and a sheet of "Listo" fichas
-// (the cumplido cards that the kid flips when they finish an activity).
 //
-// Reuses <FranjaPage> from TableroPDF so the tablero rendering stays
-// identical to the customer file (just no watermark). The cumplido cards
-// match the illustration card dimensions on the tablero (39.6 × 39.9 mm)
-// so they fit on the velcro dots one-to-one.
+// 4 pages: morning tablero, night tablero, and two sheets of "Listo"
+// fichas — one per tablero (7 each, 14 total). The ficha matches the
+// proportions of a full column on the tablero (39.6 mm × 69.5 mm) so it
+// can sit on the same velcro slot when the kid flips it.
 import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { FranjaPage } from "./TableroPDF";
@@ -15,28 +13,24 @@ const pt = (mm: number) => mm * 2.83465;
 const PAGE_W_MM = 210;
 const PAGE_H_MM = 297;
 
-// Same dimensions as the illustration card slots on the tablero — so the
-// "Listo" ficha can physically replace the illustration on the velcro dot.
+// Match the column rectangle of the tablero (NOT just the illustration
+// card). Width = column width. Height = lower velcro zone height.
 const CARD_W_MM = 39.6;
-const CARD_H_MM = 39.9;
+const CARD_H_MM = 69.5;
 
-// Gutters so the cut lines don't share a blade path between adjacent cards.
 const GUTTER_MM = 5;
-
 const COLS = 4;
-const ROWS = 4;                   // 16 slots — covers manana(7) + noche(7) = 14 with room to spare
+const ROWS = 2;                  // 4×2 = 8 slots, 7 used per page
 const GRID_W_MM = COLS * CARD_W_MM + (COLS - 1) * GUTTER_MM;
 const GRID_LEFT_MM = (PAGE_W_MM - GRID_W_MM) / 2;
-const GRID_TOP_MM  = 40;          // leave space for the page header
+const GRID_TOP_MM  = 40;
 
-// Cut line: subtle 0.5pt gray.
 const CUT_LINE_WIDTH = 0.5;
 const CUT_LINE_COLOR = "#B0B0B0";
 
-// Brand greens — fresh check circle + dark forest for the "Listo" label.
-const CHECK_BG   = "#5CB97F";     // bright green for the check circle
-const CHECK_FG   = "#FFFFFF";     // white tick
-const LABEL_COL  = "#3D5240";     // dark forest, matches the tablero text
+const CHECK_BG  = "#5CB97F";
+const CHECK_FG  = "#FFFFFF";
+const LABEL_COL = "#3D5240";
 
 export interface ImprentaRutinasPDFProps {
   nombreNino: string;
@@ -84,11 +78,16 @@ function cellTopLeft(i: number) {
   return { left, top };
 }
 
-function FichaListo({ index }: { index: number }) {
+function FichaListo({
+  index,
+  colorAcento,
+}: {
+  index: number;
+  colorAcento: string;
+}) {
   const { left, top } = cellTopLeft(index);
-  // Check circle ~14 mm — large enough to read at arm's length but with
-  // breathing room above the "Listo" label.
-  const CHECK_D_MM = 14;
+  const BAND_H_MM = 6;          // small accent strip on top, like the tablero
+  const CHECK_D_MM = 18;
 
   return (
     <View
@@ -102,47 +101,62 @@ function FichaListo({ index }: { index: number }) {
         borderWidth:     CUT_LINE_WIDTH,
         borderColor:     CUT_LINE_COLOR,
         borderRadius:    pt(2.5),
-        alignItems:      "center",
-        justifyContent:  "center",
+        overflow:        "hidden",
       }}
     >
-      {/* Green check circle */}
+      {/* Top accent band — mirrors the tablero look */}
       <View
         style={{
-          width:           pt(CHECK_D_MM),
-          height:          pt(CHECK_D_MM),
-          borderRadius:    pt(CHECK_D_MM / 2),
-          backgroundColor: CHECK_BG,
-          alignItems:      "center",
-          justifyContent:  "center",
-          marginBottom:    pt(3),
+          width:           "100%",
+          height:          pt(BAND_H_MM),
+          backgroundColor: colorAcento,
+        }}
+      />
+
+      {/* Body — check circle + label, vertically centered in the remaining space */}
+      <View
+        style={{
+          flex:           1,
+          alignItems:     "center",
+          justifyContent: "center",
+          paddingBottom:  pt(2),
         }}
       >
-        <Text
+        <View
           style={{
-            fontFamily: "Figtree",
-            fontWeight: 700,
-            fontSize:   22,
-            color:      CHECK_FG,
-            lineHeight: 1,
+            width:           pt(CHECK_D_MM),
+            height:          pt(CHECK_D_MM),
+            borderRadius:    pt(CHECK_D_MM / 2),
+            backgroundColor: CHECK_BG,
+            alignItems:      "center",
+            justifyContent:  "center",
+            marginBottom:    pt(4),
           }}
         >
-          ✓
+          <Text
+            style={{
+              fontFamily: "Figtree",
+              fontWeight: 700,
+              fontSize:   28,
+              color:      CHECK_FG,
+              lineHeight: 1,
+            }}
+          >
+            ✓
+          </Text>
+        </View>
+        <Text
+          style={{
+            fontFamily:    "Figtree",
+            fontWeight:    700,
+            fontSize:      12,
+            color:         LABEL_COL,
+            letterSpacing: 0.5,
+          }}
+        >
+          Listo
         </Text>
       </View>
-
-      {/* "Listo" label */}
-      <Text
-        style={{
-          fontFamily: "Figtree",
-          fontWeight: 700,
-          fontSize:   11,
-          color:      LABEL_COL,
-          letterSpacing: 0.4,
-        }}
-      >
-        Listo
-      </Text>
     </View>
   );
 }
@@ -150,9 +164,13 @@ function FichaListo({ index }: { index: number }) {
 function FichasChecksPage({
   nombreNino,
   count,
+  colorAcento,
+  momento,
 }: {
   nombreNino: string;
   count: number;
+  colorAcento: string;
+  momento: "mañana" | "noche";
 }) {
   return (
     <Page size={[pt(PAGE_W_MM), pt(PAGE_H_MM)]} style={styles.page}>
@@ -161,11 +179,11 @@ function FichasChecksPage({
           Fichas de cumplido — {nombreNino}
         </Text>
         <Text style={styles.pageHeaderSub}>
-          Recortar por la línea gris. Mismo tamaño que las fichas de actividades.
+          Para el tablero de la {momento}. Recortar por la línea gris.
         </Text>
       </View>
       {Array.from({ length: count }).map((_, i) => (
-        <FichaListo key={i} index={i} />
+        <FichaListo key={i} index={i} colorAcento={colorAcento} />
       ))}
     </Page>
   );
@@ -179,7 +197,6 @@ export default function ImprentaRutinasPDF({
   images,
   subtitleFont = "Nunito",
 }: ImprentaRutinasPDFProps) {
-  const totalChecks = manana.length + noche.length;
   return (
     <Document>
       <FranjaPage
@@ -206,8 +223,18 @@ export default function ImprentaRutinasPDF({
       />
       <FichasChecksPage
         nombreNino={nombreNino}
-        count={totalChecks}
+        count={manana.length}
+        colorAcento={colorAcento}
+        momento="mañana"
+      />
+      <FichasChecksPage
+        nombreNino={nombreNino}
+        count={noche.length}
+        colorAcento={colorAcento}
+        momento="noche"
       />
     </Document>
   );
 }
+// COLS/ROWS export so callers (or future tests) know the grid layout
+export const _GRID = { COLS, ROWS };
