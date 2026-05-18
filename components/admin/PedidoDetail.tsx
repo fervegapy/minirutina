@@ -167,6 +167,17 @@ Pedido ID: ${pedido.id.slice(0, 8)}
     a.click();
   };
 
+  const descargarCliente = async () => {
+    if (!pdfUrl) {
+      await cargarPdfCliente();
+      return; // user can click again once preview is ready
+    }
+    const a = document.createElement("a");
+    a.href = pdfUrl;
+    a.download = `tablero-${pedido.nombre_nino}-${pedido.id.slice(0, 8)}.pdf`;
+    a.click();
+  };
+
   const avanzarEstado = () => {
     if (!proximo) return;
     startTransition(async () => {
@@ -272,6 +283,15 @@ Pedido ID: ${pedido.id.slice(0, 8)}
                     Generar preview
                   </Button>
                 )}
+                {pdfUrl && (
+                  <Button
+                    onClick={descargarCliente}
+                    className="text-xs h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
+                  >
+                    <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                    Descargar PDF
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>
@@ -300,6 +320,15 @@ Pedido ID: ${pedido.id.slice(0, 8)}
                   >
                     <FileDown className="w-3.5 h-3.5 mr-1.5" />
                     Generar
+                  </Button>
+                )}
+                {imprentaUrl && (
+                  <Button
+                    onClick={descargarImprenta}
+                    className="text-xs h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
+                  >
+                    <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                    Descargar PDF
                   </Button>
                 )}
               </div>
