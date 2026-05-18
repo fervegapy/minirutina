@@ -225,47 +225,55 @@ function FranjaPageBlanco({ checkSrc }: { checkSrc?: string | null }) {
               borderLeftColor: TAB_BORDER_COL,
               alignItems:      "center",
               justifyContent:  "center",
-              paddingBottom:   pt(6),
             }}
           >
-            {/* Check placeholder — actual sticker (the recortable ficha)
-                gets pasted here. If the PNG is loaded, render a faint
-                version of it as a guide; otherwise show a dashed outline. */}
-            {checkSrc ? (
-              <Image
-                src={checkSrc}
-                style={{
-                  width:     pt(CHECK_PLACEHOLDER_MM),
-                  height:    pt(CHECK_PLACEHOLDER_MM),
-                  marginBottom: pt(4),
-                  opacity:   0.25,
-                  objectFit: "contain",
-                }}
-              />
-            ) : (
-              <View
-                style={{
-                  width:           pt(CHECK_PLACEHOLDER_MM),
-                  height:          pt(CHECK_PLACEHOLDER_MM),
-                  borderRadius:    pt(CHECK_PLACEHOLDER_MM / 2),
-                  borderWidth:     0.8,
-                  borderColor:     "#B0B0B0",
-                  marginBottom:    pt(4),
-                  backgroundColor: "#F8F8F8",
-                }}
-              />
-            )}
-            <Text
+            {/* Content is rotated 180° so that when the imprenta folds the
+                lower zone UP behind the upper zone, the text + check end
+                up right-side-up on the back of the tablero. Without the
+                rotation everything reads upside-down after folding. */}
+            <View
               style={{
-                fontFamily:    "Figtree",
-                fontWeight:    700,
-                fontSize:      14,
-                color:         LABEL_COL,
-                letterSpacing: 0.5,
+                alignItems:     "center",
+                justifyContent: "center",
+                paddingTop:     pt(6),
+                transform:      "rotate(180deg)",
               }}
             >
-              Listo
-            </Text>
+              <Text
+                style={{
+                  fontFamily:    "Figtree",
+                  fontWeight:    700,
+                  fontSize:      14,
+                  color:         LABEL_COL,
+                  letterSpacing: 0.5,
+                  marginBottom:  pt(4),
+                }}
+              >
+                Listo
+              </Text>
+              {checkSrc ? (
+                <Image
+                  src={checkSrc}
+                  style={{
+                    width:     pt(CHECK_PLACEHOLDER_MM),
+                    height:    pt(CHECK_PLACEHOLDER_MM),
+                    opacity:   0.25,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <View
+                  style={{
+                    width:           pt(CHECK_PLACEHOLDER_MM),
+                    height:          pt(CHECK_PLACEHOLDER_MM),
+                    borderRadius:    pt(CHECK_PLACEHOLDER_MM / 2),
+                    borderWidth:     0.8,
+                    borderColor:     "#B0B0B0",
+                    backgroundColor: "#F8F8F8",
+                  }}
+                />
+              )}
+            </View>
           </View>
         ))}
       </View>
