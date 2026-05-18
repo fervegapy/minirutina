@@ -5,7 +5,7 @@
 // proportions of a full column on the tablero (39.6 mm × 69.5 mm) so it
 // can sit on the same velcro slot when the kid flips it.
 import React from "react";
-import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { FranjaPage } from "./TableroPDF";
 
 const pt = (mm: number) => mm * 2.83465;
@@ -28,6 +28,7 @@ const GRID_TOP_MM  = 40;
 const CUT_LINE_WIDTH = 0.5;
 const CUT_LINE_COLOR = "#B0B0B0";
 
+// Fallback when the check PNG is unavailable (preview before assets sync).
 const CHECK_BG  = "#5CB97F";
 const CHECK_FG  = "#FFFFFF";
 const LABEL_COL = "#3D5240";
@@ -38,6 +39,9 @@ export interface ImprentaRutinasPDFProps {
   manana: string[];
   noche: string[];
   images: Record<string, string>;
+  /** Green check PNG from /public/recompensas/stickers/check.png — shown on
+   *  every "Listo" ficha so the cumplido visual is identical across products. */
+  checkSrc?: string | null;
   subtitleFont?: string;
 }
 
@@ -81,13 +85,15 @@ function cellTopLeft(i: number) {
 function FichaListo({
   index,
   colorAcento,
+  checkSrc,
 }: {
   index: number;
   colorAcento: string;
+  checkSrc?: string | null;
 }) {
   const { left, top } = cellTopLeft(index);
   const BAND_H_MM = 6;          // small accent strip on top, like the tablero
-  const CHECK_D_MM = 18;
+  const CHECK_D_MM = 26;        // big enough to read at arm's length
 
   return (
     <View
@@ -113,7 +119,7 @@ function FichaListo({
         }}
       />
 
-      {/* Body — check circle + label, vertically centered in the remaining space */}
+      {/* Body — green check + 'Listo' label, vertically centered */}
       <View
         style={{
           flex:           1,
@@ -122,34 +128,46 @@ function FichaListo({
           paddingBottom:  pt(2),
         }}
       >
-        <View
-          style={{
-            width:           pt(CHECK_D_MM),
-            height:          pt(CHECK_D_MM),
-            borderRadius:    pt(CHECK_D_MM / 2),
-            backgroundColor: CHECK_BG,
-            alignItems:      "center",
-            justifyContent:  "center",
-            marginBottom:    pt(4),
-          }}
-        >
-          <Text
+        {checkSrc ? (
+          <Image
+            src={checkSrc}
             style={{
-              fontFamily: "Figtree",
-              fontWeight: 700,
-              fontSize:   28,
-              color:      CHECK_FG,
-              lineHeight: 1,
+              width:        pt(CHECK_D_MM),
+              height:       pt(CHECK_D_MM),
+              marginBottom: pt(4),
+              objectFit:    "contain",
+            }}
+          />
+        ) : (
+          <View
+            style={{
+              width:           pt(CHECK_D_MM),
+              height:          pt(CHECK_D_MM),
+              borderRadius:    pt(CHECK_D_MM / 2),
+              backgroundColor: CHECK_BG,
+              alignItems:      "center",
+              justifyContent:  "center",
+              marginBottom:    pt(4),
             }}
           >
-            ✓
-          </Text>
-        </View>
+            <Text
+              style={{
+                fontFamily: "Figtree",
+                fontWeight: 700,
+                fontSize:   30,
+                color:      CHECK_FG,
+                lineHeight: 1,
+              }}
+            >
+              ✓
+            </Text>
+          </View>
+        )}
         <Text
           style={{
             fontFamily:    "Figtree",
             fontWeight:    700,
-            fontSize:      12,
+            fontSize:      13,
             color:         LABEL_COL,
             letterSpacing: 0.5,
           }}
@@ -166,11 +184,13 @@ function FichasChecksPage({
   count,
   colorAcento,
   momento,
+  checkSrc,
 }: {
   nombreNino: string;
   count: number;
   colorAcento: string;
   momento: "mañana" | "noche";
+  checkSrc?: string | null;
 }) {
   return (
     <Page size={[pt(PAGE_W_MM), pt(PAGE_H_MM)]} style={styles.page}>
@@ -183,7 +203,12 @@ function FichasChecksPage({
         </Text>
       </View>
       {Array.from({ length: count }).map((_, i) => (
-        <FichaListo key={i} index={i} colorAcento={colorAcento} />
+        <FichaListo
+          key={i}
+          index={i}
+          colorAcento={colorAcento}
+          checkSrc={checkSrc}
+        />
       ))}
     </Page>
   );
@@ -195,6 +220,7 @@ export default function ImprentaRutinasPDF({
   manana,
   noche,
   images,
+  checkSrc = null,
   subtitleFont = "Nunito",
 }: ImprentaRutinasPDFProps) {
   return (
@@ -226,12 +252,14 @@ export default function ImprentaRutinasPDF({
         count={manana.length}
         colorAcento={colorAcento}
         momento="mañana"
+        checkSrc={checkSrc}
       />
       <FichasChecksPage
         nombreNino={nombreNino}
         count={noche.length}
         colorAcento={colorAcento}
         momento="noche"
+        checkSrc={checkSrc}
       />
     </Document>
   );

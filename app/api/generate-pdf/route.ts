@@ -93,8 +93,13 @@ async function buildImprentaRutinasBuffer(
 ) {
   const allIconIds = [...manana, ...noche];
   const images = loadImages(allIconIds, genero);
+  // Reuse the green check sticker from /public/recompensas/stickers/check.png
+  // as the visual on the "Listo" fichas — keeps the cumplido check identical
+  // across both products.
+  const checkSrc = loadStickerImage("check");
   const element = React.createElement(ImprentaRutinasPDF, {
     nombreNino, colorAcento, manana, noche, images,
+    checkSrc,
     subtitleFont: SUBTITLE_FONT,
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
