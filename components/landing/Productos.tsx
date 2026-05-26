@@ -85,12 +85,6 @@ export default async function Productos() {
               key={p.nombre}
               className="bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden flex flex-col group hover:border-[#22244e]/20 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:shadow-[#22244e]/5"
             >
-              {/* Color bar */}
-              <div
-                className="h-2 w-full"
-                style={{ backgroundColor: p.accent }}
-              />
-
               {/* Product photo — 4:3, accent-tinted backdrop so it sits
                   cleanly even if the PNG has transparency. */}
               <div

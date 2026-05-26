@@ -67,7 +67,10 @@ export default function Hero() {
             preload="metadata"
             className="absolute inset-0 w-full h-full object-cover"
           >
-            <source src="/hero.mp4" type="video/mp4" />
+            {/* WebM first — better quality at smaller size, preferred by
+                Chrome/Firefox/Edge. MP4 fallback for Safari. */}
+            <source src="/hero.webm" type="video/webm" />
+            <source src="/hero.mp4"  type="video/mp4"  />
           </video>
 
           {/* Floating delivery pill — top-right. Warm golden accent so
