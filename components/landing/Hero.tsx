@@ -54,22 +54,25 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Right — image / visual */}
-        <div className="relative bg-[#efe9d6] min-h-[360px] md:min-h-0 order-1 md:order-2">
-          {/* Placeholder — swap this <div> for a real <Image> later */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8">
-            <div className="text-8xl mb-4">🖼️</div>
-            <p className="text-[#22244e]/40 text-sm font-medium">
-              Foto de producto va acá
-              <br />
-              (edge-to-edge, ocupa todo el lado derecho)
-            </p>
-          </div>
+        {/* Right — hero video. Autoplays muted on loop so it works as an
+            ambient loop without sound. preload=metadata keeps initial
+            page weight low — the file only downloads once it's about to
+            play. */}
+        <div className="relative bg-[#efe9d6] min-h-[360px] md:min-h-0 order-1 md:order-2 overflow-hidden">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src="/hero.mp4" type="video/mp4" />
+          </video>
 
-          {/* Floating delivery pill — top-right of image. Warm golden
-              accent so it contrasts with the blue CTAs/text without
-              competing. */}
-          <div className="hidden md:block absolute top-8 right-8 bg-[#ecbc5d] rounded-2xl px-4 py-2.5">
+          {/* Floating delivery pill — top-right. Warm golden accent so
+              it contrasts with the blue CTAs/text without competing. */}
+          <div className="hidden md:block absolute top-8 right-8 bg-[#ecbc5d] rounded-2xl px-4 py-2.5 shadow-sm">
             <p className="text-xs font-bold text-[#22244e]">Te llega en 48 hs</p>
           </div>
         </div>
