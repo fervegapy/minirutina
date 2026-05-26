@@ -68,9 +68,11 @@ export default function Hero() {
             className="absolute inset-0 w-full h-full object-cover"
           >
             {/* WebM first — better quality at smaller size, preferred by
-                Chrome/Firefox/Edge. MP4 fallback for Safari. */}
-            <source src="/hero.webm" type="video/webm" />
-            <source src="/hero.mp4"  type="video/mp4"  />
+                Chrome/Firefox/Edge. MP4 fallback for Safari.
+                Filenames are versioned so re-encodes bust the CDN/browser
+                cache without having to wait for stale headers to expire. */}
+            <source src="/hero-v2.webm" type="video/webm" />
+            <source src="/hero-v2.mp4"  type="video/mp4"  />
           </video>
 
           {/* Floating delivery pill — top-right. Warm golden accent so

@@ -12,8 +12,12 @@
 #   low    — CRF 38 WebM / CRF 30 MP4 — heavy compression, <1 MB target
 #
 # Outputs (overwritten):
-#   public/hero.webm
-#   public/hero.mp4
+#   public/hero-v2.webm
+#   public/hero-v2.mp4
+#
+# Bump the VERSION variable below (and the <source src=...> URLs in
+# Hero.tsx) when you re-encode — that's the cache-busting trick so
+# users don't keep seeing the old video.
 
 set -euo pipefail
 
@@ -33,8 +37,9 @@ case "$QUALITY" in
 esac
 
 OUT_DIR="$(cd "$(dirname "$0")/.." && pwd)/public"
-WEBM="$OUT_DIR/hero.webm"
-MP4="$OUT_DIR/hero.mp4"
+VERSION="v2"               # bump and update Hero.tsx <source> URLs to bust cache
+WEBM="$OUT_DIR/hero-$VERSION.webm"
+MP4="$OUT_DIR/hero-$VERSION.mp4"
 
 echo "→ Codificando WebM (VP9, CRF $WEBM_CRF)..."
 ffmpeg -y -i "$SRC" \
