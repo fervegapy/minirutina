@@ -5,6 +5,7 @@ import { productos } from "@/lib/productos";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/landing/Header";
 import Footer from "@/components/landing/Footer";
+import ProductGallery from "@/components/ProductGallery";
 
 // Force per-request so admin edits to FAQs and the "pause product"
 // toggle are visible immediately (no stale SSG/ISR cache).
@@ -85,16 +86,17 @@ export default async function ProductoPage({
         {/* Hero del producto */}
         <section className="px-6 py-16 md:py-20">
           <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-            {/* Imagen placeholder */}
-            <div
-              className="rounded-3xl aspect-square flex flex-col items-center justify-center border border-[#e5e7eb]"
-              style={{ backgroundColor: producto.accentColor + "22" }}
-            >
-              <span className="text-8xl mb-4">{producto.emoji}</span>
-              <p className="text-sm text-[#22244e]/30 font-medium">
-                Foto del producto
-              </p>
-            </div>
+            {/* Carrusel de imágenes — 3 fotos por producto, naming
+                convention: /public/productos/{slug}-{1,2,3}.png */}
+            <ProductGallery
+              images={[
+                `/productos/${params.slug}-1.png`,
+                `/productos/${params.slug}-2.png`,
+                `/productos/${params.slug}-3.png`,
+              ]}
+              alt={nombre}
+              accentColor={producto.accentColor}
+            />
 
             {/* Info */}
             <div>
