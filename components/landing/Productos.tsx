@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 
 interface CardData {
   slug:                 string;
-  emoji:                string;
   tag:                  string;
   nombre:               string;
   desc:                 string;
@@ -51,7 +50,6 @@ async function getCards(): Promise<CardData[]> {
     const ant  = row ? minPositive([row.precio_anterior_impreso, row.precio_anterior_digital]) : null;
     return {
       slug,
-      emoji:               base.emoji,
       nombre:              base.nombre,
       href:                `/productos/${slug}`,
       accent:              base.accentColor,
@@ -91,14 +89,25 @@ export default async function Productos() {
                 className="h-2 w-full"
                 style={{ backgroundColor: p.accent }}
               />
+
+              {/* Image placeholder — swap for a real <Image> when ready.
+                  Tinted with the accent color so the card already feels
+                  branded even before the photo lands. */}
+              <div
+                className="relative w-full aspect-[4/3] flex flex-col items-center justify-center border-b border-[#e5e7eb]"
+                style={{ backgroundColor: p.accent + "22" }}
+              >
+                <div className="text-5xl mb-1.5 opacity-40">🖼️</div>
+                <p className="text-[10px] uppercase tracking-widest text-[#22244e]/30 font-bold">
+                  Foto del producto
+                </p>
+              </div>
+
               <div className="p-6 flex flex-col flex-1">
                 {/* Tag */}
                 <span className="text-[11px] font-bold uppercase tracking-widest text-[#22244e]/40 mb-3">
                   {p.tag}
                 </span>
-
-                {/* Icon */}
-                <div className="text-5xl mb-4">{p.emoji}</div>
 
                 <h3 className="font-bold text-xl text-[#22244e] mb-2">
                   {p.nombre}
