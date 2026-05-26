@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { productos as productosData } from "@/lib/productos";
 import { supabase } from "@/lib/supabase";
@@ -90,17 +91,19 @@ export default async function Productos() {
                 style={{ backgroundColor: p.accent }}
               />
 
-              {/* Image placeholder — swap for a real <Image> when ready.
-                  Tinted with the accent color so the card already feels
-                  branded even before the photo lands. */}
+              {/* Product photo — 4:3, accent-tinted backdrop so it sits
+                  cleanly even if the PNG has transparency. */}
               <div
-                className="relative w-full aspect-[4/3] flex flex-col items-center justify-center border-b border-[#e5e7eb]"
+                className="relative w-full aspect-[4/3] border-b border-[#e5e7eb]"
                 style={{ backgroundColor: p.accent + "22" }}
               >
-                <div className="text-5xl mb-1.5 opacity-40">🖼️</div>
-                <p className="text-[10px] uppercase tracking-widest text-[#22244e]/30 font-bold">
-                  Foto del producto
-                </p>
+                <Image
+                  src={`/productos/${p.slug}.png`}
+                  alt={p.nombre}
+                  fill
+                  sizes="(min-width: 768px) 50vw, 100vw"
+                  className="object-cover"
+                />
               </div>
 
               <div className="p-6 flex flex-col flex-1">
