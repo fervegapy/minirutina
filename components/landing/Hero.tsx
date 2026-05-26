@@ -21,19 +21,11 @@ export default function Hero() {
             </p>
           </div>
 
-          {/* Floating badge — bottom-right, sits at the seam between image
-              and text columns */}
-          <div className="hidden md:flex absolute bottom-8 right-8 bg-white border border-[#e5e7eb] rounded-2xl px-4 py-3 shadow-sm items-center gap-2">
-            <span className="text-2xl">⭐</span>
-            <div>
-              <p className="text-xs font-bold text-[#22244e]">+200 familias</p>
-              <p className="text-[10px] text-[#22244e]/50">ya tienen su tablero</p>
-            </div>
-          </div>
-
-          {/* Floating delivery pill — top-left of image */}
-          <div className="hidden md:block absolute top-8 left-8 bg-[#336aea] rounded-2xl px-4 py-2.5">
-            <p className="text-xs font-bold text-white">Te llega en 48 hs</p>
+          {/* Floating delivery pill — top-left of image. Warm golden
+              accent so it contrasts with the blue CTAs/text without
+              competing. */}
+          <div className="hidden md:block absolute top-8 left-8 bg-[#ecbc5d] rounded-2xl px-4 py-2.5">
+            <p className="text-xs font-bold text-[#22244e]">Te llega en 48 hs</p>
           </div>
         </div>
 
