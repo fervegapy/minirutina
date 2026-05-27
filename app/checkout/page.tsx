@@ -155,8 +155,8 @@ function CheckoutInner() {
       .select("id")
       .single();
 
-    setLoading(false);
     if (dbError) {
+      setLoading(false);
       setError("Hubo un error al guardar tu pedido. Intentá de nuevo.");
       return;
     }
@@ -187,12 +187,44 @@ function CheckoutInner() {
       }).catch(() => {/* silent — no bloquea el flujo del cliente */});
     }
 
-    const confirmParams = new URLSearchParams({
-      nombre_nino: nombreNino,
-      tipo_entrega: tipoEntrega,
-      pedido_id: data.id,
-    });
-    router.push(`/confirmacion?${confirmParams.toString()}`);
+    // Create the Stripe Checkout Session and redirect to its hosted
+    // payment page. If something fails, fall back to /confirmacion so
+    // the customer still has their order recorded — they can pay later
+    // by WhatsApp / transferencia.
+    try {
+      const res = await fetch("/api/checkout/create-session", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          pedidoId:    data.id,
+          totalPyg:    precioTotal,
+          email:       email.trim() || null,
+          nombreNino,
+          producto,
+          tipoEntrega,
+          modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.ok && json.url) {
+        window.location.href = json.url;
+        return;
+      }
+      throw new Error(json.error ?? "No se pudo iniciar el pago.");
+    } catch (e) {
+      console.error(e);
+      // Fallback — pedido grabado, llevamos al usuario a la confirmación
+      // con un aviso de que coordine por WhatsApp.
+      const confirmParams = new URLSearchParams({
+        nombre_nino:  nombreNino,
+        tipo_entrega: tipoEntrega,
+        pedido_id:    data.id,
+        fallback:     "1",
+      });
+      router.push(`/confirmacion?${confirmParams.toString()}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -201,6 +233,13 @@ function CheckoutInner() {
         <h1 className="text-2xl font-bold text-[#22244e] mb-8 text-center">
           Resumen del pedido
         </h1>
+
+        {params.get("cancelado") === "1" && (
+          <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            Cancelaste el pago. Tu pedido sigue acá — completá el formulario abajo
+            para reintentar.
+          </div>
+        )}
 
         {/* Order summary */}
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-5">
