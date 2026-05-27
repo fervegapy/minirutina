@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import LocationPicker, { LocationValue } from "@/components/checkout/LocationPicker";
 import { track } from "@/lib/tracking";
+import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas: "Tablero de Rutinas",
@@ -19,7 +20,7 @@ const NOMBRE_COLOR: Record<string, string> = {
   "#f5d78e": "Amarillo cálido",
 };
 
-const PRECIO_DELIVERY = 35000;
+const PRECIO_DELIVERY_FALLBACK = 35000;     // used only if delivery_zonas is empty
 const FALLBACK_IMPRESO = 149000;
 const FALLBACK_DIGITAL = 89000;
 
@@ -41,6 +42,10 @@ function CheckoutInner() {
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [location, setLocation] = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
+  const [calle,      setCalle]      = useState("");
+  const [numero,     setNumero]     = useState("");
+  const [referencia, setReferencia] = useState("");
+  const [zonas, setZonas] = useState<DeliveryZona[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [precioImpreso,   setPrecioImpreso]   = useState(FALLBACK_IMPRESO);
@@ -78,6 +83,17 @@ function CheckoutInner() {
         setLoadingPrecios(false);
       });
   }, [producto]);
+
+  // Load delivery zones — one query, cached for the session.
+  useEffect(() => {
+    supabase
+      .from("delivery_zonas")
+      .select("*")
+      .order("orden", { ascending: true })
+      .then(({ data }) => {
+        if (data) setZonas(data as DeliveryZona[]);
+      });
+  }, []);
 
   // Funnel: landed on /checkout (fires once).
   useEffect(() => {
@@ -117,7 +133,14 @@ function CheckoutInner() {
   const precioImpresoEfectivo = usar20 && precioImpreso20 ? precioImpreso20 : precioImpreso;
   const precioDigitalEfectivo = usar20 && precioDigital20 ? precioDigital20 : precioDigital;
   const precioBase  = tipoEntrega === "digital" ? precioDigitalEfectivo : precioImpresoEfectivo;
-  const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery" ? PRECIO_DELIVERY : 0;
+
+  // Delivery cost depends on the selected city. Falls back to the legacy
+  // flat rate while zonas hasn't loaded (avoids showing 0 in the breakdown
+  // while the data is in-flight).
+  const zonaActual = findZonaForCiudad(location.ciudad, zonas);
+  const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery"
+    ? (zonaActual?.precio ?? PRECIO_DELIVERY_FALLBACK)
+    : 0;
   const precioTotal = precioBase + precioEnvio;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -130,6 +153,10 @@ function CheckoutInner() {
     if (tipoEntrega === "fisico" && modalidad === "delivery") {
       if (!location.departamento || !location.ciudad) {
         setError("Seleccioná el departamento y la ciudad.");
+        return;
+      }
+      if (!calle.trim() || !numero.trim()) {
+        setError("Completá calle y número.");
         return;
       }
     }
@@ -150,7 +177,12 @@ function CheckoutInner() {
         direccion = "Pickup — Villamorra, Asunción";
       } else {
         const { departamento, ciudad, barrio } = location;
-        direccion = `Delivery — ${departamento}, ${ciudad}${barrio ? `, ${barrio}` : ""}`;
+        const partes = [
+          `Delivery — ${departamento}, ${ciudad}${barrio ? `, ${barrio}` : ""}`,
+          `Calle: ${calle.trim()} ${numero.trim()}`,
+          referencia.trim() && `Referencia: ${referencia.trim()}`,
+        ].filter(Boolean);
+        direccion = partes.join(" · ");
       }
     }
 
@@ -161,6 +193,7 @@ function CheckoutInner() {
       personalizacion = {};
     }
 
+    const esDelivery = tipoEntrega === "fisico" && modalidad === "delivery";
     const { data, error: dbError } = await supabase
       .from("pedidos")
       .insert({
@@ -172,6 +205,13 @@ function CheckoutInner() {
         contacto,
         direccion,
         estado: "pendiente",
+        // Snapshot del costo y dirección de envío — para que reportes
+        // históricos no cambien si después cambias precios de zona.
+        costo_envio:      esDelivery ? precioEnvio : 0,
+        envio_zona:       esDelivery ? (zonaActual?.nombre ?? null) : null,
+        envio_calle:      esDelivery ? calle.trim() : null,
+        envio_numero:     esDelivery ? numero.trim() : null,
+        envio_referencia: esDelivery ? (referencia.trim() || null) : null,
       })
       .select("id")
       .single();
@@ -218,7 +258,10 @@ function CheckoutInner() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           pedidoId:    data.id,
-          totalPyg:    precioTotal,
+          // Send the producto and delivery amounts separately so Stripe
+          // shows the customer a discriminated total on the hosted page.
+          productoPyg: precioBase,
+          envioPyg:    precioEnvio,
           email:       email.trim() || null,
           nombreNino,
           producto,
@@ -389,9 +432,13 @@ function CheckoutInner() {
                 >
                   <div className="text-xl mb-1">🛵</div>
                   <div className="font-bold text-sm text-[#22244e]">Delivery</div>
-                  <div className="text-xs font-bold text-[#22244e]/70 mt-0.5">{fmt(PRECIO_DELIVERY)}</div>
+                  <div className="text-xs font-bold text-[#22244e]/70 mt-0.5">
+                    {location.ciudad && zonaActual
+                      ? fmt(zonaActual.precio)
+                      : "desde " + fmt(zonas[0]?.precio ?? PRECIO_DELIVERY_FALLBACK)}
+                  </div>
                   <div className="text-xs text-[#22244e]/50 mt-1 leading-relaxed">
-                    A tu puerta. Zona a confirmar por WhatsApp.
+                    A tu puerta. El precio se ajusta según tu ciudad.
                   </div>
                 </button>
               </div>
@@ -405,6 +452,34 @@ function CheckoutInner() {
                 Datos de entrega
               </h2>
               <LocationPicker onChange={setLocation} />
+
+              {/* Calle + Número + Referencia. Aparecen después de elegir
+                  ciudad para que la cascada visual tenga sentido. */}
+              <div className="grid grid-cols-3 gap-2">
+                <Input
+                  className="col-span-2"
+                  placeholder="Calle"
+                  value={calle}
+                  onChange={(e) => setCalle(e.target.value)}
+                />
+                <Input
+                  placeholder="Número"
+                  value={numero}
+                  onChange={(e) => setNumero(e.target.value)}
+                />
+              </div>
+              <Input
+                placeholder="Referencia (opcional — ej. portón verde, casa esquinera)"
+                value={referencia}
+                onChange={(e) => setReferencia(e.target.value)}
+              />
+
+              {/* Aviso de zona detectada */}
+              {location.ciudad && zonaActual && (
+                <div className="bg-[#a8c5a0]/15 border border-[#a8c5a0]/40 rounded-lg px-3 py-2 text-xs text-[#22244e]/80">
+                  Zona: <strong>{zonaActual.nombre}</strong> · Envío {fmt(zonaActual.precio)}
+                </div>
+              )}
             </div>
           )}
 

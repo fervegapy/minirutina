@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Package, BarChart3, Search, FileText, ImageIcon, TrendingUp, LogOut } from "lucide-react";
+import { Package, BarChart3, Search, FileText, ImageIcon, TrendingUp, Truck, LogOut } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const NAV = [
   { href: "/admin/pedidos",     label: "Pedidos",     Icon: Package },
   { href: "/admin/ventas",      label: "Ventas",      Icon: BarChart3 },
   { href: "/admin/intenciones", label: "Intenciones", Icon: Search },
-  { href: "/admin/cms",          label: "Contenido",     Icon: FileText },
+  { href: "/admin/cms",          label: "Contenido",      Icon: FileText },
   { href: "/admin/tipo-cambio",  label: "Tipo de cambio", Icon: TrendingUp },
-  { href: "/admin/branding",     label: "Branding",      Icon: ImageIcon },
+  { href: "/admin/delivery",     label: "Delivery",       Icon: Truck },
+  { href: "/admin/branding",     label: "Branding",       Icon: ImageIcon },
 ];
 
 export default function AdminSidebar({ email }: { email: string }) {
