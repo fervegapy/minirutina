@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
         metadata: { pedido_id: pedidoId },
         description: `Minirutina — ${nombreProducto} para ${nombreNino}`,
       },
-      success_url: `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&sid={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}&sid={CHECKOUT_SESSION_ID}`,
       cancel_url:  `${origin}/checkout?cancelado=1`,
     });
 
