@@ -19,6 +19,12 @@ export interface Pedido {
   direccion?: string | null;
   estado: EstadoPedido;
   archivo_url?: string | null;
+  // Stripe snapshots (set by /api/stripe/webhook when payment is
+  // captured). Null on manual / WhatsApp pedidos.
+  stripe_session_id?:        string | null;
+  stripe_payment_intent_id?: string | null;
+  tipo_cambio_usado?:        number | null;
+  moneda_pago?:              string | null;
 }
 
 export interface PersonalizacionRutinas {

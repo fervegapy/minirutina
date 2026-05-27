@@ -13,6 +13,8 @@ import {
   Package,
   Truck,
   FileDown,
+  CreditCard,
+  ExternalLink,
 } from "lucide-react";
 import type { Pedido, EstadoPedido } from "@/types/pedido";
 import {
@@ -255,6 +257,59 @@ Pedido ID: ${pedido.id.slice(0, 8)}
               )}
             </CardContent>
           </Card>
+
+          {/* Pago — solo si hubo paso por Stripe */}
+          {pedido.stripe_session_id && (
+            <Card className="bg-white">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-zinc-500" />
+                    Pago Stripe
+                  </CardTitle>
+                  <Badge className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] h-5 px-2">
+                    💳 Stripe
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {pedido.moneda_pago && (
+                  <Row
+                    icon={<CreditCard className="w-4 h-4 text-zinc-400" />}
+                    label="Moneda"
+                    value={pedido.moneda_pago}
+                  />
+                )}
+                {pedido.tipo_cambio_usado && (
+                  <Row
+                    icon={<Calendar className="w-4 h-4 text-zinc-400" />}
+                    label="Tipo de cambio"
+                    value={`1 ${pedido.moneda_pago ?? "USD"} = ${Number(pedido.tipo_cambio_usado).toLocaleString("es-PY")} Gs.`}
+                  />
+                )}
+                <Row
+                  icon={<FileDown className="w-4 h-4 text-zinc-400" />}
+                  label="Session ID"
+                  value={
+                    <span className="font-mono text-xs text-zinc-700">
+                      {pedido.stripe_session_id.slice(0, 20)}…
+                    </span>
+                  }
+                />
+                <div className="pt-2">
+                  <a
+                    href={`https://dashboard.stripe.com/test/payments?query=${encodeURIComponent(pedido.stripe_session_id)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900"
+                  >
+                    Ver en dashboard de Stripe
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Personalización */}
           <Card className="bg-white">
