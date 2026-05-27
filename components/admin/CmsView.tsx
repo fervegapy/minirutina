@@ -20,11 +20,12 @@ import {
 } from "@/app/admin/(dashboard)/cms/actions";
 
 export interface PrecioRow {
-  producto:                string;
-  precio_impreso:          number;
-  precio_digital:          number;
-  precio_anterior_impreso: number | null;
-  precio_anterior_digital: number | null;
+  producto:          string;
+  precio_impreso:    number;
+  precio_digital:    number;
+  /** Only used for Recompensas — 20-stickers variant. Null for Rutinas. */
+  precio_impreso_20: number | null;
+  precio_digital_20: number | null;
 }
 export interface ProductoConfigRow {
   producto: string;
@@ -107,8 +108,8 @@ function PreciosSection({
               producto={p}
               precioImpreso={precio?.precio_impreso ?? 0}
               precioDigital={precio?.precio_digital ?? 0}
-              precioAnteriorImpreso={precio?.precio_anterior_impreso ?? 0}
-              precioAnteriorDigital={precio?.precio_anterior_digital ?? 0}
+              precioImpreso20={precio?.precio_impreso_20 ?? 0}
+              precioDigital20={precio?.precio_digital_20 ?? 0}
               activo={cfg?.activo ?? true}
               nombre={cfg?.nombre ?? null}
               tagline={cfg?.tagline ?? null}
@@ -124,8 +125,8 @@ function ProductoRow({
   producto,
   precioImpreso,
   precioDigital,
-  precioAnteriorImpreso,
-  precioAnteriorDigital,
+  precioImpreso20,
+  precioDigital20,
   activo,
   nombre,
   tagline,
@@ -133,8 +134,8 @@ function ProductoRow({
   producto: string;
   precioImpreso: number;
   precioDigital: number;
-  precioAnteriorImpreso: number;
-  precioAnteriorDigital: number;
+  precioImpreso20: number;
+  precioDigital20: number;
   activo: boolean;
   nombre: string | null;
   tagline: string | null;
@@ -142,16 +143,20 @@ function ProductoRow({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  const esRecompensas = producto === "recompensas";
+
   // Prices
-  const [impreso, setImpreso] = useState(precioImpreso);
-  const [digital, setDigital] = useState(precioDigital);
-  const [antImpreso, setAntImpreso] = useState(precioAnteriorImpreso);
-  const [antDigital, setAntDigital] = useState(precioAnteriorDigital);
+  const [impreso,   setImpreso]   = useState(precioImpreso);
+  const [digital,   setDigital]   = useState(precioDigital);
+  const [impreso20, setImpreso20] = useState(precioImpreso20);
+  const [digital20, setDigital20] = useState(precioDigital20);
   const preciosDirty =
-    impreso     !== precioImpreso     ||
-    digital     !== precioDigital     ||
-    antImpreso  !== precioAnteriorImpreso ||
-    antDigital  !== precioAnteriorDigital;
+    impreso   !== precioImpreso   ||
+    digital   !== precioDigital   ||
+    (esRecompensas && (
+      impreso20 !== precioImpreso20 ||
+      digital20 !== precioDigital20
+    ));
 
   // Labels — empty input → vuelve al fallback hardcoded
   const fallback = FALLBACK_LABELS[producto] ?? { nombre: "", tagline: "" };
@@ -161,12 +166,14 @@ function ProductoRow({
     (nombreVal.trim()  || null) !== (nombre  ?? null) ||
     (taglineVal.trim() || null) !== (tagline ?? null);
 
-  // Precio "desde" — derivado del menor entre los precios actuales
+  // Precio "desde" — derivado del menor entre TODOS los variantes
   const precioDesde = useMemo(() => {
-    const valores = [impreso, digital].filter((n) => n > 0);
+    const valores = esRecompensas
+      ? [impreso, digital, impreso20, digital20].filter((n) => n > 0)
+      : [impreso, digital].filter((n) => n > 0);
     if (valores.length === 0) return null;
     return Math.min(...valores);
-  }, [impreso, digital]);
+  }, [impreso, digital, impreso20, digital20, esRecompensas]);
 
   const guardarPrecios = () => {
     startTransition(async () => {
@@ -174,8 +181,8 @@ function ProductoRow({
         producto,
         impreso,
         digital,
-        antImpreso || null,
-        antDigital || null,
+        esRecompensas ? (impreso20 || null) : null,
+        esRecompensas ? (digital20 || null) : null,
       );
       if (r.ok) router.refresh();
       else alert(r.error ?? "Error");
@@ -277,36 +284,34 @@ function ProductoRow({
 
       {/* Precios */}
       <div className="space-y-3 pt-2 border-t border-zinc-100">
-        <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">
-          Precios
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <PriceField
-            label="Impreso (Gs.)"
-            value={impreso}
-            onChange={setImpreso}
-          />
-          <PriceField
-            label="Digital (Gs.)"
-            value={digital}
-            onChange={setDigital}
-          />
-        </div>
-        <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium mt-3">
-          Precio anterior (se muestra tachado al lado del actual)
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <PriceField
-            label="Anterior impreso (Gs.) — 0 = oculto"
-            value={antImpreso}
-            onChange={setAntImpreso}
-          />
-          <PriceField
-            label="Anterior digital (Gs.) — 0 = oculto"
-            value={antDigital}
-            onChange={setAntDigital}
-          />
-        </div>
+        {esRecompensas ? (
+          <>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">
+              Precios — 10 stickers
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <PriceField label="Impreso (Gs.)" value={impreso}   onChange={setImpreso} />
+              <PriceField label="Digital (Gs.)" value={digital}   onChange={setDigital} />
+            </div>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium mt-3">
+              Precios — 20 stickers
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <PriceField label="Impreso (Gs.)" value={impreso20} onChange={setImpreso20} />
+              <PriceField label="Digital (Gs.)" value={digital20} onChange={setDigital20} />
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">
+              Precios
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <PriceField label="Impreso (Gs.)" value={impreso} onChange={setImpreso} />
+              <PriceField label="Digital (Gs.)" value={digital} onChange={setDigital} />
+            </div>
+          </>
+        )}
         {preciosDirty && (
           <Button
             onClick={guardarPrecios}

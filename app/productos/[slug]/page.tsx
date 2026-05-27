@@ -38,7 +38,7 @@ export default async function ProductoPage({
       .order("orden", { ascending: true }),
     supabase
       .from("precios")
-      .select("precio_impreso, precio_digital, precio_anterior_impreso, precio_anterior_digital")
+      .select("precio_impreso, precio_digital, precio_impreso_20, precio_digital_20")
       .eq("producto", params.slug)
       .maybeSingle(),
   ]);
@@ -53,31 +53,29 @@ export default async function ProductoPage({
       ? faqRows.map((r) => ({ q: r.pregunta, a: r.respuesta }))
       : producto.faqs;
 
-  // Merge CMS overrides + derived precioDesde over the hardcoded base.
+  // Merge CMS overrides + derived precio over the hardcoded base.
+  // Card shows ONE representative price: the lowest variant available
+  // (variant selection — impreso/digital and 10/20 stickers — happens
+  // later in the customizer / checkout).
   const minPositive = (values: (number | null | undefined)[]) => {
     const nums = values.filter((n): n is number => typeof n === "number" && n > 0);
     return nums.length > 0 ? Math.min(...nums) : null;
   };
 
-  const precioDesdeDb = (() => {
-    if (!precioRow) return null;
-    const m = minPositive([precioRow.precio_impreso, precioRow.precio_digital]);
-    return m !== null ? "Gs. " + m.toLocaleString("es-PY") : null;
-  })();
-
-  const precioAnteriorDb = (() => {
+  const precioDb = (() => {
     if (!precioRow) return null;
     const m = minPositive([
-      precioRow.precio_anterior_impreso,
-      precioRow.precio_anterior_digital,
+      precioRow.precio_impreso,
+      precioRow.precio_digital,
+      precioRow.precio_impreso_20,
+      precioRow.precio_digital_20,
     ]);
     return m !== null ? "Gs. " + m.toLocaleString("es-PY") : null;
   })();
 
-  const nombre              = (cfg?.nombre  && cfg.nombre.trim())  || producto.nombre;
-  const tagline             = (cfg?.tagline && cfg.tagline.trim()) || producto.tagline;
-  const precioDesde         = precioDesdeDb     ?? producto.precioDesde;
-  const precioAnteriorDesde = precioAnteriorDb  ?? producto.precioAnteriorDesde ?? null;
+  const nombre  = (cfg?.nombre  && cfg.nombre.trim())  || producto.nombre;
+  const tagline = (cfg?.tagline && cfg.tagline.trim()) || producto.tagline;
+  const precio  = precioDb ?? producto.precioDesde;
 
   return (
     <div className="min-h-screen bg-[#faf6e7]">
@@ -114,22 +112,11 @@ export default async function ProductoPage({
                 {tagline}
               </p>
 
-              {/* Precio */}
-              <div className="flex flex-wrap items-baseline gap-2 mb-6">
-                <span className="text-sm text-[#22244e]/50 font-medium">desde</span>
+              {/* Precio — un solo número, sin 'desde' ni tachado */}
+              <div className="mb-6">
                 <span className="text-4xl font-bold text-[#22244e]">
-                  {precioDesde}
+                  {precio}
                 </span>
-                {precioAnteriorDesde && precioAnteriorDesde !== precioDesde && (
-                  <>
-                    <span className="text-lg text-[#22244e]/40 line-through font-medium">
-                      {precioAnteriorDesde}
-                    </span>
-                    <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest bg-[#336aea] text-white px-2 py-1 rounded-full">
-                      Oferta
-                    </span>
-                  </>
-                )}
               </div>
 
               {/* Lo que incluye (resumen) */}
@@ -279,7 +266,7 @@ export default async function ProductoPage({
               </Button>
             </Link>
             <p className="text-white/30 text-xs mt-4">
-              desde {precioDesde} · entrega en 48 hs
+              {precio} · entrega en 48 hs
             </p>
           </div>
         </section>

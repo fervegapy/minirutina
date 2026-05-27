@@ -5,27 +5,20 @@ import { productos as productosData } from "@/lib/productos";
 import { supabase } from "@/lib/supabase";
 
 interface CardData {
-  slug:                 string;
-  tag:                  string;
-  nombre:               string;
-  desc:                 string;
-  beneficio:            string;
-  href:                 string;
-  accent:               string;
-  precioDesde:          string;
-  precioAnteriorDesde:  string | null;
+  slug:        string;
+  nombre:      string;
+  desc:        string;
+  href:        string;
+  accent:      string;
+  precio:      string;
 }
 
-const COPY: Record<string, Pick<CardData, "tag" | "desc" | "beneficio">> = {
+const COPY: Record<string, Pick<CardData, "desc">> = {
   rutinas: {
-    tag:       "El más pedido",
-    desc:      "Dos tableros: rutina al despertarse y a la hora de dormir. Tu hijo sabe qué sigue sin que tengas que recordárselo.",
-    beneficio: "Menos conflictos a la hora de dormir y levantarse.",
+    desc: "Dos tableros: rutina al despertarse y a la hora de dormir. Tu hijo sabe qué sigue sin que tengas que recordárselo.",
   },
   recompensas: {
-    tag:       "Super motivador",
-    desc:      "Un tablero de 10 o 20 pasos con figuritas a elección. Para instalar un hábito o motivar un comportamiento.",
-    beneficio: "Hábitos nuevos en menos de 3 semanas.",
+    desc: "Un tablero de 10 o 20 pasos con figuritas a elección. Para instalar un hábito o motivar un comportamiento.",
   },
 };
 
@@ -33,7 +26,7 @@ async function getCards(): Promise<CardData[]> {
   const slugs = ["rutinas", "recompensas"] as const;
   const { data: precios } = await supabase
     .from("precios")
-    .select("producto, precio_impreso, precio_digital, precio_anterior_impreso, precio_anterior_digital");
+    .select("producto, precio_impreso, precio_digital, precio_impreso_20, precio_digital_20");
   const preciosBySlug = new Map(
     (precios ?? []).map((p) => [p.producto as string, p]),
   );
@@ -47,15 +40,23 @@ async function getCards(): Promise<CardData[]> {
   return slugs.map((slug) => {
     const base = productosData[slug];
     const row  = preciosBySlug.get(slug);
-    const cur  = row ? minPositive([row.precio_impreso, row.precio_digital]) : null;
-    const ant  = row ? minPositive([row.precio_anterior_impreso, row.precio_anterior_digital]) : null;
+    // Card shows a single representative price — the lowest variant
+    // available for that product. Variant selection happens later in the
+    // customizer / checkout.
+    const cur = row
+      ? minPositive([
+          row.precio_impreso,
+          row.precio_digital,
+          row.precio_impreso_20,
+          row.precio_digital_20,
+        ])
+      : null;
     return {
       slug,
-      nombre:              base.nombre,
-      href:                `/productos/${slug}`,
-      accent:              base.accentColor,
-      precioDesde:         cur !== null ? fmt(cur) : base.precioDesde,
-      precioAnteriorDesde: ant !== null ? fmt(ant) : (base.precioAnteriorDesde ?? null),
+      nombre: base.nombre,
+      href:   `/productos/${slug}`,
+      accent: base.accentColor,
+      precio: cur !== null ? fmt(cur) : base.precioDesde,
       ...COPY[slug],
     };
   });
@@ -101,44 +102,18 @@ export default async function Productos() {
               </div>
 
               <div className="p-6 flex flex-col flex-1">
-                {/* Tag */}
-                <span className="text-[11px] font-bold uppercase tracking-widest text-[#22244e]/40 mb-3">
-                  {p.tag}
-                </span>
-
                 <h3 className="font-bold text-xl text-[#22244e] mb-2">
                   {p.nombre}
                 </h3>
-                <p className="text-sm text-[#22244e]/60 leading-relaxed mb-3 flex-1">
+                <p className="text-sm text-[#22244e]/60 leading-relaxed mb-5 flex-1">
                   {p.desc}
                 </p>
 
-                {/* Benefit pill */}
-                <div
-                  className="rounded-xl px-3 py-2 text-xs font-semibold text-[#22244e]/70 mb-4"
-                  style={{ backgroundColor: p.accent + "33" }}
-                >
-                  💡 {p.beneficio}
-                </div>
-
-                {/* Precio */}
-                <div className="flex flex-wrap items-baseline gap-2 mb-5">
-                  <span className="text-[11px] uppercase tracking-widest text-[#22244e]/50 font-bold">
-                    desde
-                  </span>
+                {/* Precio — un solo número, sin 'desde' ni tachado */}
+                <div className="mb-5">
                   <span className="text-2xl font-bold text-[#22244e]">
-                    {p.precioDesde}
+                    {p.precio}
                   </span>
-                  {p.precioAnteriorDesde && p.precioAnteriorDesde !== p.precioDesde && (
-                    <>
-                      <span className="text-sm text-[#22244e]/40 line-through">
-                        {p.precioAnteriorDesde}
-                      </span>
-                      <span className="inline-flex items-center text-[9px] font-bold uppercase tracking-widest bg-[#336aea] text-white px-1.5 py-0.5 rounded-full">
-                        Oferta
-                      </span>
-                    </>
-                  )}
                 </div>
 
                 <Link href={p.href}>

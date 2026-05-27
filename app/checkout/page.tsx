@@ -43,21 +43,37 @@ function CheckoutInner() {
   const [location, setLocation] = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [precioImpreso, setPrecioImpreso] = useState(FALLBACK_IMPRESO);
-  const [precioDigital, setPrecioDigital] = useState(FALLBACK_DIGITAL);
-  const [loadingPrecios, setLoadingPrecios] = useState(true);
+  const [precioImpreso,   setPrecioImpreso]   = useState(FALLBACK_IMPRESO);
+  const [precioDigital,   setPrecioDigital]   = useState(FALLBACK_DIGITAL);
+  const [precioImpreso20, setPrecioImpreso20] = useState<number | null>(null);
+  const [precioDigital20, setPrecioDigital20] = useState<number | null>(null);
+  const [loadingPrecios,  setLoadingPrecios]  = useState(true);
+
+  // For Recompensas, the customizer chose `cantidad` (10 or 20). When it's
+  // 20 we use the precio_*_20 variant; for everything else (including
+  // Rutinas, which has no cantidad) we use the base columns.
+  const cantidadRecompensas: 10 | 20 = (() => {
+    try {
+      const p = JSON.parse(personalizacionRaw);
+      return p?.cantidad === 20 ? 20 : 10;
+    } catch {
+      return 10;
+    }
+  })();
 
   useEffect(() => {
     if (!producto) return;
     supabase
       .from("precios")
-      .select("precio_impreso, precio_digital")
+      .select("precio_impreso, precio_digital, precio_impreso_20, precio_digital_20")
       .eq("producto", producto)
       .single()
       .then(({ data }) => {
         if (data) {
           setPrecioImpreso(data.precio_impreso);
           setPrecioDigital(data.precio_digital);
+          setPrecioImpreso20(data.precio_impreso_20 ?? null);
+          setPrecioDigital20(data.precio_digital_20 ?? null);
         }
         setLoadingPrecios(false);
       });
@@ -95,7 +111,12 @@ function CheckoutInner() {
     });
   }, [email, whatsapp, filledFired, producto, nombreNino]);
 
-  const precioBase = tipoEntrega === "digital" ? precioDigital : precioImpreso;
+  // Resolve the correct variant price. Recompensas + cantidad 20 → _20
+  // columns (if set, otherwise gracefully fall back to the base price).
+  const usar20 = producto === "recompensas" && cantidadRecompensas === 20;
+  const precioImpresoEfectivo = usar20 && precioImpreso20 ? precioImpreso20 : precioImpreso;
+  const precioDigitalEfectivo = usar20 && precioDigital20 ? precioDigital20 : precioDigital;
+  const precioBase  = tipoEntrega === "digital" ? precioDigitalEfectivo : precioImpresoEfectivo;
   const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery" ? PRECIO_DELIVERY : 0;
   const precioTotal = precioBase + precioEnvio;
 
@@ -274,7 +295,7 @@ function CheckoutInner() {
               {loadingPrecios ? (
                 <span className="w-20 h-4 bg-[#e5e7eb] rounded animate-pulse" />
               ) : (
-                <span className="font-bold text-[#22244e]">{fmt(precioImpreso)}</span>
+                <span className="font-bold text-[#22244e]">{fmt(precioImpresoEfectivo)}</span>
               )}
             </div>
           </div>

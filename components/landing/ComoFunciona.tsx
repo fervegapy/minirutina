@@ -28,7 +28,7 @@ export default function ComoFunciona() {
             Sin complicaciones
           </span>
           <h2 className="text-3xl md:text-4xl font-bold text-[#22244e]">
-            Así de simple funciona
+            Así funciona
           </h2>
         </div>
 

@@ -22,23 +22,26 @@ function revalidarPublicas() {
 
 export async function actualizarPrecios(
   producto: string,
-  precio_impreso: number,
-  precio_digital: number,
-  precio_anterior_impreso: number | null = null,
-  precio_anterior_digital: number | null = null,
+  precio_impreso:    number,
+  precio_digital:    number,
+  precio_impreso_20: number | null = null,
+  precio_digital_20: number | null = null,
 ) {
   try {
     const supabase = await asegurarAdmin();
-    const { error } = await supabase
-      .from("precios")
-      .upsert({
-        producto,
-        precio_impreso,
-        precio_digital,
-        precio_anterior_impreso,
-        precio_anterior_digital,
-        updated_at: new Date().toISOString(),
-      });
+    // For Rutinas the _20 fields are ignored (no cantidad concept).
+    // For Recompensas they hold the 20-stickers variant prices.
+    const payload: Record<string, unknown> = {
+      producto,
+      precio_impreso,
+      precio_digital,
+      updated_at: new Date().toISOString(),
+    };
+    if (producto === "recompensas") {
+      payload.precio_impreso_20 = precio_impreso_20;
+      payload.precio_digital_20 = precio_digital_20;
+    }
+    const { error } = await supabase.from("precios").upsert(payload);
     if (error) return { ok: false, error: error.message };
     revalidatePath("/admin/cms");
     revalidatePath("/checkout");
