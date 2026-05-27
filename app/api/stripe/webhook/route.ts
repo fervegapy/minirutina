@@ -7,7 +7,7 @@
 // Stripe SDK's constructEvent helper.
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import Stripe from "stripe";
 
 // Force node runtime — edge runtime can't validate signatures with the
@@ -50,16 +50,30 @@ export async function POST(req: NextRequest) {
         // Snapshot rate / currency / amount on the pedido.
         const tasa  = Number(session.metadata?.tasa_pyg_usd ?? 0);
         const moneda = (session.currency ?? "usd").toUpperCase();
-        await supabase
+        const { data: updated, error: updErr } = await supabaseAdmin
           .from("pedidos")
           .update({
             estado:            "pagado",
             tipo_cambio_usado: tasa > 0 ? tasa : null,
             moneda_pago:       moneda,
           })
-          .eq("id", pedidoId);
+          .eq("id", pedidoId)
+          .select("id");
 
-        console.log("[stripe/webhook] pedido", pedidoId, "marcado como pagado");
+        if (updErr) {
+          console.error("[stripe/webhook] supabase update error:", updErr);
+          // Return 500 so Stripe retries.
+          return NextResponse.json({ error: "db update failed" }, { status: 500 });
+        }
+        if (!updated || updated.length === 0) {
+          console.warn(
+            "[stripe/webhook] update affected 0 rows for pedido_id",
+            pedidoId,
+            "— ¿existe?",
+          );
+        } else {
+          console.log("[stripe/webhook] pedido", pedidoId, "marcado como pagado");
+        }
         break;
       }
 

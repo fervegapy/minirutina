@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe, STRIPE_CURRENCY } from "@/lib/stripe";
 import { getTasaActual } from "@/lib/tipo-cambio";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 interface Body {
   pedidoId:     string;
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Snapshot the rate on the pedido NOW. Even if the customer
     //    bounces before paying, we record what we quoted them.
-    await supabase
+    await supabaseAdmin
       .from("pedidos")
       .update({
         tipo_cambio_usado: tasa,
