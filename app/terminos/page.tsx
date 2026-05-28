@@ -28,6 +28,12 @@ export default function TerminosPage() {
         podés escribirnos a
         <a href="mailto:soporte@minirutina.com"> soporte@minirutina.com</a>.
       </p>
+      <p>
+        Minirutina es operada por <strong>Fernando Samuel Vega González</strong>,
+        con Cédula de Identidad N.° <strong>4.496.767</strong>, como persona
+        física titular del negocio. Todas las operaciones comerciales y los
+        cobros realizados a través del sitio se asocian a dicha titularidad.
+      </p>
 
       <h2>2. Aceptación de los términos</h2>
       <p>
