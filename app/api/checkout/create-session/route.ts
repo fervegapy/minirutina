@@ -56,8 +56,14 @@ export async function POST(req: NextRequest) {
       : modalidad === "delivery"
       ? "Impreso + envío"
       : "Impreso (retiro)";
+
+    // Short, human-readable order number (same one shown across the app /
+    // emails as #XXXXXXXX). Goes both in the order_id and the visible
+    // description so it's trackable from dLocal's dashboard and on the
+    // payment page. The webhook still looks the pedido up by order_id.
+    const nroPedido = pedidoId.slice(0, 8).toUpperCase();
     const descripcion =
-      `${nombreProducto} — ${nombreNino} · ${entregaTxt}`.slice(0, 100);
+      `Pedido #${nroPedido} · ${nombreProducto} — ${nombreNino} · ${entregaTxt}`.slice(0, 100);
 
     const payment = await createPayment({
       amount:           totalPyg,        // PYG, integer — no decimals
