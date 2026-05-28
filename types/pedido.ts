@@ -19,12 +19,20 @@ export interface Pedido {
   direccion?: string | null;
   estado: EstadoPedido;
   archivo_url?: string | null;
-  // Stripe snapshots (set by /api/stripe/webhook when payment is
-  // captured). Null on manual / WhatsApp pedidos.
+  // Payment snapshots (set by the payment webhook when captured).
+  // Null on manual / WhatsApp pedidos.
+  metodo_pago?:              string | null;   // 'dlocal' | 'stripe' | 'manual'
+  dlocal_payment_id?:        string | null;
   stripe_session_id?:        string | null;
   stripe_payment_intent_id?: string | null;
   tipo_cambio_usado?:        number | null;
   moneda_pago?:              string | null;
+  // Delivery snapshot
+  costo_envio?:              number | null;
+  envio_zona?:               string | null;
+  envio_calle?:              string | null;
+  envio_numero?:             string | null;
+  envio_referencia?:         string | null;
 }
 
 export interface PersonalizacionRutinas {
