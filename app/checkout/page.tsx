@@ -49,6 +49,12 @@ function CheckoutInner() {
   const [zonas, setZonas] = useState<DeliveryZona[]>([]);
   const [titular, setTitular] = useState("");        // nombre del titular de la tarjeta
   const cardRef = useRef<DlocalCardFormHandle>(null);
+
+  // Cupón de descuento
+  const [cuponInput,    setCuponInput]    = useState("");
+  const [cuponAplicado, setCuponAplicado] = useState<{ codigo: string; descuento: number } | null>(null);
+  const [cuponError,    setCuponError]    = useState<string | null>(null);
+  const [cuponLoading,  setCuponLoading]  = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [precioImpreso,   setPrecioImpreso]   = useState(FALLBACK_IMPRESO);
@@ -144,7 +150,42 @@ function CheckoutInner() {
   const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery"
     ? (zonaActual?.precio ?? PRECIO_DELIVERY_FALLBACK)
     : 0;
-  const precioTotal = precioBase + precioEnvio;
+
+  // Coupon discount applies to the PRODUCT subtotal (shipping stays full).
+  const descuentoCupon = cuponAplicado ? Math.min(cuponAplicado.descuento, precioBase) : 0;
+  const precioTotal = precioBase - descuentoCupon + precioEnvio;
+
+  const aplicarCupon = async () => {
+    const codigo = cuponInput.trim();
+    if (!codigo) return;
+    setCuponLoading(true);
+    setCuponError(null);
+    try {
+      const res = await fetch("/api/cupon/validar", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ codigo, montoBase: precioBase }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        setCuponAplicado({ codigo: codigo.toUpperCase(), descuento: json.descuento });
+        setCuponError(null);
+      } else {
+        setCuponAplicado(null);
+        setCuponError(json.error ?? "Cupón inválido.");
+      }
+    } catch {
+      setCuponError("No se pudo validar el cupón.");
+    } finally {
+      setCuponLoading(false);
+    }
+  };
+
+  const quitarCupon = () => {
+    setCuponAplicado(null);
+    setCuponInput("");
+    setCuponError(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,6 +294,7 @@ function CheckoutInner() {
           token,
           productoPyg: precioBase,
           envioPyg:    precioEnvio,
+          cuponCodigo: cuponAplicado?.codigo ?? null,
           email:       email.trim() || null,
           nombre:      titular.trim() || null,
           nombreNino,
@@ -497,6 +539,50 @@ function CheckoutInner() {
             </p>
           </div>
 
+          {/* Cupón de descuento */}
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
+            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
+              Cupón de descuento
+            </h2>
+            {cuponAplicado ? (
+              <div className="flex items-center justify-between bg-[#a8c5a0]/15 border border-[#a8c5a0]/40 rounded-lg px-3 py-2.5">
+                <div className="text-sm">
+                  <span className="font-bold text-[#22244e]">{cuponAplicado.codigo}</span>
+                  <span className="text-[#22244e]/60"> · −{fmt(descuentoCupon)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={quitarCupon}
+                  className="text-xs text-[#22244e]/50 hover:text-red-600 underline underline-offset-2"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Código de cupón"
+                    value={cuponInput}
+                    onChange={(e) => setCuponInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aplicarCupon(); } }}
+                    className="uppercase"
+                  />
+                  <Button
+                    type="button"
+                    onClick={aplicarCupon}
+                    disabled={!cuponInput.trim() || cuponLoading}
+                    variant="outline"
+                    className="border-[#22244e] text-[#22244e] h-10 px-5 shrink-0"
+                  >
+                    {cuponLoading ? "..." : "Aplicar"}
+                  </Button>
+                </div>
+                {cuponError && <p className="text-xs text-red-600">{cuponError}</p>}
+              </>
+            )}
+          </div>
+
           {/* Pago con tarjeta (SmartFields embebido) */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
             <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
@@ -522,6 +608,12 @@ function CheckoutInner() {
                 <span>Tablero {tipoEntrega === "fisico" ? "Impreso" : "Digital"}</span>
                 <span>{fmt(precioBase)}</span>
               </div>
+              {descuentoCupon > 0 && (
+                <div className="flex justify-between text-sm text-[#a8c5a0] font-semibold">
+                  <span>Cupón {cuponAplicado?.codigo}</span>
+                  <span>−{fmt(descuentoCupon)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-[#22244e]/60">
                 <span>Envío ({tipoEntrega === "fisico" ? (modalidad === "delivery" ? "Delivery" : "Pickup") : "Digital"})</span>
                 <span>{precioEnvio === 0 ? "Gs. 0" : fmt(precioEnvio)}</span>
