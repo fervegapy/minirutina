@@ -231,27 +231,13 @@ function CheckoutInner() {
       pedidoId: data.id,
     });
 
-    // Send confirmation email in the background — don't block the redirect.
-    if (email.trim()) {
-      fetch("/api/email/confirmacion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email:       email.trim(),
-          nombreNino,
-          producto,
-          tipoEntrega,
-          modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
-          total:       precioTotal,
-          pedidoId:    data.id,
-        }),
-      }).catch(() => {/* silent — no bloquea el flujo del cliente */});
-    }
+    // NOTE: the confirmation email is NOT sent here. It only goes out
+    // once dLocal confirms the payment (PAID) via /api/dlocal/webhook,
+    // so customers don't get a "thanks" email for an unpaid order.
 
-    // Create the Stripe Checkout Session and redirect to its hosted
-    // payment page. If something fails, fall back to /confirmacion so
-    // the customer still has their order recorded — they can pay later
-    // by WhatsApp / transferencia.
+    // Create the dLocal payment and redirect to its hosted payment page.
+    // If something fails, fall back to /confirmacion so the customer still
+    // has their order recorded — they can pay later by WhatsApp.
     try {
       const res = await fetch("/api/checkout/create-session", {
         method:  "POST",
