@@ -58,6 +58,48 @@ export async function createPayment(params: CreatePaymentParams): Promise<Dlocal
   return JSON.parse(text) as DlocalPayment;
 }
 
+export interface CreateTokenPaymentParams {
+  amount:           number;        // PYG integer
+  currency:         string;        // "PYG"
+  country:          string;        // "PY"
+  order_id:         string;
+  description:      string;
+  token:            string;        // SmartFields card token
+  notification_url: string;
+  success_url?:     string;        // used for 3DS return
+  back_url?:        string;
+  payer?: {
+    name?:     string;
+    email?:    string;
+    document?: string;
+  };
+}
+
+/**
+ * Direct card charge using a SmartFields token. Hypothesis: dLocal Go's
+ * /v1/payments accepts a `token` to process the charge inline instead of
+ * returning a redirect_url. Response status may be PAID directly, or
+ * PENDING + redirect_url when 3-D Secure authentication is required.
+ */
+export async function createPaymentWithToken(
+  params: CreateTokenPaymentParams,
+): Promise<DlocalPayment> {
+  const res = await fetch(`${API_BASE}/payments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization:  authHeader(),
+    },
+    body: JSON.stringify(params),
+    cache: "no-store",
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`dLocal createPaymentWithToken ${res.status}: ${text}`);
+  }
+  return JSON.parse(text) as DlocalPayment;
+}
+
 export async function getPayment(paymentId: string): Promise<DlocalPayment> {
   const res = await fetch(`${API_BASE}/payments/${encodeURIComponent(paymentId)}`, {
     method: "GET",

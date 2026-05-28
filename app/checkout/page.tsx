@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import LocationPicker, { LocationValue } from "@/components/checkout/LocationPicker";
 import { track } from "@/lib/tracking";
 import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
+import DlocalCardForm, { type DlocalCardFormHandle } from "@/components/checkout/DlocalCardForm";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas: "Tablero de Rutinas",
@@ -46,6 +47,8 @@ function CheckoutInner() {
   const [numero,     setNumero]     = useState("");
   const [referencia, setReferencia] = useState("");
   const [zonas, setZonas] = useState<DeliveryZona[]>([]);
+  const [titular, setTitular] = useState("");        // nombre del titular de la tarjeta
+  const cardRef = useRef<DlocalCardFormHandle>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [precioImpreso,   setPrecioImpreso]   = useState(FALLBACK_IMPRESO);
@@ -235,20 +238,23 @@ function CheckoutInner() {
     // once dLocal confirms the payment (PAID) via /api/dlocal/webhook,
     // so customers don't get a "thanks" email for an unpaid order.
 
-    // Create the dLocal payment and redirect to its hosted payment page.
-    // If something fails, fall back to /confirmacion so the customer still
-    // has their order recorded — they can pay later by WhatsApp.
+    // Embedded SmartFields flow: tokenize the card client-side, then charge
+    // server-side. The customer never leaves minirutina.com (unless 3DS
+    // requires it). If anything fails, the pedido stays 'pendiente' and we
+    // surface the error so they can retry.
     try {
-      const res = await fetch("/api/checkout/create-session", {
+      const token = await cardRef.current!.tokenize(titular.trim() || nombreNino);
+
+      const res = await fetch("/api/checkout/pay-with-token", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           pedidoId:    data.id,
-          // Send the producto and delivery amounts separately so Stripe
-          // shows the customer a discriminated total on the hosted page.
+          token,
           productoPyg: precioBase,
           envioPyg:    precioEnvio,
           email:       email.trim() || null,
+          nombre:      titular.trim() || null,
           nombreNino,
           producto,
           tipoEntrega,
@@ -256,22 +262,22 @@ function CheckoutInner() {
         }),
       });
       const json = await res.json();
-      if (json.ok && json.url) {
-        window.location.href = json.url;
+
+      if (json.ok && json.status === "PAID") {
+        const p = new URLSearchParams({
+          nombre_nino: nombreNino, tipo_entrega: tipoEntrega, pedido_id: data.id, pagado: "1",
+        });
+        router.push(`/confirmacion?${p.toString()}`);
         return;
       }
-      throw new Error(json.error ?? "No se pudo iniciar el pago.");
+      if (json.ok && json.status === "PENDING" && json.redirectUrl) {
+        // 3-D Secure — la tarjeta requiere autenticación adicional.
+        window.location.href = json.redirectUrl;
+        return;
+      }
+      throw new Error(json.error ?? "No se pudo procesar el pago.");
     } catch (e) {
-      console.error(e);
-      // Fallback — pedido grabado, llevamos al usuario a la confirmación
-      // con un aviso de que coordine por WhatsApp.
-      const confirmParams = new URLSearchParams({
-        nombre_nino:  nombreNino,
-        tipo_entrega: tipoEntrega,
-        pedido_id:    data.id,
-        fallback:     "1",
-      });
-      router.push(`/confirmacion?${confirmParams.toString()}`);
+      setError(e instanceof Error ? e.message : "No se pudo procesar el pago. Revisá los datos de la tarjeta.");
     } finally {
       setLoading(false);
     }
@@ -491,6 +497,20 @@ function CheckoutInner() {
             </p>
           </div>
 
+          {/* Pago con tarjeta (SmartFields embebido) */}
+          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
+            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
+              Pago con tarjeta
+            </h2>
+            <Input
+              placeholder="Nombre del titular de la tarjeta"
+              value={titular}
+              onChange={(e) => setTitular(e.target.value)}
+              autoComplete="cc-name"
+            />
+            <DlocalCardForm ref={cardRef} />
+          </div>
+
           {error && (
             <p className="text-red-500 text-sm text-center">{error}</p>
           )}
@@ -519,7 +539,7 @@ function CheckoutInner() {
                 disabled={loading}
                 className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3 h-12"
               >
-                {loading ? "Guardando..." : "Ir a pagar"}
+                {loading ? "Procesando pago..." : `Pagar ${loadingPrecios ? "" : fmt(precioTotal)}`}
               </Button>
             </div>
           </div>
