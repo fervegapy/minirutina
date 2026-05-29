@@ -15,11 +15,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createPayment } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 
 interface Body {
   pedidoId:     string;
   productoPyg:  number;
   envioPyg?:    number;
+  cuponCodigo?: string | null;
   totalPyg?:    number;            // legacy fallback
   email?:       string | null;
   nombreNino:   string;
@@ -43,7 +45,19 @@ export async function POST(req: NextRequest) {
       ? body.productoPyg
       : Number(body.totalPyg ?? 0);
     const envioPyg = Number.isFinite(body.envioPyg) ? Number(body.envioPyg) : 0;
-    const totalPyg = Math.round(productoPyg + envioPyg);
+
+    // Re-validate coupon server-side against the product subtotal.
+    let descuento = 0;
+    let cuponAplicado: { id: string; codigo: string } | null = null;
+    if (body.cuponCodigo) {
+      const cupon = await fetchCupon(body.cuponCodigo);
+      if (cupon) {
+        const ev = evaluarCupon(cupon, productoPyg);
+        if (ev.ok) { descuento = ev.descuento; cuponAplicado = { id: cupon.id, codigo: cupon.codigo }; }
+      }
+    }
+
+    const totalPyg = Math.round(Math.max(0, productoPyg - descuento) + envioPyg);
 
     if (!pedidoId || totalPyg <= 0) {
       return NextResponse.json({ ok: false, error: "Datos del pedido incompletos." }, { status: 400 });
@@ -87,15 +101,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Snapshot the dLocal payment id + method on the pedido.
+    // Snapshot the dLocal payment id + method + coupon on the pedido.
     await supabaseAdmin
       .from("pedidos")
       .update({
         dlocal_payment_id: payment.id,
         metodo_pago:       "dlocal",
         moneda_pago:       "PYG",
+        cupon_codigo:      cuponAplicado?.codigo ?? null,
+        cupon_descuento:   descuento > 0 ? descuento : null,
       })
       .eq("id", pedidoId);
+
+    // Record coupon usage now (redirect flow — the customer is committing
+    // to pay). The webhook marks the pedido 'pagado' on success.
+    if (cuponAplicado && descuento > 0) {
+      await supabaseAdmin.from("cupon_usos").insert({
+        cupon_id:        cuponAplicado.id,
+        codigo:          cuponAplicado.codigo,
+        pedido_id:       pedidoId,
+        email:           email ?? null,
+        monto_original:  Math.round(productoPyg + envioPyg),
+        monto_descuento: descuento,
+        monto_final:     totalPyg,
+      });
+      const { data: cuRow } = await supabaseAdmin
+        .from("cupones").select("usos").eq("id", cuponAplicado.id).maybeSingle();
+      await supabaseAdmin.from("cupones")
+        .update({ usos: (cuRow?.usos ?? 0) + 1 }).eq("id", cuponAplicado.id);
+    }
 
     return NextResponse.json({ ok: true, url: payment.redirect_url });
   } catch (e) {

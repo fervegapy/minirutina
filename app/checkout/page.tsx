@@ -29,6 +29,10 @@ function fmt(n: number) {
   return "Gs. " + n.toLocaleString("es-PY");
 }
 
+// "embedded" = SmartFields card form on our page (needs the dLocal account
+// to have SmartFields enabled). "redirect" = dLocal hosted checkout page.
+const CHECKOUT_MODE = (process.env.NEXT_PUBLIC_CHECKOUT_MODE ?? "redirect") as "redirect" | "embedded";
+
 function CheckoutInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -279,47 +283,62 @@ function CheckoutInner() {
     // once dLocal confirms the payment (PAID) via /api/dlocal/webhook,
     // so customers don't get a "thanks" email for an unpaid order.
 
-    // Embedded SmartFields flow: tokenize the card client-side, then charge
-    // server-side. The customer never leaves minirutina.com (unless 3DS
-    // requires it). If anything fails, the pedido stays 'pendiente' and we
-    // surface the error so they can retry.
     try {
-      const token = await cardRef.current!.tokenize(titular.trim() || nombreNino);
+      if (CHECKOUT_MODE === "embedded") {
+        // SmartFields: tokenize client-side, charge server-side. Customer
+        // never leaves the site (unless 3DS).
+        const token = await cardRef.current!.tokenize(titular.trim() || nombreNino);
+        const res = await fetch("/api/checkout/pay-with-token", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            pedidoId:    data.id,
+            token,
+            productoPyg: precioBase,
+            envioPyg:    precioEnvio,
+            cuponCodigo: cuponAplicado?.codigo ?? null,
+            email:       email.trim() || null,
+            nombre:      titular.trim() || null,
+            nombreNino, producto, tipoEntrega,
+            modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
+          }),
+        });
+        const json = await res.json();
+        if (json.ok && json.status === "PAID") {
+          const p = new URLSearchParams({ nombre_nino: nombreNino, tipo_entrega: tipoEntrega, pedido_id: data.id, pagado: "1" });
+          router.push(`/confirmacion?${p.toString()}`);
+          return;
+        }
+        if (json.ok && json.status === "PENDING" && json.redirectUrl) {
+          window.location.href = json.redirectUrl;
+          return;
+        }
+        throw new Error(json.error ?? "No se pudo procesar el pago.");
+      }
 
-      const res = await fetch("/api/checkout/pay-with-token", {
+      // Redirect flow: create a dLocal hosted-checkout session and send the
+      // browser there. Proven working; the default mode.
+      const res = await fetch("/api/checkout/create-session", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           pedidoId:    data.id,
-          token,
           productoPyg: precioBase,
           envioPyg:    precioEnvio,
           cuponCodigo: cuponAplicado?.codigo ?? null,
           email:       email.trim() || null,
-          nombre:      titular.trim() || null,
-          nombreNino,
-          producto,
-          tipoEntrega,
+          nombreNino, producto, tipoEntrega,
           modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
         }),
       });
       const json = await res.json();
-
-      if (json.ok && json.status === "PAID") {
-        const p = new URLSearchParams({
-          nombre_nino: nombreNino, tipo_entrega: tipoEntrega, pedido_id: data.id, pagado: "1",
-        });
-        router.push(`/confirmacion?${p.toString()}`);
+      if (json.ok && json.url) {
+        window.location.href = json.url;
         return;
       }
-      if (json.ok && json.status === "PENDING" && json.redirectUrl) {
-        // 3-D Secure — la tarjeta requiere autenticación adicional.
-        window.location.href = json.redirectUrl;
-        return;
-      }
-      throw new Error(json.error ?? "No se pudo procesar el pago.");
+      throw new Error(json.error ?? "No se pudo iniciar el pago.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo procesar el pago. Revisá los datos de la tarjeta.");
+      setError(e instanceof Error ? e.message : "No se pudo procesar el pago. Intentá de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -583,19 +602,21 @@ function CheckoutInner() {
             )}
           </div>
 
-          {/* Pago con tarjeta (SmartFields embebido) */}
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
-              Pago con tarjeta
-            </h2>
-            <Input
-              placeholder="Nombre del titular de la tarjeta"
-              value={titular}
-              onChange={(e) => setTitular(e.target.value)}
-              autoComplete="cc-name"
-            />
-            <DlocalCardForm ref={cardRef} />
-          </div>
+          {/* Pago con tarjeta (SmartFields embebido) — solo en modo embedded */}
+          {CHECKOUT_MODE === "embedded" && (
+            <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
+              <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
+                Pago con tarjeta
+              </h2>
+              <Input
+                placeholder="Nombre del titular de la tarjeta"
+                value={titular}
+                onChange={(e) => setTitular(e.target.value)}
+                autoComplete="cc-name"
+              />
+              <DlocalCardForm ref={cardRef} />
+            </div>
+          )}
 
           {error && (
             <p className="text-red-500 text-sm text-center">{error}</p>
@@ -631,7 +652,11 @@ function CheckoutInner() {
                 disabled={loading}
                 className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3 h-12"
               >
-                {loading ? "Procesando pago..." : `Pagar ${loadingPrecios ? "" : fmt(precioTotal)}`}
+                {loading
+                  ? "Procesando..."
+                  : CHECKOUT_MODE === "embedded"
+                  ? `Pagar ${loadingPrecios ? "" : fmt(precioTotal)}`
+                  : `Ir a pagar ${loadingPrecios ? "" : fmt(precioTotal)}`}
               </Button>
             </div>
           </div>
