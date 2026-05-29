@@ -33,6 +33,20 @@ function fmt(n: number) {
 // to have SmartFields enabled). "redirect" = dLocal hosted checkout page.
 const CHECKOUT_MODE = (process.env.NEXT_PUBLIC_CHECKOUT_MODE ?? "redirect") as "redirect" | "embedded";
 
+const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Numbered step heading used across the checkout sections.
+function StepTitle({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <span className="w-6 h-6 rounded-full bg-[#22244e] text-white text-xs font-bold flex items-center justify-center shrink-0">
+        {n}
+      </span>
+      <h2 className="font-bold text-sm text-[#22244e]">{children}</h2>
+    </div>
+  );
+}
+
 function CheckoutInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -44,6 +58,8 @@ function CheckoutInner() {
 
   const [tipoEntrega, setTipoEntrega] = useState<"fisico" | "digital">("fisico");
   const [modalidad, setModalidad] = useState<"pickup" | "delivery">("pickup");
+  const [nombre,   setNombre]   = useState("");
+  const [apellido, setApellido] = useState("");
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [location, setLocation] = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
@@ -191,11 +207,23 @@ function CheckoutInner() {
     setCuponError(null);
   };
 
+  // Completeness — drives the disabled state of the pay button.
+  const emailValido = EMAIL_RX.test(email.trim());
+  const datosEntregaOk =
+    !(tipoEntrega === "fisico" && modalidad === "delivery") ||
+    !!(location.departamento && location.ciudad && calle.trim() && numero.trim());
+  const formValido =
+    !!nombre.trim() && !!apellido.trim() && emailValido && datosEntregaOk && !loadingPrecios;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email.trim() && !whatsapp.trim()) {
-      setError("Ingresá al menos tu email o WhatsApp.");
+    if (!nombre.trim() || !apellido.trim()) {
+      setError("Ingresá tu nombre y apellido.");
+      return;
+    }
+    if (!emailValido) {
+      setError("Ingresá un email válido.");
       return;
     }
     if (tipoEntrega === "fisico" && modalidad === "delivery") {
@@ -212,7 +240,9 @@ function CheckoutInner() {
     setLoading(true);
     setError("");
 
+    const nombreCompleto = `${nombre.trim()} ${apellido.trim()}`;
     const contacto = [
+      `Nombre: ${nombreCompleto}`,
       email.trim() && `Email: ${email.trim()}`,
       whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
     ]
@@ -298,7 +328,7 @@ function CheckoutInner() {
             envioPyg:    precioEnvio,
             cuponCodigo: cuponAplicado?.codigo ?? null,
             email:       email.trim() || null,
-            nombre:      titular.trim() || null,
+            nombre:      `${nombre.trim()} ${apellido.trim()}`,
             nombreNino, producto, tipoEntrega,
             modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
           }),
@@ -327,6 +357,7 @@ function CheckoutInner() {
           envioPyg:    precioEnvio,
           cuponCodigo: cuponAplicado?.codigo ?? null,
           email:       email.trim() || null,
+          nombreComprador: `${nombre.trim()} ${apellido.trim()}`,
           nombreNino, producto, tipoEntrega,
           modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
         }),
@@ -400,9 +431,7 @@ function CheckoutInner() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Tipo de entrega */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-4">
-              Tipo de entrega
-            </h2>
+            <StepTitle n={1}>Tipo de entrega</StepTitle>
 
             {tipoEntrega === "fisico" ? (
               <>
@@ -454,9 +483,7 @@ function CheckoutInner() {
           {/* Modalidad de entrega (solo físico) */}
           {tipoEntrega === "fisico" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-              <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-4">
-                Modalidad de entrega
-              </h2>
+              <StepTitle n={2}>Modalidad de entrega</StepTitle>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -501,9 +528,7 @@ function CheckoutInner() {
           {/* Datos de entrega (solo delivery) */}
           {tipoEntrega === "fisico" && modalidad === "delivery" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-              <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
-                Datos de entrega
-              </h2>
+              <StepTitle n={3}>Dirección de entrega</StepTitle>
               <LocationPicker onChange={setLocation} />
 
               {/* Calle + Número + Referencia. Aparecen después de elegir
@@ -536,32 +561,48 @@ function CheckoutInner() {
             </div>
           )}
 
-          {/* Datos de contacto */}
+          {/* Tus datos */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
-              Datos de contacto
-            </h2>
+            <StepTitle n={tipoEntrega === "fisico" && modalidad === "delivery" ? 4 : 3}>
+              Tus datos
+            </StepTitle>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                placeholder="Nombre"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                autoComplete="given-name"
+              />
+              <Input
+                placeholder="Apellido"
+                value={apellido}
+                onChange={(e) => setApellido(e.target.value)}
+                autoComplete="family-name"
+              />
+            </div>
             <Input
               placeholder="Email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
             />
             <Input
-              placeholder="WhatsApp (ej: +595 981 123456)"
+              placeholder="WhatsApp (opcional — ej: +595 981 123456)"
               type="tel"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
+              autoComplete="tel"
             />
             <p className="text-xs text-[#22244e]/50">
               Te contactamos para confirmar y coordinar tu pedido.
             </p>
           </div>
 
-          {/* Cupón de descuento */}
+          {/* Cupón de descuento (opcional) */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
             <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
-              Cupón de descuento
+              Cupón de descuento <span className="text-[#22244e]/30 normal-case">· opcional</span>
             </h2>
             {cuponAplicado ? (
               <div className="flex items-center justify-between bg-[#a8c5a0]/15 border border-[#a8c5a0]/40 rounded-lg px-3 py-2.5">
@@ -649,8 +690,8 @@ function CheckoutInner() {
               </div>
               <Button
                 type="submit"
-                disabled={loading}
-                className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3 h-12"
+                disabled={loading || !formValido}
+                className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3 h-12 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
                   ? "Procesando..."
@@ -658,6 +699,17 @@ function CheckoutInner() {
                   ? `Pagar ${loadingPrecios ? "" : fmt(precioTotal)}`
                   : `Ir a pagar ${loadingPrecios ? "" : fmt(precioTotal)}`}
               </Button>
+              {!formValido && !loading && (
+                <p className="text-[11px] text-[#22244e]/40 text-center mt-1.5">
+                  {!nombre.trim() || !apellido.trim()
+                    ? "Completá tu nombre y apellido"
+                    : !emailValido
+                    ? "Ingresá un email válido"
+                    : !datosEntregaOk
+                    ? "Completá la dirección de entrega"
+                    : "Completá los datos para continuar"}
+                </p>
+              )}
             </div>
           </div>
         </form>

@@ -21,9 +21,10 @@ interface Body {
   pedidoId:     string;
   productoPyg:  number;
   envioPyg?:    number;
-  cuponCodigo?: string | null;
-  totalPyg?:    number;            // legacy fallback
-  email?:       string | null;
+  cuponCodigo?:     string | null;
+  totalPyg?:        number;            // legacy fallback
+  email?:           string | null;
+  nombreComprador?: string | null;
   nombreNino:   string;
   producto:     string;
   tipoEntrega:  "fisico" | "digital";
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
       back_url:         `${origin}/checkout?cancelado=1`,
       notification_url: `${origin}/api/dlocal/webhook`,
       payer: {
-        name:  nombreNino ? `Pedido ${nombreNino}` : undefined,
+        name:  body.nombreComprador?.trim() || (nombreNino ? `Pedido ${nombreNino}` : undefined),
         email: email && email.includes("@") ? email : undefined,
       },
     });
