@@ -36,12 +36,12 @@ const STEPS_META: { title: string; sub: (nombre: string) => string }[] = [
     sub:   () => "Va a teñir la banda y los detalles del tablero",
   },
   {
-    title: "Elegí las actividades del despertar",
-    sub:   () => `Marcá ${REQUIRED_ICONS} para la rutina de la mañana`,
+    title: `Elegí ${REQUIRED_ICONS} actividades de la mañana`,
+    sub:   () => "Tocá en el orden que querés que aparezcan",
   },
   {
-    title: "Elegí las actividades de la noche",
-    sub:   () => `Marcá ${REQUIRED_ICONS} para la rutina antes de dormir`,
+    title: `Elegí ${REQUIRED_ICONS} actividades de la noche`,
+    sub:   () => "Tocá en el orden que querés que aparezcan",
   },
   {
     title: "Mirá tu tablero",

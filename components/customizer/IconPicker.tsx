@@ -71,10 +71,17 @@ export default function IconPicker({
 
   return (
     <div>
-      <p className="text-xs text-[#22244e]/50 mb-3 text-center">
-        Seleccioná hasta {max} actividades · el orden importa
-      </p>
-      <div className="grid grid-cols-2 gap-3">
+      {/* Selection counter — small + lateral, no distrae del grid */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-[#22244e]/50">
+          Tocá de nuevo para sacar
+        </p>
+        <p className="text-xs font-bold text-[#22244e]">
+          {selected.length} / {max}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 pt-3">
         {iconos.map((icono) => {
           const isSelected = selected.includes(icono.id);
           const order = isSelected ? selected.indexOf(icono.id) + 1 : null;
@@ -83,15 +90,15 @@ export default function IconPicker({
               key={icono.id}
               type="button"
               onClick={() => toggle(icono.id)}
-              className="relative w-full max-w-[200px] aspect-square mx-auto transition-all"
-              style={
+              className={`relative w-full aspect-square rounded-2xl overflow-hidden transition-all duration-200 ease-out ${
                 isSelected
-                  ? { outline: "3px solid #22244e", backgroundColor: accentColor + "33" }
-                  : {}
-              }
+                  ? "-translate-y-2 shadow-lg shadow-[#22244e]/20 ring-2 ring-[#22244e]"
+                  : "hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#22244e]/10"
+              }`}
+              style={isSelected ? { backgroundColor: accentColor + "33" } : {}}
             >
               {order !== null && (
-                <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#22244e] text-white text-[10px] font-bold flex items-center justify-center leading-none z-10">
+                <span className="absolute top-1 right-1 w-6 h-6 rounded-full bg-[#22244e] text-white text-[11px] font-bold flex items-center justify-center leading-none z-10 shadow-sm ring-2 ring-white">
                   {order}
                 </span>
               )}
