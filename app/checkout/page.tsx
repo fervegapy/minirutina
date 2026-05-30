@@ -410,9 +410,12 @@ function CheckoutInner() {
   return (
     <main className="min-h-screen bg-[#faf6e7] px-4 py-10 pb-44">
       <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold text-[#22244e] mb-8 text-center">
-          Resumen del pedido
+        <h1 className="text-3xl font-bold text-[#22244e] mb-2 text-center">
+          Confirmá tu pedido
         </h1>
+        <p className="text-sm text-[#22244e]/60 text-center mb-8">
+          Estás a un paso de tener tu tablero
+        </p>
 
         {params.get("cancelado") === "1" && (
           <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
@@ -421,11 +424,11 @@ function CheckoutInner() {
           </div>
         )}
 
-        {/* Order summary */}
+        {/* Order summary — contexto del pedido (no es un paso accionable) */}
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-5">
-          <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-4">
+          <p className="text-[11px] uppercase tracking-widest text-[#22244e]/40 font-bold mb-4">
             Tu pedido
-          </h2>
+          </p>
 
           {/* Header con miniatura del producto */}
           <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#e5e7eb]">
@@ -469,7 +472,7 @@ function CheckoutInner() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Tipo de entrega */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-            <StepTitle n={1}>Tipo de entrega</StepTitle>
+            <StepTitle n={1}>Elegí cómo querés recibirlo</StepTitle>
 
             {tipoEntrega === "fisico" ? (
               <>
@@ -521,7 +524,7 @@ function CheckoutInner() {
           {/* Modalidad de entrega (solo físico) */}
           {tipoEntrega === "fisico" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-              <StepTitle n={2}>Modalidad de entrega</StepTitle>
+              <StepTitle n={2}>¿Pickup o delivery?</StepTitle>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -566,7 +569,7 @@ function CheckoutInner() {
           {/* Datos de entrega (solo delivery) */}
           {tipoEntrega === "fisico" && modalidad === "delivery" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-              <StepTitle n={3}>Dirección de entrega</StepTitle>
+              <StepTitle n={3}>Decinos a dónde te lo llevamos</StepTitle>
               <LocationPicker onChange={setLocation} />
 
               {/* Calle + Número + Referencia. Aparecen después de elegir
@@ -602,7 +605,7 @@ function CheckoutInner() {
           {/* Tus datos */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
             <StepTitle n={tipoEntrega === "fisico" && modalidad === "delivery" ? 4 : 3}>
-              Tus datos
+              Dejanos tus datos
             </StepTitle>
             <div className="grid grid-cols-2 gap-2">
               <Input
@@ -664,11 +667,11 @@ function CheckoutInner() {
             </div>
           </div>
 
-          {/* Cupón de descuento (opcional) */}
+          {/* Cupón de descuento — opcional, sin número de paso */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-            <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
-              Cupón de descuento <span className="text-[#22244e]/30 normal-case">· opcional</span>
-            </h2>
+            <p className="text-[11px] uppercase tracking-widest text-[#22244e]/40 font-bold">
+              ¿Tenés un cupón? <span className="text-[#22244e]/30 normal-case">· opcional</span>
+            </p>
             {cuponAplicado ? (
               <div className="flex items-center justify-between bg-[#a8c5a0]/15 border border-[#a8c5a0]/40 rounded-lg px-3 py-2.5">
                 <div className="text-sm">
@@ -711,9 +714,11 @@ function CheckoutInner() {
           {/* Pago con tarjeta (SmartFields embebido) — solo en modo embedded */}
           {checkoutMode === "embedded" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-              <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
-                Pago con tarjeta
-              </h2>
+              <StepTitle
+                n={tipoEntrega === "fisico" && modalidad === "delivery" ? 5 : 4}
+              >
+                Pagá con tu tarjeta
+              </StepTitle>
               <Input
                 placeholder="Nombre del titular de la tarjeta"
                 value={titular}
