@@ -144,7 +144,7 @@ export default function PersonalizarRecompensas() {
           <StepIndicator steps={PASOS} current={step} />
         </div>
 
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
+        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-4 md:p-6 mb-6">
           {/* Título del paso — bold, dentro del card */}
           <div className="mb-5">
             <h2 className="text-xl md:text-2xl font-bold text-[#22244e] mb-1">

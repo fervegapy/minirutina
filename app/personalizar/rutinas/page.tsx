@@ -174,7 +174,7 @@ export default function PersonalizarRutinas() {
           <StepIndicator steps={PASOS} current={step} />
         </div>
 
-        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
+        <div className="bg-white border border-[#e5e7eb] rounded-2xl p-4 md:p-6 mb-6">
           {/* Título del paso — bold, dentro del card, la acción principal */}
           <div className="mb-5">
             <div className="flex items-start justify-between gap-3 mb-1">
