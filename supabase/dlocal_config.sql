@@ -18,13 +18,15 @@ create table if not exists public.dlocal_config (
 
 alter table public.dlocal_config enable row level security;
 
--- The public site needs to read the active SmartFields key + ambiente
--- (both safe to expose: the SmartFields key is a browser-side public key
--- by design). The api_key / secret_key columns are NEVER returned to the
--- anon role — server-side code uses the service role to read them.
-drop policy if exists "dlocal_config public read" on public.dlocal_config;
-create policy "dlocal_config public read"
-  on public.dlocal_config for select using (true);
+-- No public read. The anon role must NEVER see api_key / secret_key.
+-- Server-side helpers (lib/dlocal*.ts) read via the service role, which
+-- bypasses RLS. The browser only gets the safe subset (ambiente + mode +
+-- SmartFields key) through /api/dlocal/public-config, which reads via
+-- the service role too and explicitly strips the secrets.
+drop policy if exists "dlocal_config auth read" on public.dlocal_config;
+create policy "dlocal_config auth read"
+  on public.dlocal_config for select
+  using (auth.role() = 'authenticated');
 
 drop policy if exists "dlocal_config auth write" on public.dlocal_config;
 create policy "dlocal_config auth write"
