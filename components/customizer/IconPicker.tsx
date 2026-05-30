@@ -8,6 +8,7 @@ export const ICONOS_MANANA = [
   { id: "cama",       label: "Hacer cama" },
   { id: "bano",       label: "Bañarse" },
   { id: "cepillo",    label: "Cepillarse" },
+  { id: "peinarse",   label: "Peinarse" },
   { id: "vestirse",   label: "Vestirse" },
   { id: "desayunar",  label: "Desayunar" },
   { id: "agua",       label: "Tomar agua" },
@@ -15,7 +16,8 @@ export const ICONOS_MANANA = [
   { id: "mochila",    label: "Mochila" },
   { id: "leer",       label: "Leer" },
   { id: "orar",       label: "Orar" },
-  { id: "guarde",     label: "Guardar" },
+  { id: "guarde",     label: "Ir a la guarde" },
+  { id: "cole",       label: "Ir al cole" },
 ];
 
 export const ICONOS_SIESTA = [
@@ -30,18 +32,19 @@ export const ICONOS_SIESTA = [
 ];
 
 export const ICONOS_NOCHE = [
-  { id: "mamallega",   label: "Mamá llega" },
-  { id: "papallega",   label: "Papá llega" },
-  { id: "cena",        label: "Cena" },
-  { id: "bano",        label: "Bañarse" },
-  { id: "pijama",      label: "Pijama" },
-  { id: "cepillarse",  label: "Cepillarse" },
-  { id: "leche",       label: "Leche" },
-  { id: "cuento",      label: "Cuento" },
-  { id: "cancion",     label: "Canción" },
-  { id: "orar",        label: "Orar" },
-  { id: "luces",       label: "Apagar luces" },
-  { id: "dormir",      label: "Dormir" },
+  { id: "mamallega",    label: "Mamá llega" },
+  { id: "papallega",    label: "Papá llega" },
+  { id: "papamamallegan", label: "Papá y mamá llegan" },
+  { id: "cena",         label: "Cena" },
+  { id: "bano",         label: "Bañarse" },
+  { id: "pijama",       label: "Pijama" },
+  { id: "cepillarse",   label: "Cepillarse" },
+  { id: "leche",        label: "Leche" },
+  { id: "cuento",       label: "Cuento" },
+  { id: "cancion",      label: "Canción" },
+  { id: "orar",         label: "Orar" },
+  { id: "luces",        label: "Apagar luces" },
+  { id: "dormir",       label: "Dormir" },
 ];
 
 interface IconPickerProps {
@@ -141,6 +144,7 @@ export function getIconEmoji(id: string): string {
     cama: "🛏️",
     bano: "🛁",
     cepillo: "🦷",
+    peinarse: "💇",
     vestirse: "👕",
     desayunar: "🥣",
     agua: "💧",
@@ -149,6 +153,7 @@ export function getIconEmoji(id: string): string {
     leer: "📖",
     orar: "🙏",
     guarde: "🧸",
+    cole: "🏫",
     almuerzo: "🍽️",
     siesta: "😴",
     lectura: "📖",
@@ -159,6 +164,7 @@ export function getIconEmoji(id: string): string {
     dibujo: "🎨",
     mamallega: "👩",
     papallega: "👨",
+    papamamallegan: "👨‍👩‍👧",
     cena: "🍜",
     pijama: "🌙",
     cepillarse: "🪥",
