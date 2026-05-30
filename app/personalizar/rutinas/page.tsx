@@ -164,8 +164,8 @@ export default function PersonalizarRutinas() {
   };
 
   return (
-    <main className="min-h-screen bg-[#faf6e7] px-4 py-10">
-      <div className="max-w-lg mx-auto">
+    <main className="min-h-screen bg-[#faf6e7] px-4 py-10 pb-32 md:pb-10">
+      <div className="max-w-lg md:max-w-2xl mx-auto">
         {/* Subtítulo de contexto — medium weight, sin uppercase. */}
         <div className="text-center mb-5">
           <p className="text-base font-medium text-[#22244e]/70 mb-3">
@@ -177,9 +177,16 @@ export default function PersonalizarRutinas() {
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
           {/* Título del paso — bold, dentro del card, la acción principal */}
           <div className="mb-5">
-            <h2 className="text-xl md:text-2xl font-bold text-[#22244e] mb-1">
-              {STEPS_META[step]!.title}
-            </h2>
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h2 className="text-xl md:text-2xl font-bold text-[#22244e] leading-tight">
+                {STEPS_META[step]!.title}
+              </h2>
+              {(step === 2 || step === 3) && (
+                <span className="shrink-0 inline-flex items-center px-3 py-1.5 rounded-full bg-[#336aea] text-white text-sm font-bold tabular-nums shadow-sm">
+                  {(step === 2 ? manana : noche).length} / {REQUIRED_ICONS}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-[#22244e]/50">
               {STEPS_META[step]!.sub(nombre)}
             </p>
@@ -276,36 +283,45 @@ export default function PersonalizarRutinas() {
           </div>
         )}
 
-        <div className="flex gap-3 justify-between">
-          {step > 0 ? (
-            <Button
-              variant="outline"
-              onClick={back}
-              className="border-[#22244e] text-[#22244e] rounded-lg h-12 px-5"
-            >
-              Atrás
-            </Button>
-          ) : (
-            <div />
-          )}
+        {/* Botones de navegación — sticky en mobile (siempre visibles para
+            facilitar avanzar), inline en desktop. */}
+        <div className="
+          fixed bottom-0 left-0 right-0 z-30 px-4 py-3
+          bg-[#faf6e7]/95 backdrop-blur-sm border-t border-[#e5e7eb]
+          md:relative md:bottom-auto md:left-auto md:right-auto md:px-0 md:py-0
+          md:bg-transparent md:backdrop-blur-none md:border-0
+        ">
+          <div className="flex gap-3 justify-between max-w-lg md:max-w-none mx-auto">
+            {step > 0 ? (
+              <Button
+                variant="outline"
+                onClick={back}
+                className="border-[#22244e] text-[#22244e] rounded-lg h-12 px-5"
+              >
+                Atrás
+              </Button>
+            ) : (
+              <div />
+            )}
 
-          {step < PASOS.length - 1 ? (
-            <Button
-              onClick={next}
-              disabled={step === 0 && (!nombre.trim() || !genero)}
-              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
-            >
-              Siguiente
-            </Button>
-          ) : (
-            <Button
-              onClick={continuar}
-              disabled={pdfLoading}
-              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
-            >
-              Continuar al pago
-            </Button>
-          )}
+            {step < PASOS.length - 1 ? (
+              <Button
+                onClick={next}
+                disabled={step === 0 && (!nombre.trim() || !genero)}
+                className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
+              >
+                Siguiente
+              </Button>
+            ) : (
+              <Button
+                onClick={continuar}
+                disabled={pdfLoading}
+                className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
+              >
+                Continuar al pago
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </main>

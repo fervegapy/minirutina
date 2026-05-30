@@ -71,17 +71,8 @@ export default function IconPicker({
 
   return (
     <div>
-      {/* Selection counter — small + lateral, no distrae del grid */}
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-xs text-[#22244e]/50">
-          Tocá de nuevo para sacar
-        </p>
-        <p className="text-xs font-bold text-[#22244e]">
-          {selected.length} / {max}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-4 gap-2 pt-3">
+      {/* 3 cols en mobile, 4 en desktop — cards más grandes en celulares */}
+      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-3 pt-3">
         {iconos.map((icono) => {
           const isSelected = selected.includes(icono.id);
           const order = isSelected ? selected.indexOf(icono.id) + 1 : null;

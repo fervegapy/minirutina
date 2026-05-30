@@ -78,7 +78,7 @@ export default async function ProductoPage({
   const precio  = precioDb ?? producto.precioDesde;
 
   return (
-    <div className="min-h-screen bg-[#faf6e7]">
+    <div className="min-h-screen bg-[#faf6e7] pb-24 md:pb-0">
       <Header />
       <main>
         {/* Hero del producto */}
@@ -202,6 +202,26 @@ export default async function ProductoPage({
         </section>
 
       </main>
+
+      {/* Sticky mobile CTA — siempre visible al fondo en mobile para no
+          obligar al usuario a scrollear al hero. Oculta en desktop (la CTA
+          ya está en el hero). */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#e5e7eb] px-4 py-3 flex items-center gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-[#22244e]/40 font-bold">
+            Desde
+          </p>
+          <p className="text-base font-bold text-[#22244e] leading-tight truncate">
+            {precio}
+          </p>
+        </div>
+        <Link href={producto.customizerHref} className="shrink-0">
+          <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6 transition-all duration-200 ease-out active:scale-[0.98]">
+            Personalizar
+          </Button>
+        </Link>
+      </div>
+
       <Footer />
     </div>
   );

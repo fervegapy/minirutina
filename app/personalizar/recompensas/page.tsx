@@ -134,8 +134,8 @@ export default function PersonalizarRecompensas() {
   };
 
   return (
-    <main className="min-h-screen bg-[#faf6e7] px-4 py-10">
-      <div className="max-w-lg mx-auto">
+    <main className="min-h-screen bg-[#faf6e7] px-4 py-10 pb-32 md:pb-10">
+      <div className="max-w-lg md:max-w-2xl mx-auto">
         {/* Subtítulo de contexto — medium weight, sin uppercase. */}
         <div className="text-center mb-5">
           <p className="text-base font-medium text-[#22244e]/70 mb-3">
@@ -256,36 +256,44 @@ export default function PersonalizarRecompensas() {
           )}
         </div>
 
-        <div className="flex gap-3 justify-between">
-          {step > 0 ? (
-            <Button
-              variant="outline"
-              onClick={back}
-              className="border-[#22244e] text-[#22244e] rounded-lg h-12 px-5"
-            >
-              Atrás
-            </Button>
-          ) : (
-            <div />
-          )}
+        {/* Botones de navegación — sticky en mobile */}
+        <div className="
+          fixed bottom-0 left-0 right-0 z-30 px-4 py-3
+          bg-[#faf6e7]/95 backdrop-blur-sm border-t border-[#e5e7eb]
+          md:relative md:bottom-auto md:left-auto md:right-auto md:px-0 md:py-0
+          md:bg-transparent md:backdrop-blur-none md:border-0
+        ">
+          <div className="flex gap-3 justify-between max-w-lg md:max-w-none mx-auto">
+            {step > 0 ? (
+              <Button
+                variant="outline"
+                onClick={back}
+                className="border-[#22244e] text-[#22244e] rounded-lg h-12 px-5"
+              >
+                Atrás
+              </Button>
+            ) : (
+              <div />
+            )}
 
-          {step < PASOS.length - 1 ? (
-            <Button
-              onClick={next}
-              disabled={step === 0 && (!nombre.trim() || !genero)}
-              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
-            >
-              Siguiente
-            </Button>
-          ) : (
-            <Button
-              onClick={continuar}
-              disabled={pdfLoading}
-              className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
-            >
-              Continuar al pago
-            </Button>
-          )}
+            {step < PASOS.length - 1 ? (
+              <Button
+                onClick={next}
+                disabled={step === 0 && (!nombre.trim() || !genero)}
+                className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
+              >
+                Siguiente
+              </Button>
+            ) : (
+              <Button
+                onClick={continuar}
+                disabled={pdfLoading}
+                className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6"
+              >
+                Continuar al pago
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </main>
