@@ -135,7 +135,7 @@ export default function PersonalizarRecompensas() {
 
   return (
     <main className="min-h-screen bg-[#faf6e7] px-4 py-10 pb-32 md:pb-10">
-      <div className="max-w-lg md:max-w-2xl mx-auto">
+      <div className="max-w-lg md:max-w-4xl mx-auto">
         {/* Subtítulo de contexto — medium weight, sin uppercase. */}
         <div className="text-center mb-5">
           <p className="text-base font-medium text-[#22244e]/70 mb-3">

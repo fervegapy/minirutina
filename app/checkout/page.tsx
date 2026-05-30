@@ -409,7 +409,7 @@ function CheckoutInner() {
 
   return (
     <main className="min-h-screen bg-[#faf6e7] px-4 py-10 pb-44">
-      <div className="max-w-md md:max-w-xl mx-auto">
+      <div className="max-w-md md:max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-[#22244e] mb-2 text-center">
           Confirmá tu pedido
         </h1>
