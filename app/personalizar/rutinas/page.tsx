@@ -166,26 +166,25 @@ export default function PersonalizarRutinas() {
   return (
     <main className="min-h-screen bg-[#faf6e7] px-4 py-10">
       <div className="max-w-lg mx-auto">
-        {/* Eyebrow con el nombre del producto + progress — contexto, no
-            acción. Visualmente más liviano que el título de cada paso. */}
+        {/* Subtítulo de contexto — medium weight, sin uppercase. */}
         <div className="text-center mb-5">
-          <span className="inline-block text-[10px] uppercase tracking-widest text-[#22244e]/40 font-bold mb-3">
-            Tablero de Rutinas
-          </span>
+          <p className="text-base font-medium text-[#22244e]/70 mb-3">
+            Tablero de Rutinas de {nombre || "tu niño"}
+          </p>
           <StepIndicator steps={PASOS} current={step} />
         </div>
 
-        {/* Acción principal del paso actual */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-[#22244e] mb-1.5">
-            {STEPS_META[step]!.title}
-          </h1>
-          <p className="text-sm text-[#22244e]/60">
-            {STEPS_META[step]!.sub(nombre)}
-          </p>
-        </div>
-
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
+          {/* Título del paso — bold, dentro del card, la acción principal */}
+          <div className="mb-5">
+            <h2 className="text-xl md:text-2xl font-bold text-[#22244e] mb-1">
+              {STEPS_META[step]!.title}
+            </h2>
+            <p className="text-xs text-[#22244e]/50">
+              {STEPS_META[step]!.sub(nombre)}
+            </p>
+          </div>
+
           {step === 0 && (
             <div>
               <Input
