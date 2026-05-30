@@ -15,10 +15,10 @@ interface CardData {
 
 const COPY: Record<string, Pick<CardData, "desc">> = {
   rutinas: {
-    desc: "Dos tableros: rutina al despertarse y a la hora de dormir. Tu hijo sabe qué sigue sin que tengas que recordárselo.",
+    desc: "Dale más seguridad a tu hijo, sabiendo qué se viene y reduciendo su ansiedad.",
   },
   recompensas: {
-    desc: "Un tablero de 10 o 20 pasos con figuritas a elección. Para instalar un hábito o motivar un comportamiento.",
+    desc: "Mejorá el hábito que quieras, creando incentivos para lograrlo.",
   },
 };
 
@@ -73,7 +73,7 @@ export default async function Productos() {
             Dos opciones
           </span>
           <h2 className="text-3xl md:text-4xl font-bold text-[#22244e] mb-4">
-            Elegí el tablero ideal
+            Para diferentes momentos
           </h2>
           <p className="text-[#22244e]/60 max-w-md mx-auto">
             Cada uno se personaliza con el nombre, los colores y las actividades de tu hijo.

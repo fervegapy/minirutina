@@ -30,7 +30,7 @@ export default function ParaQuienEs() {
             Por qué Minirutina
           </span>
           <h2 className="text-3xl md:text-4xl font-bold text-white">
-            Más que un tablero
+            Es por el bienestar de tus peques
           </h2>
         </div>
 

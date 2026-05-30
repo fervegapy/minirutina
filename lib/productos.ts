@@ -16,7 +16,7 @@ export interface Producto {
 export const productos: Record<string, Producto> = {
   rutinas: {
     slug: "rutinas",
-    nombre: "Tablero de Rutinas (×2)",
+    nombre: "Rutina visual (día y noche)",
     tagline: "Son DOS tableros: uno para la rutina al despertarse y otro para la hora de dormir. Sin peleas, sin recordatorios.",
     emoji: "🌅",
     accentColor: "#a8c5a0",

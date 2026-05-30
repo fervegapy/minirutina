@@ -9,23 +9,19 @@ import {
 const faqs = [
   {
     q: "¿Qué recibo exactamente?",
-    a: "Un tablero impreso en papel couché de 300g, plastificado mate, listo para colgar. Viene con los datos de tu hijo, los íconos que elegiste y el color que personalizaste. Solo necesitás una moldura o cinta doble faz.",
+    a: "Un tablero impreso en papel de 300g, plastificado mate, listo para colgar. Viene con los datos de tu hijo, los íconos que elegiste y el color que personalizaste.",
   },
   {
     q: "¿Cuánto tarda en llegar?",
-    a: "En 48 horas desde que confirmamos el pago. Te avisamos por WhatsApp con el seguimiento del envío.",
+    a: "En 48 horas hábiles desde que confirmamos el pago. Te mantenemos al tanto del envío.",
   },
   {
     q: "¿Puedo elegir imprimir yo mismo?",
     a: "Sí. Si preferís la versión digital, te enviamos un archivo PNG de alta resolución para que lo imprimás en cualquier imprenta o en casa. Es una opción más económica pero la impresión depende de vos.",
   },
   {
-    q: "¿Qué pasa si hay algún error en el tablero?",
-    a: "Si hay un error nuestro en la producción, lo reimprimimos sin costo. Si hubo un error en los datos que ingresaste, coordinamos una reimpresión a precio especial.",
-  },
-  {
     q: "¿Cómo pago?",
-    a: "Aceptamos transferencia bancaria y Mercado Pago (tarjeta de crédito, débito o dinero en cuenta). El pedido se confirma cuando validamos el pago.",
+    a: "Aceptamos pagos con cualquier tarjeta de crédito o débito.",
   },
 ];
 
