@@ -23,6 +23,32 @@ const PdfPagesPreview = dynamic(
 const PASOS = ["Nombre", "Color", "Mañana", "Noche", "Vista previa"];
 const REQUIRED_ICONS = 7;
 
+// Per-step action title + supporting subhead. These promote the call to
+// action above the product name + progress bar so the user always sees
+// what to do next.
+const STEPS_META: { title: string; sub: (nombre: string) => string }[] = [
+  {
+    title: "Contanos el nombre",
+    sub:   () => "Y si es niño o niña, para personalizar los íconos",
+  },
+  {
+    title: "Elegí el color",
+    sub:   () => "Va a teñir la banda y los detalles del tablero",
+  },
+  {
+    title: "Elegí las actividades del despertar",
+    sub:   () => `Marcá ${REQUIRED_ICONS} para la rutina de la mañana`,
+  },
+  {
+    title: "Elegí las actividades de la noche",
+    sub:   () => `Marcá ${REQUIRED_ICONS} para la rutina antes de dormir`,
+  },
+  {
+    title: "Mirá tu tablero",
+    sub:   (n: string) => `Así va a quedar el de ${n || "tu niño"} · si te gusta, seguís al pago`,
+  },
+];
+
 export default function PersonalizarRutinas() {
   const router = useRouter();
   const [step, setStep] = useState(0);
@@ -140,23 +166,28 @@ export default function PersonalizarRutinas() {
   return (
     <main className="min-h-screen bg-[#faf6e7] px-4 py-10">
       <div className="max-w-lg mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-[#22244e] mb-1">
+        {/* Eyebrow con el nombre del producto + progress — contexto, no
+            acción. Visualmente más liviano que el título de cada paso. */}
+        <div className="text-center mb-5">
+          <span className="inline-block text-[10px] uppercase tracking-widest text-[#22244e]/40 font-bold mb-3">
             Tablero de Rutinas
-          </h1>
-          <p className="text-sm text-[#22244e]/60">
-            Personalizá el tablero para {nombre || "tu niño"}
-          </p>
+          </span>
+          <StepIndicator steps={PASOS} current={step} />
         </div>
 
-        <StepIndicator steps={PASOS} current={step} />
+        {/* Acción principal del paso actual */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-[#22244e] mb-1.5">
+            {STEPS_META[step]!.title}
+          </h1>
+          <p className="text-sm text-[#22244e]/60">
+            {STEPS_META[step]!.sub(nombre)}
+          </p>
+        </div>
 
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
           {step === 0 && (
             <div>
-              <h2 className="font-bold text-lg mb-4 text-[#22244e]">
-                ¿Cómo se llama?
-              </h2>
               <Input
                 placeholder="Nombre del niño/a"
                 value={nombre}
@@ -173,18 +204,12 @@ export default function PersonalizarRutinas() {
 
           {step === 1 && (
             <div>
-              <h2 className="font-bold text-lg mb-6 text-[#22244e]">
-                Elegí un color
-              </h2>
               <ColorPicker value={color} onChange={setColor} />
             </div>
           )}
 
           {step === 2 && (
             <div>
-              <h2 className="font-bold text-lg mb-2 text-[#22244e]">
-                ☀️ Actividades de la mañana
-              </h2>
               <IconPicker
                 iconos={ICONOS_MANANA}
                 selected={manana}
@@ -198,9 +223,6 @@ export default function PersonalizarRutinas() {
 
           {step === 3 && (
             <div>
-              <h2 className="font-bold text-lg mb-2 text-[#22244e]">
-                🌙 Actividades de la noche
-              </h2>
               <IconPicker
                 iconos={ICONOS_NOCHE}
                 selected={noche}
@@ -214,13 +236,6 @@ export default function PersonalizarRutinas() {
 
           {step === 4 && (
             <div>
-              <h2 className="font-bold text-lg mb-1 text-[#22244e]">
-                Vista previa
-              </h2>
-              <p className="text-xs text-[#22244e]/50 mb-5">
-                Así va a quedar impreso el tablero de {nombre || "tu niño"}
-              </p>
-
               {pdfLoading && (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
                   <div className="w-8 h-8 border-[3px] border-[#336aea] border-t-transparent rounded-full animate-spin" />

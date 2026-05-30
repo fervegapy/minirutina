@@ -17,6 +17,26 @@ const PdfPagesPreview = dynamic(
 const PASOS = ["Nombre", "Cantidad", "Sticker", "Vista previa"];
 const OPCIONES: (10 | 20)[] = [10, 20];
 
+// Per-step action title + subhead. Same pattern as the Rutinas wizard.
+const STEPS_META: { title: string; sub: (nombre: string) => string }[] = [
+  {
+    title: "Contanos el nombre",
+    sub:   () => "Y si es niño o niña, para personalizar los íconos",
+  },
+  {
+    title: "¿Cuántos pasos va a tener?",
+    sub:   () => "Es la cantidad de stickers que junta hasta llegar a la recompensa",
+  },
+  {
+    title: "Elegí el sticker",
+    sub:   () => "Es el que se pega cada vez que cumple un paso",
+  },
+  {
+    title: "Mirá tu tablero",
+    sub:   (n: string) => `Así va a quedar el de ${n || "tu niño"} · si te gusta, seguís al pago`,
+  },
+];
+
 type StickerId = "estrella" | "check" | "corazon" | "brillante";
 const STICKERS: { id: StickerId; emoji: string; label: string }[] = [
   { id: "estrella",  emoji: "⭐", label: "Estrella" },
@@ -116,24 +136,28 @@ export default function PersonalizarRecompensas() {
   return (
     <main className="min-h-screen bg-[#faf6e7] px-4 py-10">
       <div className="max-w-lg mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-[#22244e] mb-1">
+        {/* Eyebrow + progress — contexto */}
+        <div className="text-center mb-5">
+          <span className="inline-block text-[10px] uppercase tracking-widest text-[#22244e]/40 font-bold mb-3">
             Tablero de Recompensas
-          </h1>
-          <p className="text-sm text-[#22244e]/60">
-            Personalizá el tablero para {nombre || "tu niño"}
-          </p>
+          </span>
+          <StepIndicator steps={PASOS} current={step} />
         </div>
 
-        <StepIndicator steps={PASOS} current={step} />
+        {/* Acción principal del paso actual */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-[#22244e] mb-1.5">
+            {STEPS_META[step]!.title}
+          </h1>
+          <p className="text-sm text-[#22244e]/60">
+            {STEPS_META[step]!.sub(nombre)}
+          </p>
+        </div>
 
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-6 mb-6">
           {/* Paso 0: Nombre + género */}
           {step === 0 && (
             <div>
-              <h2 className="font-bold text-lg mb-4 text-[#22244e]">
-                ¿Cómo se llama?
-              </h2>
               <Input
                 placeholder="Nombre del niño/a"
                 value={nombre}
@@ -151,12 +175,6 @@ export default function PersonalizarRecompensas() {
           {/* Paso 1: Cantidad de círculos */}
           {step === 1 && (
             <div>
-              <h2 className="font-bold text-lg mb-2 text-[#22244e]">
-                ¿Cuántos pasos?
-              </h2>
-              <p className="text-xs text-[#22244e]/50 mb-6">
-                La cantidad de stickers que va a juntar para llegar a la recompensa.
-              </p>
               <div className="grid grid-cols-2 gap-3">
                 {OPCIONES.map((n) => (
                   <button
@@ -180,12 +198,6 @@ export default function PersonalizarRecompensas() {
           {/* Paso 2: Sticker */}
           {step === 2 && (
             <div>
-              <h2 className="font-bold text-lg mb-2 text-[#22244e]">
-                ¿Qué sticker va a usar?
-              </h2>
-              <p className="text-xs text-[#22244e]/50 mb-6">
-                Este es el que se pega cada vez que cumple un paso.
-              </p>
               <div className="grid grid-cols-2 gap-3">
                 {STICKERS.map((s) => (
                   <button
@@ -211,12 +223,6 @@ export default function PersonalizarRecompensas() {
           {/* Paso 3: Vista previa */}
           {step === 3 && (
             <div>
-              <h2 className="font-bold text-lg mb-1 text-[#22244e]">
-                Vista previa
-              </h2>
-              <p className="text-xs text-[#22244e]/50 mb-5">
-                Así va a quedar impreso el tablero de {nombre || "tu niño"}
-              </p>
 
               {pdfLoading && (
                 <div className="flex flex-col items-center justify-center py-12 gap-3">
