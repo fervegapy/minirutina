@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -14,12 +15,6 @@ const NOMBRE_PRODUCTO: Record<string, string> = {
   recompensas: "Tablero de Recompensas",
 };
 
-const NOMBRE_COLOR: Record<string, string> = {
-  "#a8c5a0": "Verde salvia",
-  "#e8b4b8": "Rosa polvoso",
-  "#a8c8e8": "Azul cielo",
-  "#f5d78e": "Amarillo cálido",
-};
 
 const PRECIO_DELIVERY_FALLBACK = 35000;     // used only if delivery_zonas is empty
 const FALLBACK_IMPRESO = 149000;
@@ -72,6 +67,11 @@ function CheckoutInner() {
   const [zonas, setZonas] = useState<DeliveryZona[]>([]);
   const [titular, setTitular] = useState("");        // nombre del titular de la tarjeta
   const cardRef = useRef<DlocalCardFormHandle>(null);
+
+  // Facturación (opcional, expandible).
+  const [necesitaFactura, setNecesitaFactura] = useState(false);
+  const [ruc,          setRuc]          = useState("");
+  const [razonSocial,  setRazonSocial]   = useState("");
 
   // Dynamic checkout mode — fetched from /api/dlocal/public-config so the
   // admin can flip between embedded and redirect without a redeploy.
@@ -226,11 +226,15 @@ function CheckoutInner() {
 
   // Completeness — drives the disabled state of the pay button.
   const emailValido = EMAIL_RX.test(email.trim());
+  // WhatsApp es obligatorio. Aceptamos varios formatos — al menos 7 dígitos.
+  const whatsappValido = whatsapp.replace(/\D/g, "").length >= 7;
   const datosEntregaOk =
     !(tipoEntrega === "fisico" && modalidad === "delivery") ||
     !!(location.departamento && location.ciudad && calle.trim() && numero.trim());
+  const facturaOk = !necesitaFactura || (!!ruc.trim() && !!razonSocial.trim());
   const formValido =
-    !!nombre.trim() && !!apellido.trim() && emailValido && datosEntregaOk && !loadingPrecios;
+    !!nombre.trim() && !!apellido.trim() && emailValido && whatsappValido &&
+    datosEntregaOk && facturaOk && !loadingPrecios;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -241,6 +245,14 @@ function CheckoutInner() {
     }
     if (!emailValido) {
       setError("Ingresá un email válido.");
+      return;
+    }
+    if (!whatsappValido) {
+      setError("Ingresá un número de WhatsApp válido.");
+      return;
+    }
+    if (necesitaFactura && (!ruc.trim() || !razonSocial.trim())) {
+      setError("Completá RUC y Razón Social para la factura.");
       return;
     }
     if (tipoEntrega === "fisico" && modalidad === "delivery") {
@@ -307,6 +319,9 @@ function CheckoutInner() {
         envio_calle:      esDelivery ? calle.trim() : null,
         envio_numero:     esDelivery ? numero.trim() : null,
         envio_referencia: esDelivery ? (referencia.trim() || null) : null,
+        // Datos de facturación (opcionales).
+        ruc:              necesitaFactura ? ruc.trim() : null,
+        razon_social:     necesitaFactura ? razonSocial.trim() : null,
       })
       .select("id")
       .single();
@@ -408,40 +423,46 @@ function CheckoutInner() {
 
         {/* Order summary */}
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-5">
-          <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-3">
+          <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50 mb-4">
             Tu pedido
           </h2>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-[#22244e]/70">Producto</span>
-              <span className="font-semibold text-[#22244e]">
-                {NOMBRE_PRODUCTO[producto] ?? producto}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-[#22244e]/70">Nombre</span>
-              <span className="font-semibold text-[#22244e]">{nombreNino}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#22244e]/70">Color</span>
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-4 h-4 rounded-full border border-[#e5e7eb]"
-                  style={{ backgroundColor: colorAcento }}
+
+          {/* Header con miniatura del producto */}
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#e5e7eb]">
+            <div
+              className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-[#e5e7eb] relative"
+              style={{ backgroundColor: colorAcento + "22" }}
+            >
+              {(producto === "rutinas" || producto === "recompensas") && (
+                <Image
+                  src={`/productos/${producto}.png`}
+                  alt={NOMBRE_PRODUCTO[producto] ?? producto}
+                  fill
+                  sizes="64px"
+                  className="object-cover"
                 />
-                <span className="font-semibold text-[#22244e]">
-                  {NOMBRE_COLOR[colorAcento] ?? colorAcento}
-                </span>
-              </div>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-[#e5e7eb] mt-2">
-              <span className="text-[#22244e]/70">Precio del tablero</span>
-              {loadingPrecios ? (
-                <span className="w-20 h-4 bg-[#e5e7eb] rounded animate-pulse" />
-              ) : (
-                <span className="font-bold text-[#22244e]">{fmt(precioImpresoEfectivo)}</span>
               )}
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-[#22244e] truncate">
+                {NOMBRE_PRODUCTO[producto] ?? producto}
+              </p>
+              <p className="text-xs text-[#22244e]/60 truncate">Para {nombreNino}</p>
+            </div>
+            <div
+              className="w-5 h-5 rounded-full border border-[#e5e7eb] shrink-0"
+              style={{ backgroundColor: colorAcento }}
+              title="Color elegido"
+            />
+          </div>
+
+          <div className="flex justify-between text-sm">
+            <span className="text-[#22244e]/70">Precio del tablero</span>
+            {loadingPrecios ? (
+              <span className="w-20 h-4 bg-[#e5e7eb] rounded animate-pulse" />
+            ) : (
+              <span className="font-bold text-[#22244e]">{fmt(precioImpresoEfectivo)}</span>
+            )}
           </div>
         </div>
 
@@ -605,15 +626,42 @@ function CheckoutInner() {
               autoComplete="email"
             />
             <Input
-              placeholder="WhatsApp (opcional — ej: +595 981 123456)"
+              placeholder="WhatsApp (ej: +595 981 123456)"
               type="tel"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
               autoComplete="tel"
             />
             <p className="text-xs text-[#22244e]/50">
-              Te contactamos para confirmar y coordinar tu pedido.
+              Te contactamos por WhatsApp para confirmar y coordinar tu pedido.
             </p>
+
+            {/* Facturación — opcional, expandible */}
+            <div className="pt-3 border-t border-[#e5e7eb]">
+              <label className="flex items-center gap-2 text-sm text-[#22244e]/80 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={necesitaFactura}
+                  onChange={(e) => setNecesitaFactura(e.target.checked)}
+                  className="w-4 h-4 rounded border-[#e5e7eb] text-[#336aea] focus:ring-[#336aea]/30"
+                />
+                ¿Necesitás factura?
+              </label>
+              {necesitaFactura && (
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  <Input
+                    placeholder="RUC"
+                    value={ruc}
+                    onChange={(e) => setRuc(e.target.value)}
+                  />
+                  <Input
+                    placeholder="Razón social"
+                    value={razonSocial}
+                    onChange={(e) => setRazonSocial(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Cupón de descuento (opcional) */}
@@ -722,8 +770,12 @@ function CheckoutInner() {
                     ? "Completá tu nombre y apellido"
                     : !emailValido
                     ? "Ingresá un email válido"
+                    : !whatsappValido
+                    ? "Ingresá tu número de WhatsApp"
                     : !datosEntregaOk
                     ? "Completá la dirección de entrega"
+                    : !facturaOk
+                    ? "Completá RUC y razón social"
                     : "Completá los datos para continuar"}
                 </p>
               )}
