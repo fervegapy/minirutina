@@ -33,6 +33,9 @@ export interface Pedido {
   envio_calle?:              string | null;
   envio_numero?:             string | null;
   envio_referencia?:         string | null;
+  // Datos de facturación (opcionales)
+  ruc?:                      string | null;
+  razon_social?:             string | null;
 }
 
 export interface PersonalizacionRutinas {

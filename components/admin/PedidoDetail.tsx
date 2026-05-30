@@ -15,6 +15,7 @@ import {
   FileDown,
   CreditCard,
   ExternalLink,
+  FileText,
 } from "lucide-react";
 import type { Pedido, EstadoPedido } from "@/types/pedido";
 import {
@@ -257,6 +258,41 @@ Pedido ID: ${pedido.id.slice(0, 8)}
               )}
             </CardContent>
           </Card>
+
+          {/* Facturación — solo si el cliente pidió factura */}
+          {(pedido.ruc || pedido.razon_social) && (
+            <Card className="bg-white">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-zinc-500" />
+                    Datos de facturación
+                  </CardTitle>
+                  <Badge className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] h-5 px-2">
+                    Pidió factura
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                {pedido.ruc && (
+                  <Row
+                    icon={<FileText className="w-4 h-4 text-zinc-400" />}
+                    label="RUC"
+                    value={
+                      <span className="font-mono text-zinc-900">{pedido.ruc}</span>
+                    }
+                  />
+                )}
+                {pedido.razon_social && (
+                  <Row
+                    icon={<FileText className="w-4 h-4 text-zinc-400" />}
+                    label="Razón social"
+                    value={pedido.razon_social}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Pago — dLocal o Stripe (legacy) */}
           {(pedido.dlocal_payment_id || pedido.stripe_session_id) && (
