@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const auth = req.headers.get("authorization");
 
-  if (!verifyWebhookSignature(rawBody, auth)) {
+  if (!(await verifyWebhookSignature(rawBody, auth))) {
     console.error("[dlocal/webhook] invalid signature");
     return NextResponse.json({ error: "invalid signature" }, { status: 401 });
   }

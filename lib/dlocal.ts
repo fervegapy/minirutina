@@ -1,35 +1,32 @@
 // Server-side dLocal Go client. Charges in PYG natively — no currency
 // conversion needed. NEVER import from client components (uses secret key).
 //
+// Credentials and base URL are resolved at request time from
+// public.dlocal_config (with env-var fallback) so the admin can flip
+// sandbox ↔ producción without touching Vercel.
+//
 // Docs: https://docs.dlocalgo.com/integration-api
 import crypto from "crypto";
+import { getActiveDlocalConfig, type ResolvedDlocalConfig } from "@/lib/dlocal-config";
 
-const API_BASE   = process.env.DLOCAL_API_BASE ?? "https://api.dlocalgo.com/v1";
-const API_KEY    = process.env.DLOCAL_API_KEY ?? "";
-const SECRET_KEY = process.env.DLOCAL_SECRET_KEY ?? "";
-
-function authHeader(): string {
-  // dLocal Go: Bearer <API_KEY>:<SECRET_KEY>
-  return `Bearer ${API_KEY}:${SECRET_KEY}`;
+function authHeader(cfg: ResolvedDlocalConfig): string {
+  return `Bearer ${cfg.api_key}:${cfg.secret_key}`;
 }
 
 export interface CreatePaymentParams {
-  amount:           number;        // in PYG (integer — Guaraní has no decimals)
-  currency:         string;        // "PYG"
-  country:          string;        // "PY"
+  amount:           number;
+  currency:         string;
+  country:          string;
   order_id:         string;
   description:      string;
   success_url:      string;
   back_url:         string;
   notification_url: string;
-  payer?: {
-    name?:  string;
-    email?: string;
-  };
+  payer?: { name?: string; email?: string };
 }
 
 export interface DlocalPayment {
-  id:           string;            // "DP-xxxxx"
+  id:           string;
   amount:       number;
   currency:     string;
   country:      string;
@@ -42,11 +39,12 @@ export interface DlocalPayment {
 }
 
 export async function createPayment(params: CreatePaymentParams): Promise<DlocalPayment> {
-  const res = await fetch(`${API_BASE}/payments`, {
+  const cfg = await getActiveDlocalConfig();
+  const res = await fetch(`${cfg.api_base}/payments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization:  authHeader(),
+      Authorization:  authHeader(cfg),
     },
     body: JSON.stringify(params),
     cache: "no-store",
@@ -59,36 +57,27 @@ export async function createPayment(params: CreatePaymentParams): Promise<Dlocal
 }
 
 export interface CreateTokenPaymentParams {
-  amount:           number;        // PYG integer
-  currency:         string;        // "PYG"
-  country:          string;        // "PY"
+  amount:           number;
+  currency:         string;
+  country:          string;
   order_id:         string;
   description:      string;
-  token:            string;        // SmartFields card token
+  token:            string;
   notification_url: string;
-  success_url?:     string;        // used for 3DS return
+  success_url?:     string;
   back_url?:        string;
-  payer?: {
-    name?:     string;
-    email?:    string;
-    document?: string;
-  };
+  payer?: { name?: string; email?: string; document?: string };
 }
 
-/**
- * Direct card charge using a SmartFields token. Hypothesis: dLocal Go's
- * /v1/payments accepts a `token` to process the charge inline instead of
- * returning a redirect_url. Response status may be PAID directly, or
- * PENDING + redirect_url when 3-D Secure authentication is required.
- */
 export async function createPaymentWithToken(
   params: CreateTokenPaymentParams,
 ): Promise<DlocalPayment> {
-  const res = await fetch(`${API_BASE}/payments`, {
+  const cfg = await getActiveDlocalConfig();
+  const res = await fetch(`${cfg.api_base}/payments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization:  authHeader(),
+      Authorization:  authHeader(cfg),
     },
     body: JSON.stringify(params),
     cache: "no-store",
@@ -101,9 +90,10 @@ export async function createPaymentWithToken(
 }
 
 export async function getPayment(paymentId: string): Promise<DlocalPayment> {
-  const res = await fetch(`${API_BASE}/payments/${encodeURIComponent(paymentId)}`, {
+  const cfg = await getActiveDlocalConfig();
+  const res = await fetch(`${cfg.api_base}/payments/${encodeURIComponent(paymentId)}`, {
     method: "GET",
-    headers: { Authorization: authHeader() },
+    headers: { Authorization: authHeader(cfg) },
     cache: "no-store",
   });
   const text = await res.text();
@@ -115,22 +105,24 @@ export async function getPayment(paymentId: string): Promise<DlocalPayment> {
 
 /**
  * Verifies a webhook notification's HMAC signature.
- *
  * dLocal sends:  Authorization: V2-HMAC-SHA256, Signature: <hex>
- * The signature is HMAC-SHA256(message = API_KEY + rawBody, key = SECRET_KEY).
+ * signature = HMAC-SHA256(message = API_KEY + rawBody, key = SECRET_KEY).
  */
-export function verifyWebhookSignature(rawBody: string, authorizationHeader: string | null): boolean {
+export async function verifyWebhookSignature(
+  rawBody:             string,
+  authorizationHeader: string | null,
+): Promise<boolean> {
   if (!authorizationHeader) return false;
   const match = authorizationHeader.match(/Signature\s*:\s*([a-f0-9]+)/i);
   const provided = match?.[1];
   if (!provided) return false;
 
+  const cfg = await getActiveDlocalConfig();
   const expected = crypto
-    .createHmac("sha256", SECRET_KEY)
-    .update(API_KEY + rawBody)
+    .createHmac("sha256", cfg.secret_key)
+    .update(cfg.api_key + rawBody)
     .digest("hex");
 
-  // Constant-time compare.
   const a = Buffer.from(provided, "hex");
   const b = Buffer.from(expected, "hex");
   if (a.length !== b.length) return false;

@@ -13,27 +13,23 @@ declare global {
   }
 }
 
-const SMARTFIELDS_KEY = process.env.NEXT_PUBLIC_DLOCAL_SMARTFIELDS_KEY ?? "";
-const IS_SANDBOX = (process.env.NEXT_PUBLIC_DLOCAL_ENV ?? "production") === "sandbox";
-const JS_URL = IS_SANDBOX ? "https://js-sandbox.dlocal.com/" : "https://js.dlocal.com/";
-
 export interface DlocalCardFormHandle {
   /** Tokenizes the card. Resolves with the token or rejects with a message. */
   tokenize: (cardHolderName: string) => Promise<string>;
 }
 
-function loadDlocalScript(): Promise<void> {
+function loadDlocalScript(jsUrl: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") return reject(new Error("no window"));
     if (window.dlocal) return resolve();
-    const existing = document.querySelector<HTMLScriptElement>(`script[src="${JS_URL}"]`);
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${jsUrl}"]`);
     if (existing) {
       existing.addEventListener("load", () => resolve());
       existing.addEventListener("error", () => reject(new Error("dlocal.js no cargó")));
       return;
     }
     const script = document.createElement("script");
-    script.src = JS_URL;
+    script.src = jsUrl;
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("dlocal.js no cargó"));
@@ -52,11 +48,19 @@ const DlocalCardForm = forwardRef<DlocalCardFormHandle, object>(function DlocalC
     let cancelled = false;
     (async () => {
       try {
-        if (!SMARTFIELDS_KEY) throw new Error("Falta NEXT_PUBLIC_DLOCAL_SMARTFIELDS_KEY.");
-        await loadDlocalScript();
+        // Fetch the active SmartFields key + ambiente from /api/dlocal/public-config
+        // — that endpoint reads from public.dlocal_config so the admin can
+        // flip sandbox/prod without rebuilding.
+        const cfgRes = await fetch("/api/dlocal/public-config", { cache: "no-store" });
+        const cfg = (await cfgRes.json()) as { smartfields_key: string; ambiente: string };
+        if (!cfg.smartfields_key) throw new Error("Falta la SmartFields key (configurar en /admin/pagos).");
+        const jsUrl = cfg.ambiente === "sandbox"
+          ? "https://js-sandbox.dlocal.com/"
+          : "https://js.dlocal.com/";
+        await loadDlocalScript(jsUrl);
         if (cancelled || !window.dlocal) return;
 
-        const dlocal = window.dlocal(SMARTFIELDS_KEY);
+        const dlocal = window.dlocal(cfg.smartfields_key);
         dlocalRef.current = dlocal;
 
         const fields = dlocal.fields({ locale: "es", country: "PY" });

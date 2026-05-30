@@ -29,9 +29,12 @@ function fmt(n: number) {
   return "Gs. " + n.toLocaleString("es-PY");
 }
 
-// "embedded" = SmartFields card form on our page (needs the dLocal account
-// to have SmartFields enabled). "redirect" = dLocal hosted checkout page.
-const CHECKOUT_MODE = (process.env.NEXT_PUBLIC_CHECKOUT_MODE ?? "redirect") as "redirect" | "embedded";
+// Checkout mode is resolved at runtime from /api/dlocal/public-config so
+// the admin can switch redirect ↔ embedded from /admin/pagos without a
+// redeploy. Env-var fallback for the very first render before the fetch
+// resolves.
+type CheckoutMode = "redirect" | "embedded";
+const CHECKOUT_MODE_FALLBACK = (process.env.NEXT_PUBLIC_CHECKOUT_MODE ?? "redirect") as CheckoutMode;
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -69,6 +72,20 @@ function CheckoutInner() {
   const [zonas, setZonas] = useState<DeliveryZona[]>([]);
   const [titular, setTitular] = useState("");        // nombre del titular de la tarjeta
   const cardRef = useRef<DlocalCardFormHandle>(null);
+
+  // Dynamic checkout mode — fetched from /api/dlocal/public-config so the
+  // admin can flip between embedded and redirect without a redeploy.
+  const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>(CHECKOUT_MODE_FALLBACK);
+  useEffect(() => {
+    fetch("/api/dlocal/public-config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((c: { checkout_mode?: CheckoutMode }) => {
+        if (c.checkout_mode === "embedded" || c.checkout_mode === "redirect") {
+          setCheckoutMode(c.checkout_mode);
+        }
+      })
+      .catch(() => {/* keep fallback */});
+  }, []);
 
   // Cupón de descuento
   const [cuponInput,    setCuponInput]    = useState("");
@@ -314,7 +331,7 @@ function CheckoutInner() {
     // so customers don't get a "thanks" email for an unpaid order.
 
     try {
-      if (CHECKOUT_MODE === "embedded") {
+      if (checkoutMode === "embedded") {
         // SmartFields: tokenize client-side, charge server-side. Customer
         // never leaves the site (unless 3DS).
         const token = await cardRef.current!.tokenize(titular.trim() || nombreNino);
@@ -644,7 +661,7 @@ function CheckoutInner() {
           </div>
 
           {/* Pago con tarjeta (SmartFields embebido) — solo en modo embedded */}
-          {CHECKOUT_MODE === "embedded" && (
+          {checkoutMode === "embedded" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
               <h2 className="font-bold text-xs uppercase tracking-wide text-[#22244e]/50">
                 Pago con tarjeta
@@ -695,7 +712,7 @@ function CheckoutInner() {
               >
                 {loading
                   ? "Procesando..."
-                  : CHECKOUT_MODE === "embedded"
+                  : checkoutMode === "embedded"
                   ? `Pagar ${loadingPrecios ? "" : fmt(precioTotal)}`
                   : `Ir a pagar ${loadingPrecios ? "" : fmt(precioTotal)}`}
               </Button>
