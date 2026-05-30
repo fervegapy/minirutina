@@ -81,7 +81,7 @@ export const productos: Record<string, Producto> = {
   recompensas: {
     slug: "recompensas",
     nombre: "Tablero de Recompensas",
-    tagline: "Un tablero de 10 o 20 pasos con figuritas a elección. Para instalar un hábito o motivar un comportamiento.",
+    tagline: "Con este tablero, motivá a tu hijo a lograr lo que se proponga, paso a paso.",
     emoji: "⭐",
     accentColor: "#f5d78e",
     precioDesde:          "Gs. 149.000",
@@ -94,10 +94,9 @@ export const productos: Record<string, Producto> = {
       "Plastificado mate anti-reflejo",
       "Tamaño A4 (21 x 29 cm)",
       "Nombre de tu niño",
-      "Elección de 10 o 20 pasos",
-      "Texto de recompensa personalizado",
+      "Cantidad de pasos a elección",
       "Color a elección",
-      "Figuritas a elección (se compran aparte)",
+      "Stickers a elección",
       "Tiempo de entrega: 48 horas hábiles",
     ],
     beneficios: [
