@@ -17,22 +17,23 @@ export const productos: Record<string, Producto> = {
   rutinas: {
     slug: "rutinas",
     nombre: "Rutina visual (día y noche)",
-    tagline: "Son DOS tableros: uno para la rutina al despertarse y otro para la hora de dormir. Sin peleas, sin recordatorios.",
+    tagline: "Son DOS tableros: uno para la rutina al despertarse y otro para la hora de dormir.",
     emoji: "🌅",
     accentColor: "#a8c5a0",
     precioDesde:          "Gs. 149.000",
     descripcion:
       "El producto incluye DOS tableros visuales — uno para cada momento clave del día. El primero organiza la rutina al despertarse (vestirse, lavarse los dientes, desayunar, mochila). El segundo, la rutina a la hora de dormir (baño, pijama, cuento, luz apagada). Con íconos claros y el nombre de tu hijo, los chicos saben qué viene después sin que tengas que decírselo.",
     paraQuien:
-      "Ideal para niños de 2 a 8 años que están aprendiendo a ser más autónomos. Funciona especialmente bien en la mañana antes del colegio y en la rutina de antes de dormir.",
+      "Ideal para niños de 2 a 8 años que están aprendiendo a ser más autónomos. Funciona especialmente bien en la mañana antes del colegio o guarde y en la rutina de antes de dormir.",
     incluye: [
-      "2 tableros impresos en papel couché 300g (mañana + noche)",
+      "2 tableros impresos en papel 300g (mañana + noche)",
       "Plastificado mate anti-reflejo",
       "Tamaño A4 (21 x 29 cm) cada uno",
-      "Nombre personalizado del niño",
+      "Nombre de tu niño",
       "Hasta 7 actividades por tablero",
-      "Color de acento a elección",
-      "Tiempo de entrega: 48 horas",
+      "Velcros para marcar y desmarcar",
+      "Color a elección",
+      "Tiempo de entrega: 48 horas hábiles",
     ],
     beneficios: [
       {
@@ -89,15 +90,15 @@ export const productos: Record<string, Producto> = {
     paraQuien:
       "Para niños de 3 a 9 años. Ideal para instalar un hábito nuevo, atravesar un momento difícil (destete, mudanza, hermano nuevo) o simplemente como sistema de motivación cotidiano.",
     incluye: [
-      "1 tablero impreso en papel couché 300g",
+      "1 tablero impreso en papel 300g",
       "Plastificado mate anti-reflejo",
       "Tamaño A4 (21 x 29 cm)",
-      "Nombre personalizado del niño",
+      "Nombre de tu niño",
       "Elección de 10 o 20 pasos",
       "Texto de recompensa personalizado",
-      "Color de acento a elección",
+      "Color a elección",
       "Figuritas a elección (se compran aparte)",
-      "Tiempo de entrega: 48 horas",
+      "Tiempo de entrega: 48 horas hábiles",
     ],
     beneficios: [
       {
