@@ -71,8 +71,8 @@ export default function IconPicker({
 
   return (
     <div>
-      {/* 3 cols en mobile, 4 en desktop — cards más grandes en celulares */}
-      <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-3 pt-3">
+      {/* 2 cols en mobile (más grandes y legibles), 4 en desktop */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3 pt-3">
         {iconos.map((icono) => {
           const isSelected = selected.includes(icono.id);
           const order = isSelected ? selected.indexOf(icono.id) + 1 : null;

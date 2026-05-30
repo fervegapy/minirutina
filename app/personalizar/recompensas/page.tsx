@@ -198,7 +198,7 @@ export default function PersonalizarRecompensas() {
           {/* Paso 2: Sticker */}
           {step === 2 && (
             <div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {STICKERS.map((s) => (
                   <button
                     key={s.id}
