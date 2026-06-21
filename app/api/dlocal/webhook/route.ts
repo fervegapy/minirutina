@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayment, verifyWebhookSignature } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmail } from "@/lib/email";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export const runtime = "nodejs";
 
@@ -56,8 +57,23 @@ export async function POST(req: NextRequest) {
     }
 
     if (payment.status !== "PAID") {
-      // Nothing to do yet for PENDING / REJECTED / etc. — ack so dLocal
-      // stops retrying. (We could persist failure states here later.)
+      // Capture the non-PAID terminal states (REJECTED / EXPIRED /
+      // CANCELLED) to PostHog so we can analyze drop-off reasons. We use
+      // the pedido_id as distinct_id since we don't have an email here.
+      if (["REJECTED", "EXPIRED", "CANCELLED"].includes(payment.status)) {
+        captureServerEvent({
+          distinctId: pedidoId,
+          event:      "pago_fallido",
+          properties: {
+            pedido_id:        pedidoId,
+            dlocal_payment:   payment.id,
+            status:           payment.status,
+            payment_method:   payment.payment_method_type ?? null,
+            amount_pyg:       Number(payment.amount) || 0,
+            currency:         payment.currency ?? "PYG",
+          },
+        }).catch(() => {});
+      }
       console.log("[dlocal/webhook]", paymentId, "status", payment.status);
       return NextResponse.json({ received: true });
     }
@@ -88,6 +104,23 @@ export async function POST(req: NextRequest) {
 
     // Customer email
     const customerEmail = extractEmail(pedido.contacto);
+
+    // Server-side analytics — confirmed payment. Use the email as distinct_id
+    // so the event merges with the person identified browser-side.
+    captureServerEvent({
+      distinctId: customerEmail ?? pedidoId,
+      event:      "pago_completado",
+      properties: {
+        pedido_id:      pedidoId,
+        dlocal_payment: payment.id,
+        producto:       pedido.producto,
+        producto_label: productoLabel,
+        nombre_nino:    pedido.nombre_nino,
+        amount_pyg:     montoPyg,
+        currency:       payment.currency ?? "PYG",
+        payment_method: payment.payment_method_type ?? null,
+      },
+    }).catch(() => {});
     if (customerEmail) {
       sendEmail({
         to:      customerEmail,

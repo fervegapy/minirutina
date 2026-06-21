@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import LocationPicker, { LocationValue } from "@/components/checkout/LocationPicker";
-import { track } from "@/lib/tracking";
+import { track, identify } from "@/lib/tracking";
 import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
 import DlocalCardForm, { type DlocalCardFormHandle } from "@/components/checkout/DlocalCardForm";
 
@@ -207,9 +207,18 @@ function CheckoutInner() {
       if (json.ok) {
         setCuponAplicado({ codigo: codigo.toUpperCase(), descuento: json.descuento });
         setCuponError(null);
+        track({
+          evento:   "cupon_aplicado",
+          producto: producto === "rutinas" || producto === "recompensas" ? producto : undefined,
+          data: { codigo: codigo.toUpperCase(), descuento: json.descuento, monto_base: precioBase },
+        });
       } else {
         setCuponAplicado(null);
         setCuponError(json.error ?? "Cupón inválido.");
+        track({
+          evento: "cupon_invalido",
+          data: { codigo: codigo.toUpperCase(), motivo: json.error ?? "unknown" },
+        });
       }
     } catch {
       setCuponError("No se pudo validar el cupón.");
@@ -339,11 +348,38 @@ function CheckoutInner() {
       evento:   "pedido_created",
       producto: validProducto,
       pedidoId: data.id,
+      data: {
+        total_pyg:       precioBase + precioEnvio,
+        producto_pyg:    precioBase,
+        envio_pyg:       precioEnvio,
+        tipo_entrega:    tipoEntrega,
+        modalidad:       tipoEntrega === "fisico" ? modalidad : null,
+        cupon_codigo:    cuponAplicado?.codigo ?? null,
+        cupon_descuento: cuponAplicado?.descuento ?? null,
+        zona_envio:      esDelivery ? (zonaActual?.nombre ?? null) : null,
+      },
+    });
+
+    // Identify the person so all session events get attributed.
+    identify(email.trim(), {
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
+      whatsapp: whatsapp.trim() || null,
     });
 
     // NOTE: the confirmation email is NOT sent here. It only goes out
     // once dLocal confirms the payment (PAID) via /api/dlocal/webhook,
     // so customers don't get a "thanks" email for an unpaid order.
+
+    track({
+      evento:   "pago_iniciado",
+      producto: validProducto,
+      pedidoId: data.id,
+      data: {
+        modo:      checkoutMode,
+        total_pyg: precioBase + precioEnvio - (cuponAplicado?.descuento ?? 0),
+      },
+    });
 
     try {
       if (checkoutMode === "embedded") {
@@ -401,7 +437,14 @@ function CheckoutInner() {
       }
       throw new Error(json.error ?? "No se pudo iniciar el pago.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo procesar el pago. Intentá de nuevo.");
+      const msg = e instanceof Error ? e.message : "No se pudo procesar el pago. Intentá de nuevo.";
+      setError(msg);
+      track({
+        evento:   "pago_fallido_cliente",
+        producto: validProducto,
+        pedidoId: data.id,
+        data:     { modo: checkoutMode, error: msg },
+      });
     } finally {
       setLoading(false);
     }

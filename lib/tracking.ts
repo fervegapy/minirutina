@@ -11,6 +11,8 @@
 
 "use client";
 
+import posthog from "posthog-js";
+
 const STORAGE_KEY = "mr_session_id";
 
 export type TrackEvent =
@@ -19,7 +21,11 @@ export type TrackEvent =
   | "preview_generated"
   | "checkout_started"
   | "checkout_filled"
-  | "pedido_created";
+  | "pedido_created"
+  | "cupon_aplicado"
+  | "cupon_invalido"
+  | "pago_iniciado"
+  | "pago_fallido_cliente";
 
 interface TrackArgs {
   evento:    TrackEvent;
@@ -68,6 +74,36 @@ export function track(args: TrackArgs): void {
       body:      JSON.stringify(payload),
       keepalive: true,
     }).catch(() => {});
+  } catch {
+    /* noop */
+  }
+
+  // Mirror every event to PostHog. Properties are flattened so PostHog's
+  // funnel/cohort UI can filter by producto, paso, etc. without diving
+  // into nested data.
+  try {
+    if (posthog.__loaded) {
+      posthog.capture(args.evento, {
+        producto:  args.producto ?? undefined,
+        paso:      args.paso ?? undefined,
+        pedido_id: args.pedidoId ?? undefined,
+        ...(args.data ?? {}),
+      });
+    }
+  } catch {
+    /* noop */
+  }
+}
+
+/** Links the current anonymous session to a person (email-based). All
+ *  prior + future events get attributed to this person. Safe to call
+ *  multiple times — PostHog merges sessions. */
+export function identify(email: string, traits?: Record<string, unknown>): void {
+  if (typeof window === "undefined" || !email) return;
+  try {
+    if (posthog.__loaded) {
+      posthog.identify(email.toLowerCase().trim(), traits ?? {});
+    }
   } catch {
     /* noop */
   }

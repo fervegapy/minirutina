@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Rubik, Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteConfig } from "@/lib/site-config";
+import PostHogProvider from "@/components/PostHogProvider";
 
 // Force dynamic rendering so generateMetadata() always reads the latest
 // site_config (logo/favicon/title change → next request, not next deploy).
@@ -59,7 +60,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className={`${inter.variable} ${rubik.variable}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <PostHogProvider>{children}</PostHogProvider>
+      </body>
     </html>
   );
 }
