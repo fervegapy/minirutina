@@ -31,26 +31,17 @@ async function getCards(): Promise<CardData[]> {
     (precios ?? []).map((p) => [p.producto as string, p]),
   );
 
-  const minPositive = (vs: (number | null | undefined)[]) => {
-    const nums = vs.filter((n): n is number => typeof n === "number" && n > 0);
-    return nums.length > 0 ? Math.min(...nums) : null;
-  };
   const fmt = (n: number) => "Gs. " + n.toLocaleString("es-PY");
 
   return slugs.map((slug) => {
     const base = productosData[slug];
     const row  = preciosBySlug.get(slug);
-    // Card shows a single representative price — the lowest variant
-    // available for that product. Variant selection happens later in the
-    // customizer / checkout.
-    const cur = row
-      ? minPositive([
-          row.precio_impreso,
-          row.precio_digital,
-          row.precio_impreso_20,
-          row.precio_digital_20,
-        ])
-      : null;
+    // Card shows the printed (impreso) base price — for recompensas that's
+    // the 10-sticker version (precio_impreso, not precio_impreso_20).
+    const cur =
+      typeof row?.precio_impreso === "number" && row.precio_impreso > 0
+        ? row.precio_impreso
+        : null;
     return {
       slug,
       nombre: base.nombre,

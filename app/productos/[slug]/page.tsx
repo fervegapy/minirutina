@@ -54,23 +54,13 @@ export default async function ProductoPage({
       : producto.faqs;
 
   // Merge CMS overrides + derived precio over the hardcoded base.
-  // Card shows ONE representative price: the lowest variant available
-  // (variant selection — impreso/digital and 10/20 stickers — happens
-  // later in the customizer / checkout).
-  const minPositive = (values: (number | null | undefined)[]) => {
-    const nums = values.filter((n): n is number => typeof n === "number" && n > 0);
-    return nums.length > 0 ? Math.min(...nums) : null;
-  };
-
   const precioDb = (() => {
-    if (!precioRow) return null;
-    const m = minPositive([
-      precioRow.precio_impreso,
-      precioRow.precio_digital,
-      precioRow.precio_impreso_20,
-      precioRow.precio_digital_20,
-    ]);
-    return m !== null ? "Gs. " + m.toLocaleString("es-PY") : null;
+    // Show the printed (impreso) base price — for recompensas that's the
+    // 10-sticker version. No "desde" / no lowest-variant logic.
+    const v = precioRow?.precio_impreso;
+    return typeof v === "number" && v > 0
+      ? "Gs. " + v.toLocaleString("es-PY")
+      : null;
   })();
 
   const nombre  = (cfg?.nombre  && cfg.nombre.trim())  || producto.nombre;
@@ -209,7 +199,7 @@ export default async function ProductoPage({
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#e5e7eb] px-4 py-3 flex items-center gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]">
         <div className="flex-1 min-w-0">
           <p className="text-[10px] uppercase tracking-widest text-[#22244e]/40 font-bold">
-            Desde
+            Versión impresa
           </p>
           <p className="text-base font-bold text-[#22244e] leading-tight truncate">
             {precio}

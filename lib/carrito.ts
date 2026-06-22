@@ -74,8 +74,11 @@ function subscribe(l: Listener) {
   return () => { listeners.delete(l); };
 }
 
+// Stable empty reference for SSR — returning a fresh [] each call triggers
+// React's "getServerSnapshot should be cached" warning / infinite loop.
+const EMPTY: CartItem[] = [];
 function getSnapshot() { return snapshot; }
-function getServerSnapshot() { return [] as CartItem[]; }
+function getServerSnapshot() { return EMPTY; }
 
 export function useCarrito() {
   const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

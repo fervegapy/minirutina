@@ -1,14 +1,26 @@
 "use client";
 import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { Plus, X, Package, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
-import LocationPicker, { LocationValue } from "@/components/checkout/LocationPicker";
+import type { LocationValue } from "@/components/checkout/LocationPicker";
+import type { MapLocationValue } from "@/components/checkout/MapLocationPicker";
 import { track, identify } from "@/lib/tracking";
+
+// Leaflet needs the DOM at module load — client-only, no SSR.
+const MapLocationPicker = dynamic(
+  () => import("@/components/checkout/MapLocationPicker"),
+  { ssr: false, loading: () => (
+    <div className="w-full h-56 rounded-xl border border-[#e5e7eb] bg-[#eef0f2] flex items-center justify-center text-xs text-[#22244e]/40">
+      Cargando mapa…
+    </div>
+  ) },
+);
 import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
 import DlocalCardForm, { type DlocalCardFormHandle } from "@/components/checkout/DlocalCardForm";
 import { useCarrito, type CartItem, type Formato, type Producto } from "@/lib/carrito";
@@ -83,7 +95,17 @@ function CheckoutInner() {
   const [calle,      setCalle]      = useState("");
   const [numero,     setNumero]     = useState("");
   const [referencia, setReferencia] = useState("");
+  const [coords,     setCoords]     = useState<{ lat: number; lng: number } | null>(null);
   const [zonas, setZonas] = useState<DeliveryZona[]>([]);
+
+  // The map picker auto-fills ciudad/depto/calle/numero (all editable) and
+  // gives us a precise pin we attach to the order's address.
+  const handleMapChange = (v: MapLocationValue) => {
+    setLocation({ departamento: v.departamento, ciudad: v.ciudad, barrio: v.barrio });
+    setCalle(v.calle);
+    setNumero(v.numero);
+    setCoords(v.lat != null && v.lng != null ? { lat: v.lat, lng: v.lng } : null);
+  };
   const [titular, setTitular] = useState("");
   const cardRef = useRef<DlocalCardFormHandle>(null);
 
@@ -280,6 +302,8 @@ function CheckoutInner() {
           `Delivery — ${departamento}, ${ciudad}${barrio ? `, ${barrio}` : ""}`,
           `Calle: ${calle.trim()} ${numero.trim()}`,
           referencia.trim() && `Referencia: ${referencia.trim()}`,
+          // Precise pin from the map — a Google Maps link the courier can open.
+          coords && `Ubicación: https://www.google.com/maps?q=${coords.lat},${coords.lng}`,
         ].filter(Boolean);
         direccion = partes.join(" · ");
       }
@@ -596,11 +620,7 @@ function CheckoutInner() {
           {anyFisico && modalidad === "delivery" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
               <StepTitle n={2}>Decinos a dónde te lo llevamos</StepTitle>
-              <LocationPicker onChange={setLocation} />
-              <div className="grid grid-cols-3 gap-2">
-                <Input className="col-span-2" placeholder="Calle"  value={calle}  onChange={(e) => setCalle(e.target.value)} />
-                <Input placeholder="Número" value={numero} onChange={(e) => setNumero(e.target.value)} />
-              </div>
+              <MapLocationPicker onChange={handleMapChange} />
               <Input
                 placeholder="Referencia (opcional — ej. portón verde)"
                 value={referencia}
