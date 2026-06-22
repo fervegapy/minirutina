@@ -169,7 +169,7 @@ export default function MapLocationPicker({ onChange }: Props) {
     patch({ lat, lng });
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&accept-language=es&lat=${lat}&lon=${lng}`,
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&accept-language=es&zoom=18&lat=${lat}&lon=${lng}`,
         { headers: { Accept: "application/json" } },
       );
       if (!res.ok) return;
@@ -294,9 +294,16 @@ export default function MapLocationPicker({ onChange }: Props) {
           </div>
         )}
       </div>
-      <p className="text-[11px] text-[#22244e]/50 text-center">
-        Tocá el mapa o arrastrá el pin para marcar tu casa exacta.
-      </p>
+      {value.lat != null ? (
+        <div className="flex items-center gap-1.5 text-[11px] text-[#a8c5a0] font-semibold">
+          <span>📍</span>
+          <span>Ubicación marcada — el texto se puede corregir abajo si el nombre de la calle no es exacto.</span>
+        </div>
+      ) : (
+        <p className="text-[11px] text-[#22244e]/50 text-center">
+          Tocá el mapa, arrastrá el pin o buscá tu dirección arriba.
+        </p>
+      )}
 
       {/* Editable auto-filled fields */}
       <div className="grid grid-cols-2 gap-2">
