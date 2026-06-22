@@ -1,17 +1,5 @@
 "use client";
 
-// Map-based delivery address picker. Built on OpenStreetMap tiles + Leaflet.
-//
-// The map captures an exact lat/lng (always precise, used for courier nav).
-// Street name/number are typed manually — Paraguay doesn't have sufficient
-// street-level coverage in any free geocoding service (OSM, Mapbox, Nominatim)
-// to make reverse geocoding reliable. Google Maps is the only service with
-// good PY coverage but requires billing setup.
-//
-// "Mi ubicación" uses geolocation to center the map, but city/dept autofill
-// comes from Mapbox (locality/place level only — no street data in PY).
-// Forward search (Mapbox) works for city/landmark level, not street numbers.
-
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -30,51 +18,35 @@ interface Props {
   onChange: (val: MapLocationValue) => void;
 }
 
-// Asunción centro — sensible default before the user does anything.
 const DEFAULT_CENTER: [number, number] = [-25.2987, -57.6359];
 const DEFAULT_ZOOM = 13;
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 const MAPBOX_BASE  = "https://api.mapbox.com/geocoding/v5/mapbox.places";
 
-// ─── Mapbox GeoJSON shapes ─────────────────────────────────────────────────
 interface MapboxContext { id: string; text: string; }
 interface MapboxFeature {
-  place_name:  string;
   place_type?: string[];
-  center:      [number, number];   // [lng, lat]
-  text:        string;             // primary name (street or place)
-  address?:    string;             // house number (on address features)
+  center:      [number, number];
+  text:        string;
   context?:    MapboxContext[];
 }
 interface MapboxResponse { features: MapboxFeature[]; }
 
-// Mapbox has locality/place/region data for Paraguay but NOT street-level
-// (address type). So we only autofill ciudad + departamento from the geocoder.
-// Calle + número are always entered manually by the customer.
 function featureToPartial(f: MapboxFeature): Partial<MapLocationValue> & { lat: number; lng: number } {
   const ctx = f.context ?? [];
-  const get = (prefix: string) =>
-    ctx.find((c) => c.id.startsWith(prefix))?.text ?? "";
-
-  // Mapbox hierarchy for PY: region > place > locality > neighborhood
-  // place = ciudad (Asunción, Luque…)
-  // locality = barrio/localidad pequeña
+  const get = (prefix: string) => ctx.find((c) => c.id.startsWith(prefix))?.text ?? "";
   const isCity = f.place_type?.includes("place");
-  const ciudad = isCity
-    ? f.text                       // the feature itself is the city
-    : get("place");                // city is in context
+  const ciudad = isCity ? f.text : get("place");
   const barrio = isCity
     ? get("locality") || get("neighborhood")
     : (f.place_type?.includes("locality") ? f.text : get("locality") || get("neighborhood"));
-  const depto = get("region");
-
   return {
     ciudad:       ciudad ?? "",
-    departamento: depto  ?? "",
+    departamento: get("region") ?? "",
     barrio:       barrio ?? "",
-    lat:  f.center[1],
-    lng:  f.center[0],
+    lat: f.center[1],
+    lng: f.center[0],
   };
 }
 
@@ -89,18 +61,12 @@ export default function MapLocationPicker({ onChange }: Props) {
   const [value, setValue] = useState<MapLocationValue>({
     departamento: "", ciudad: "", barrio: "", calle: "", numero: "", lat: null, lng: null,
   });
-
-  const [query, setQuery]       = useState("");
-  const [results, setResults]   = useState<MapboxFeature[]>([]);
-  const [searching, setSearching] = useState(false);
   const [geoStatus, setGeoStatus] = useState<"idle" | "locating" | "denied" | "error">("idle");
   const [mapReady, setMapReady]   = useState(false);
 
-  // Keep the latest onChange without forcing map re-inits.
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
-  // Merge a patch into value + bubble up.
   const patch = useCallback((p: Partial<MapLocationValue>) => {
     setValue((prev) => {
       const next = { ...prev, ...p };
@@ -126,8 +92,6 @@ export default function MapLocationPicker({ onChange }: Props) {
         maxZoom: 19,
       }).addTo(map);
 
-      // Custom SVG pin — avoids the broken default-marker asset paths that
-      // bundlers trip on.
       const pin = L.divIcon({
         className: "",
         html: `<div style="transform:translate(-50%,-100%);">
@@ -144,7 +108,6 @@ export default function MapLocationPicker({ onChange }: Props) {
         const { lat, lng } = marker.getLatLng();
         reverseGeocode(lat, lng);
       });
-      // Click on the map also moves the pin.
       map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
         marker.setLatLng(e.latlng);
         reverseGeocode(e.latlng.lat, e.latlng.lng);
@@ -153,7 +116,6 @@ export default function MapLocationPicker({ onChange }: Props) {
       mapRef.current = map;
       markerRef.current = marker;
       setMapReady(true);
-      // Leaflet needs a size recalculation once it's visible in the layout.
       setTimeout(() => map.invalidateSize(), 200);
     })();
     return () => {
@@ -165,20 +127,15 @@ export default function MapLocationPicker({ onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Move map + marker to a point.
   const moveTo = useCallback((lat: number, lng: number, zoom = 16) => {
     mapRef.current?.setView([lat, lng], zoom);
     markerRef.current?.setLatLng([lat, lng]);
   }, []);
 
-  // ─── Reverse geocode (coords → address) ──────────────────────────────────
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
-    // Always set coords immediately — the pin is the source of truth.
     patch({ lat, lng });
     if (!MAPBOX_TOKEN) return;
     try {
-      // Ask for place/locality/region — the levels Mapbox has for Paraguay.
-      // We intentionally skip 'address' since PY street coverage is near-zero.
       const res = await fetch(
         `${MAPBOX_BASE}/${lng},${lat}.json?language=es&types=locality,place,region&access_token=${MAPBOX_TOKEN}`,
       );
@@ -186,12 +143,9 @@ export default function MapLocationPicker({ onChange }: Props) {
       const json = (await res.json()) as MapboxResponse;
       const feature = json.features[0];
       if (feature) patch(featureToPartial(feature));
-    } catch {
-      /* keep the coords-only patch */
-    }
+    } catch { /* keep coords-only patch */ }
   }, [patch]);
 
-  // ─── Geolocation ──────────────────────────────────────────────────────────
   const useMyLocation = useCallback(() => {
     if (!navigator.geolocation) { setGeoStatus("error"); return; }
     setGeoStatus("locating");
@@ -209,83 +163,26 @@ export default function MapLocationPicker({ onChange }: Props) {
     );
   }, [moveTo, reverseGeocode]);
 
-  // ─── Forward search (text → candidates), debounced ────────────────────────
-  useEffect(() => {
-    const q = query.trim();
-    if (q.length < 3 || !MAPBOX_TOKEN) { setResults([]); return; }
-    setSearching(true);
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(
-          `${MAPBOX_BASE}/${encodeURIComponent(q)}.json?country=py&language=es&types=address,place&limit=5&access_token=${MAPBOX_TOKEN}`,
-        );
-        const json = res.ok ? ((await res.json()) as MapboxResponse) : { features: [] };
-        setResults(json.features);
-      } catch {
-        setResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [query]);
-
-  const pickResult = useCallback((f: MapboxFeature) => {
-    const [lng, lat] = f.center;
-    setQuery("");
-    setResults([]);
-    moveTo(lat, lng);
-    patch(featureToPartial(f));
-  }, [moveTo, patch]);
-
   return (
     <div className="space-y-3">
-      {/* Search + geolocation */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscá tu barrio o ciudad (ej. Villa Morra, Luque)"
-            className={inputClass}
-            autoComplete="off"
-          />
-          {(results.length > 0 || searching) && (
-            <div className="absolute z-[1000] left-0 right-0 mt-1 bg-white border border-[#e5e7eb] rounded-lg shadow-lg overflow-hidden">
-              {searching && results.length === 0 && (
-                <div className="px-3 py-2 text-xs text-[#22244e]/50">Buscando…</div>
-              )}
-              {results.map((f, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => pickResult(f)}
-                  className="block w-full text-left px-3 py-2 text-xs text-[#22244e] hover:bg-[#336aea]/10 border-b border-[#e5e7eb] last:border-0"
-                >
-                  {f.place_name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={useMyLocation}
-          disabled={geoStatus === "locating"}
-          className="shrink-0 h-10 px-3 rounded-lg border border-[#22244e] text-[#22244e] text-xs font-bold hover:bg-[#22244e]/5 transition-colors disabled:opacity-50 flex items-center gap-1.5"
-        >
-          📍 {geoStatus === "locating" ? "Ubicando…" : "Mi ubicación"}
-        </button>
-      </div>
+      {/* Mi ubicación */}
+      <button
+        type="button"
+        onClick={useMyLocation}
+        disabled={geoStatus === "locating"}
+        className="w-full h-10 rounded-lg border border-[#22244e] text-[#22244e] text-sm font-bold hover:bg-[#22244e]/5 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        📍 {geoStatus === "locating" ? "Ubicando…" : "Usar mi ubicación"}
+      </button>
 
       {geoStatus === "denied" && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          No nos diste permiso de ubicación. Buscá tu dirección arriba o movés el pin en el mapa.
+          No nos diste permiso de ubicación. Mové el pin en el mapa para marcar tu casa.
         </p>
       )}
       {geoStatus === "error" && (
         <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          No pudimos obtener tu ubicación. Probá buscando la dirección o moviendo el pin.
+          No pudimos obtener tu ubicación. Mové el pin en el mapa para marcar tu casa.
         </p>
       )}
 
@@ -312,7 +209,7 @@ export default function MapLocationPicker({ onChange }: Props) {
         </p>
       )}
 
-      {/* Editable auto-filled fields */}
+      {/* Editable fields */}
       <div className="grid grid-cols-2 gap-2">
         <input
           className={inputClass}
