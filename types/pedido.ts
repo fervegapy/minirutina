@@ -7,6 +7,19 @@ export type EstadoPedido =
 export type TipoEntrega = "digital" | "fisico";
 export type ProductoTipo = "rutinas" | "recompensas";
 
+export interface PedidoItem {
+  id:              string;
+  pedido_id:       string;
+  producto:        ProductoTipo;
+  nombre_nino:     string;
+  color_acento:    string;
+  personalizacion: PersonalizacionRutinas | PersonalizacionRecompensas;
+  tipo_entrega:    TipoEntrega;
+  precio_pyg:      number;
+  orden:           number;
+  created_at:      string;
+}
+
 export interface Pedido {
   id: string;
   created_at: string;

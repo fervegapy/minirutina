@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { getSiteConfig } from "@/lib/site-config";
+import CartBadge from "@/components/landing/CartBadge";
 
 export default async function Header() {
   const cfg = await getSiteConfig();
@@ -46,12 +47,15 @@ export default async function Header() {
           </Link>
         </nav>
 
-        {/* CTA */}
-        <Link href="#productos">
-          <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 text-sm px-5 h-12 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#336aea]/30 active:translate-y-0 active:scale-[0.98]">
-            Personalizar tablero
-          </Button>
-        </Link>
+        {/* CTA + carrito */}
+        <div className="flex items-center gap-2">
+          <CartBadge />
+          <Link href="#productos">
+            <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 text-sm px-5 h-12 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#336aea]/30 active:translate-y-0 active:scale-[0.98]">
+              Personalizar tablero
+            </Button>
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -1,7 +1,9 @@
 "use client";
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
+import { Plus, X, Package, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
@@ -9,14 +11,14 @@ import LocationPicker, { LocationValue } from "@/components/checkout/LocationPic
 import { track, identify } from "@/lib/tracking";
 import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
 import DlocalCardForm, { type DlocalCardFormHandle } from "@/components/checkout/DlocalCardForm";
+import { useCarrito, type CartItem, type Formato, type Producto } from "@/lib/carrito";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
-  rutinas: "Tablero de Rutinas",
+  rutinas:     "Tablero de Rutinas",
   recompensas: "Tablero de Recompensas",
 };
 
-
-const PRECIO_DELIVERY_FALLBACK = 35000;     // used only if delivery_zonas is empty
+const PRECIO_DELIVERY_FALLBACK = 35000;
 const FALLBACK_IMPRESO = 149000;
 const FALLBACK_DIGITAL = 89000;
 
@@ -24,16 +26,11 @@ function fmt(n: number) {
   return "Gs. " + n.toLocaleString("es-PY");
 }
 
-// Checkout mode is resolved at runtime from /api/dlocal/public-config so
-// the admin can switch redirect ↔ embedded from /admin/pagos without a
-// redeploy. Env-var fallback for the very first render before the fetch
-// resolves.
 type CheckoutMode = "redirect" | "embedded";
 const CHECKOUT_MODE_FALLBACK = (process.env.NEXT_PUBLIC_CHECKOUT_MODE ?? "redirect") as CheckoutMode;
 
 const EMAIL_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Numbered step heading used across the checkout sections.
 function StepTitle({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2.5 mb-4">
@@ -45,36 +42,57 @@ function StepTitle({ n, children }: { n: number; children: React.ReactNode }) {
   );
 }
 
+// ─── Pricing ─────────────────────────────────────────────────────────────────
+// Precios row from Supabase. We fetch once for BOTH products and resolve
+// each cart item's price client-side.
+interface PrecioRow {
+  producto:           string;
+  precio_impreso:     number;
+  precio_digital:     number;
+  precio_impreso_20:  number | null;
+  precio_digital_20:  number | null;
+}
+
+function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>): number {
+  const row = prices[item.producto];
+  if (!row) {
+    // Fallback if precios row not loaded — keeps the UI usable even if DB is slow.
+    return item.formato === "digital" ? FALLBACK_DIGITAL : FALLBACK_IMPRESO;
+  }
+  const usar20 =
+    item.producto === "recompensas" &&
+    (item.personalizacion as { cantidad?: number } | null)?.cantidad === 20;
+  if (item.formato === "digital") {
+    return (usar20 && row.precio_digital_20) || row.precio_digital;
+  }
+  return (usar20 && row.precio_impreso_20) || row.precio_impreso;
+}
+
 function CheckoutInner() {
   const router = useRouter();
   const params = useSearchParams();
+  const { items, removeItem, setFormato, clear } = useCarrito();
 
-  const producto = params.get("producto") ?? "";
-  const nombreNino = params.get("nombre_nino") ?? "";
-  const colorAcento = params.get("color_acento") ?? "";
-  const personalizacionRaw = params.get("personalizacion") ?? "{}";
-
-  const [tipoEntrega, setTipoEntrega] = useState<"fisico" | "digital">("fisico");
+  // Form state — order-level (shared by all items)
   const [modalidad, setModalidad] = useState<"pickup" | "delivery">("pickup");
-  const [nombre,   setNombre]   = useState("");
-  const [apellido, setApellido] = useState("");
-  const [email, setEmail] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [location, setLocation] = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
+  const [nombre,    setNombre]    = useState("");
+  const [apellido,  setApellido]  = useState("");
+  const [email,     setEmail]     = useState("");
+  const [whatsapp,  setWhatsapp]  = useState("");
+  const [location,  setLocation]  = useState<LocationValue>({ departamento: "", ciudad: "", barrio: "" });
   const [calle,      setCalle]      = useState("");
   const [numero,     setNumero]     = useState("");
   const [referencia, setReferencia] = useState("");
   const [zonas, setZonas] = useState<DeliveryZona[]>([]);
-  const [titular, setTitular] = useState("");        // nombre del titular de la tarjeta
+  const [titular, setTitular] = useState("");
   const cardRef = useRef<DlocalCardFormHandle>(null);
 
-  // Facturación (opcional, expandible).
+  // Facturación
   const [necesitaFactura, setNecesitaFactura] = useState(false);
-  const [ruc,          setRuc]          = useState("");
-  const [razonSocial,  setRazonSocial]   = useState("");
+  const [ruc,         setRuc]         = useState("");
+  const [razonSocial, setRazonSocial] = useState("");
 
-  // Dynamic checkout mode — fetched from /api/dlocal/public-config so the
-  // admin can flip between embedded and redirect without a redeploy.
+  // Checkout mode (dynamic from /api/dlocal/public-config)
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>(CHECKOUT_MODE_FALLBACK);
   useEffect(() => {
     fetch("/api/dlocal/public-config", { cache: "no-store" })
@@ -84,53 +102,40 @@ function CheckoutInner() {
           setCheckoutMode(c.checkout_mode);
         }
       })
-      .catch(() => {/* keep fallback */});
+      .catch(() => {});
   }, []);
 
-  // Cupón de descuento
+  // Cupón
   const [cuponInput,    setCuponInput]    = useState("");
   const [cuponAplicado, setCuponAplicado] = useState<{ codigo: string; descuento: number } | null>(null);
   const [cuponError,    setCuponError]    = useState<string | null>(null);
   const [cuponLoading,  setCuponLoading]  = useState(false);
+
+  // Loading / error
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [precioImpreso,   setPrecioImpreso]   = useState(FALLBACK_IMPRESO);
-  const [precioDigital,   setPrecioDigital]   = useState(FALLBACK_DIGITAL);
-  const [precioImpreso20, setPrecioImpreso20] = useState<number | null>(null);
-  const [precioDigital20, setPrecioDigital20] = useState<number | null>(null);
-  const [loadingPrecios,  setLoadingPrecios]  = useState(true);
 
-  // For Recompensas, the customizer chose `cantidad` (10 or 20). When it's
-  // 20 we use the precio_*_20 variant; for everything else (including
-  // Rutinas, which has no cantidad) we use the base columns.
-  const cantidadRecompensas: 10 | 20 = (() => {
-    try {
-      const p = JSON.parse(personalizacionRaw);
-      return p?.cantidad === 20 ? 20 : 10;
-    } catch {
-      return 10;
-    }
-  })();
+  // Add-another panel toggle
+  const [showAddPanel, setShowAddPanel] = useState(false);
+
+  // Prices for BOTH products (we don't know which the cart has until items load)
+  const [pricesMap, setPricesMap] = useState<Record<string, PrecioRow>>({});
+  const [loadingPrecios, setLoadingPrecios] = useState(true);
 
   useEffect(() => {
-    if (!producto) return;
     supabase
       .from("precios")
-      .select("precio_impreso, precio_digital, precio_impreso_20, precio_digital_20")
-      .eq("producto", producto)
-      .single()
+      .select("producto, precio_impreso, precio_digital, precio_impreso_20, precio_digital_20")
       .then(({ data }) => {
         if (data) {
-          setPrecioImpreso(data.precio_impreso);
-          setPrecioDigital(data.precio_digital);
-          setPrecioImpreso20(data.precio_impreso_20 ?? null);
-          setPrecioDigital20(data.precio_digital_20 ?? null);
+          const map: Record<string, PrecioRow> = {};
+          for (const row of data as PrecioRow[]) map[row.producto] = row;
+          setPricesMap(map);
         }
         setLoadingPrecios(false);
       });
-  }, [producto]);
+  }, []);
 
-  // Load delivery zones — one query, cached for the session.
   useEffect(() => {
     supabase
       .from("delivery_zonas")
@@ -141,57 +146,51 @@ function CheckoutInner() {
       });
   }, []);
 
-  // Funnel: landed on /checkout (fires once).
+  // Funnel — once per page load
   useEffect(() => {
-    const validProducto = producto === "rutinas" || producto === "recompensas"
-      ? (producto as "rutinas" | "recompensas")
-      : undefined;
-    track({ evento: "checkout_started", producto: validProducto });
+    if (items.length > 0) {
+      track({
+        evento: "cart_viewed",
+        data: {
+          items_count: items.length,
+          productos:   items.map((it) => it.producto),
+        },
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fire checkout_filled the FIRST time the user provides any contact info.
-  // Captures the email/whatsapp in the event payload so we can follow up
-  // with abandoned carts. Debounced via a ref-style boolean so we only
-  // emit one event per session even if they keep typing.
+  // checkout_filled — first time the user types contact info
   const [filledFired, setFilledFired] = useState(false);
   useEffect(() => {
     if (filledFired) return;
     if (!email.trim() && !whatsapp.trim()) return;
     setFilledFired(true);
-    const validProducto = producto === "rutinas" || producto === "recompensas"
-      ? (producto as "rutinas" | "recompensas")
-      : undefined;
     track({
-      evento:   "checkout_filled",
-      producto: validProducto,
-      data: {
-        email: email.trim() || null,
-        whatsapp: whatsapp.trim() || null,
-        nombre_nino: nombreNino,
-      },
+      evento: "checkout_filled",
+      data: { email: email.trim() || null, whatsapp: whatsapp.trim() || null },
     });
-  }, [email, whatsapp, filledFired, producto, nombreNino]);
+  }, [email, whatsapp, filledFired]);
 
-  // Resolve the correct variant price. Recompensas + cantidad 20 → _20
-  // columns (if set, otherwise gracefully fall back to the base price).
-  const usar20 = producto === "recompensas" && cantidadRecompensas === 20;
-  const precioImpresoEfectivo = usar20 && precioImpreso20 ? precioImpreso20 : precioImpreso;
-  const precioDigitalEfectivo = usar20 && precioDigital20 ? precioDigital20 : precioDigital;
-  const precioBase  = tipoEntrega === "digital" ? precioDigitalEfectivo : precioImpresoEfectivo;
+  // ─── Derived ────────────────────────────────────────────────────────────
+  const itemsConPrecio = useMemo(
+    () => items.map((it) => ({ ...it, precio: getItemPrice(it, pricesMap) })),
+    [items, pricesMap],
+  );
 
-  // Delivery cost depends on the selected city. Falls back to the legacy
-  // flat rate while zonas hasn't loaded (avoids showing 0 in the breakdown
-  // while the data is in-flight).
+  const anyFisico = items.some((it) => it.formato === "fisico");
+
+  const subtotal = itemsConPrecio.reduce((acc, it) => acc + it.precio, 0);
+
   const zonaActual = findZonaForCiudad(location.ciudad, zonas);
-  const precioEnvio = tipoEntrega === "fisico" && modalidad === "delivery"
+  const precioEnvio = anyFisico && modalidad === "delivery"
     ? (zonaActual?.precio ?? PRECIO_DELIVERY_FALLBACK)
     : 0;
 
-  // Coupon discount applies to the PRODUCT subtotal (shipping stays full).
-  const descuentoCupon = cuponAplicado ? Math.min(cuponAplicado.descuento, precioBase) : 0;
-  const precioTotal = precioBase - descuentoCupon + precioEnvio;
+  const descuentoCupon = cuponAplicado ? Math.min(cuponAplicado.descuento, subtotal) : 0;
+  const total = subtotal - descuentoCupon + precioEnvio;
 
+  // ─── Coupon ─────────────────────────────────────────────────────────────
   const aplicarCupon = async () => {
     const codigo = cuponInput.trim();
     if (!codigo) return;
@@ -201,23 +200,21 @@ function CheckoutInner() {
       const res = await fetch("/api/cupon/validar", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ codigo, montoBase: precioBase }),
+        body:    JSON.stringify({ codigo, montoBase: subtotal }),
       });
       const json = await res.json();
       if (json.ok) {
         setCuponAplicado({ codigo: codigo.toUpperCase(), descuento: json.descuento });
-        setCuponError(null);
         track({
-          evento:   "cupon_aplicado",
-          producto: producto === "rutinas" || producto === "recompensas" ? producto : undefined,
-          data: { codigo: codigo.toUpperCase(), descuento: json.descuento, monto_base: precioBase },
+          evento: "cupon_aplicado",
+          data:   { codigo: codigo.toUpperCase(), descuento: json.descuento, monto_base: subtotal },
         });
       } else {
         setCuponAplicado(null);
         setCuponError(json.error ?? "Cupón inválido.");
         track({
           evento: "cupon_invalido",
-          data: { codigo: codigo.toUpperCase(), motivo: json.error ?? "unknown" },
+          data:   { codigo: codigo.toUpperCase(), motivo: json.error ?? "unknown" },
         });
       }
     } catch {
@@ -233,46 +230,34 @@ function CheckoutInner() {
     setCuponError(null);
   };
 
-  // Completeness — drives the disabled state of the pay button.
+  // ─── Validation ──────────────────────────────────────────────────────────
   const emailValido = EMAIL_RX.test(email.trim());
-  // WhatsApp es obligatorio. Aceptamos varios formatos — al menos 7 dígitos.
   const whatsappValido = whatsapp.replace(/\D/g, "").length >= 7;
   const datosEntregaOk =
-    !(tipoEntrega === "fisico" && modalidad === "delivery") ||
+    !(anyFisico && modalidad === "delivery") ||
     !!(location.departamento && location.ciudad && calle.trim() && numero.trim());
   const facturaOk = !necesitaFactura || (!!ruc.trim() && !!razonSocial.trim());
   const formValido =
+    items.length > 0 &&
     !!nombre.trim() && !!apellido.trim() && emailValido && whatsappValido &&
     datosEntregaOk && facturaOk && !loadingPrecios;
 
+  // ─── Submit ─────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!nombre.trim() || !apellido.trim()) {
-      setError("Ingresá tu nombre y apellido.");
+    if (items.length === 0) {
+      setError("Tu carrito está vacío.");
       return;
     }
-    if (!emailValido) {
-      setError("Ingresá un email válido.");
-      return;
-    }
-    if (!whatsappValido) {
-      setError("Ingresá un número de WhatsApp válido.");
-      return;
-    }
-    if (necesitaFactura && (!ruc.trim() || !razonSocial.trim())) {
-      setError("Completá RUC y Razón Social para la factura.");
-      return;
-    }
-    if (tipoEntrega === "fisico" && modalidad === "delivery") {
-      if (!location.departamento || !location.ciudad) {
-        setError("Seleccioná el departamento y la ciudad.");
-        return;
-      }
-      if (!calle.trim() || !numero.trim()) {
-        setError("Completá calle y número.");
-        return;
-      }
+    if (!nombre.trim() || !apellido.trim()) return setError("Ingresá tu nombre y apellido.");
+    if (!emailValido) return setError("Ingresá un email válido.");
+    if (!whatsappValido) return setError("Ingresá un número de WhatsApp válido.");
+    if (necesitaFactura && (!ruc.trim() || !razonSocial.trim()))
+      return setError("Completá RUC y Razón Social para la factura.");
+    if (anyFisico && modalidad === "delivery") {
+      if (!location.departamento || !location.ciudad) return setError("Seleccioná departamento y ciudad.");
+      if (!calle.trim() || !numero.trim()) return setError("Completá calle y número.");
     }
 
     setLoading(true);
@@ -283,12 +268,10 @@ function CheckoutInner() {
       `Nombre: ${nombreCompleto}`,
       email.trim() && `Email: ${email.trim()}`,
       whatsapp.trim() && `WhatsApp: ${whatsapp.trim()}`,
-    ]
-      .filter(Boolean)
-      .join(" | ");
+    ].filter(Boolean).join(" | ");
 
     let direccion: string | null = null;
-    if (tipoEntrega === "fisico") {
+    if (anyFisico) {
       if (modalidad === "pickup") {
         direccion = "Pickup — Villamorra, Asunción";
       } else {
@@ -302,136 +285,144 @@ function CheckoutInner() {
       }
     }
 
-    let personalizacion: unknown;
-    try {
-      personalizacion = JSON.parse(personalizacionRaw);
-    } catch {
-      personalizacion = {};
-    }
+    const esDelivery = anyFisico && modalidad === "delivery";
 
-    const esDelivery = tipoEntrega === "fisico" && modalidad === "delivery";
-    const { data, error: dbError } = await supabase
+    // 1. Insert the order (pedido) — legacy columns get the FIRST item's
+    //    values so admin / PDF code that still reads pedido.producto keeps
+    //    working as a fallback.
+    const first = itemsConPrecio[0]!;
+    const { data: pedidoData, error: dbError } = await supabase
       .from("pedidos")
       .insert({
-        producto,
-        nombre_nino: nombreNino,
-        color_acento: colorAcento,
-        personalizacion,
-        tipo_entrega: tipoEntrega,
+        producto:        first.producto,
+        nombre_nino:     first.nombre_nino,
+        color_acento:    first.color_acento,
+        personalizacion: first.personalizacion,
+        tipo_entrega:    first.formato,
         contacto,
         direccion,
-        estado: "pendiente",
-        // Snapshot del costo y dirección de envío — para que reportes
-        // históricos no cambien si después cambias precios de zona.
+        estado:          "pendiente",
         costo_envio:      esDelivery ? precioEnvio : 0,
         envio_zona:       esDelivery ? (zonaActual?.nombre ?? null) : null,
         envio_calle:      esDelivery ? calle.trim() : null,
         envio_numero:     esDelivery ? numero.trim() : null,
         envio_referencia: esDelivery ? (referencia.trim() || null) : null,
-        // Datos de facturación (opcionales).
         ruc:              necesitaFactura ? ruc.trim() : null,
         razon_social:     necesitaFactura ? razonSocial.trim() : null,
       })
       .select("id")
       .single();
 
-    if (dbError) {
+    if (dbError || !pedidoData) {
       setLoading(false);
       setError("Hubo un error al guardar tu pedido. Intentá de nuevo.");
       return;
     }
 
-    const validProducto = producto === "rutinas" || producto === "recompensas"
-      ? (producto as "rutinas" | "recompensas")
-      : undefined;
+    // 2. Insert all items.
+    const itemsPayload = itemsConPrecio.map((it, idx) => ({
+      pedido_id:       pedidoData.id,
+      producto:        it.producto,
+      nombre_nino:     it.nombre_nino,
+      color_acento:    it.color_acento,
+      personalizacion: it.personalizacion,
+      tipo_entrega:    it.formato,
+      precio_pyg:      it.precio,
+      orden:           idx,
+    }));
+    const { error: itemsErr } = await supabase.from("pedido_items").insert(itemsPayload);
+    if (itemsErr) {
+      setLoading(false);
+      setError("Hubo un error al guardar los items del pedido.");
+      return;
+    }
+
     track({
       evento:   "pedido_created",
-      producto: validProducto,
-      pedidoId: data.id,
+      pedidoId: pedidoData.id,
       data: {
-        total_pyg:       precioBase + precioEnvio,
-        producto_pyg:    precioBase,
+        items_count:     items.length,
+        total_pyg:       total,
+        subtotal_pyg:    subtotal,
         envio_pyg:       precioEnvio,
-        tipo_entrega:    tipoEntrega,
-        modalidad:       tipoEntrega === "fisico" ? modalidad : null,
         cupon_codigo:    cuponAplicado?.codigo ?? null,
-        cupon_descuento: cuponAplicado?.descuento ?? null,
-        zona_envio:      esDelivery ? (zonaActual?.nombre ?? null) : null,
+        cupon_descuento: descuentoCupon || null,
       },
     });
 
-    // Identify the person so all session events get attributed.
     identify(email.trim(), {
       nombre: nombre.trim(),
       apellido: apellido.trim(),
       whatsapp: whatsapp.trim() || null,
     });
 
-    // NOTE: the confirmation email is NOT sent here. It only goes out
-    // once dLocal confirms the payment (PAID) via /api/dlocal/webhook,
-    // so customers don't get a "thanks" email for an unpaid order.
-
     track({
       evento:   "pago_iniciado",
-      producto: validProducto,
-      pedidoId: data.id,
-      data: {
-        modo:      checkoutMode,
-        total_pyg: precioBase + precioEnvio - (cuponAplicado?.descuento ?? 0),
-      },
+      pedidoId: pedidoData.id,
+      data:     { modo: checkoutMode, total_pyg: total, items_count: items.length },
     });
+
+    // Description for dLocal — single item: "Tablero X — Mati"; multi: "N tableros"
+    const descripcion = items.length === 1
+      ? `${NOMBRE_PRODUCTO[first.producto] ?? first.producto} — ${first.nombre_nino}`
+      : `${items.length} tableros (${itemsConPrecio.map((it) => it.nombre_nino).join(", ")})`;
 
     try {
       if (checkoutMode === "embedded") {
-        // SmartFields: tokenize client-side, charge server-side. Customer
-        // never leaves the site (unless 3DS).
-        const token = await cardRef.current!.tokenize(titular.trim() || nombreNino);
+        const token = await cardRef.current!.tokenize(titular.trim() || nombreCompleto);
         const res = await fetch("/api/checkout/pay-with-token", {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({
-            pedidoId:    data.id,
+            pedidoId:    pedidoData.id,
             token,
-            productoPyg: precioBase,
+            productoPyg: subtotal,
             envioPyg:    precioEnvio,
             cuponCodigo: cuponAplicado?.codigo ?? null,
             email:       email.trim() || null,
-            nombre:      `${nombre.trim()} ${apellido.trim()}`,
-            nombreNino, producto, tipoEntrega,
-            modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
+            nombre:      nombreCompleto,
+            nombreNino:  first.nombre_nino,
+            producto:    first.producto,
+            tipoEntrega: first.formato,
+            modalidad:   anyFisico ? modalidad : undefined,
+            descripcion,
           }),
         });
         const json = await res.json();
         if (json.ok && json.status === "PAID") {
-          const p = new URLSearchParams({ nombre_nino: nombreNino, tipo_entrega: tipoEntrega, pedido_id: data.id, pagado: "1" });
+          clear();
+          const p = new URLSearchParams({ nombre_nino: first.nombre_nino, pedido_id: pedidoData.id, pagado: "1" });
           router.push(`/confirmacion?${p.toString()}`);
           return;
         }
         if (json.ok && json.status === "PENDING" && json.redirectUrl) {
+          clear();
           window.location.href = json.redirectUrl;
           return;
         }
         throw new Error(json.error ?? "No se pudo procesar el pago.");
       }
 
-      // Redirect flow: create a dLocal hosted-checkout session and send the
-      // browser there. Proven working; the default mode.
       const res = await fetch("/api/checkout/create-session", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
-          pedidoId:    data.id,
-          productoPyg: precioBase,
+          pedidoId:    pedidoData.id,
+          productoPyg: subtotal,
           envioPyg:    precioEnvio,
           cuponCodigo: cuponAplicado?.codigo ?? null,
           email:       email.trim() || null,
-          nombreComprador: `${nombre.trim()} ${apellido.trim()}`,
-          nombreNino, producto, tipoEntrega,
-          modalidad:   tipoEntrega === "fisico" ? modalidad : undefined,
+          nombreComprador: nombreCompleto,
+          nombreNino:  first.nombre_nino,
+          producto:    first.producto,
+          tipoEntrega: first.formato,
+          modalidad:   anyFisico ? modalidad : undefined,
+          descripcion,
         }),
       });
       const json = await res.json();
       if (json.ok && json.url) {
+        clear();
         window.location.href = json.url;
         return;
       }
@@ -441,8 +432,7 @@ function CheckoutInner() {
       setError(msg);
       track({
         evento:   "pago_fallido_cliente",
-        producto: validProducto,
-        pedidoId: data.id,
+        pedidoId: pedidoData.id,
         data:     { modo: checkoutMode, error: msg },
       });
     } finally {
@@ -450,6 +440,34 @@ function CheckoutInner() {
     }
   };
 
+  // ─── Render: empty state ────────────────────────────────────────────────
+  if (items.length === 0) {
+    return (
+      <main className="min-h-screen bg-[#faf6e7] px-4 py-20 flex items-center">
+        <div className="max-w-md mx-auto text-center">
+          <div className="text-6xl mb-6">🛒</div>
+          <h1 className="text-2xl font-bold text-[#22244e] mb-2">Tu carrito está vacío</h1>
+          <p className="text-sm text-[#22244e]/60 mb-8">
+            Empezá personalizando un tablero — podés agregar varios y pagarlos juntos.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/personalizar/rutinas">
+              <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg h-12 px-6 w-full sm:w-auto">
+                Tablero de Rutinas
+              </Button>
+            </Link>
+            <Link href="/personalizar/recompensas">
+              <Button variant="outline" className="border-[#22244e] text-[#22244e] rounded-lg h-12 px-6 w-full sm:w-auto">
+                Tablero de Recompensas
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ─── Render: normal checkout ────────────────────────────────────────────
   return (
     <main className="min-h-screen bg-[#faf6e7] px-4 py-10 pb-44">
       <div className="max-w-md md:max-w-2xl mx-auto">
@@ -457,117 +475,82 @@ function CheckoutInner() {
           Confirmá tu pedido
         </h1>
         <p className="text-sm text-[#22244e]/60 text-center mb-8">
-          Estás a un paso de tener tu tablero
+          {items.length === 1 ? "Estás a un paso de tener tu tablero" : `Estás a un paso de tener tus ${items.length} tableros`}
         </p>
 
         {params.get("cancelado") === "1" && (
           <div className="mb-5 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-            Cancelaste el pago. Tu pedido sigue acá — completá el formulario abajo
-            para reintentar.
+            Cancelaste el pago. Tu carrito sigue acá — completá el formulario abajo para reintentar.
           </div>
         )}
 
-        {/* Order summary — contexto del pedido (no es un paso accionable) */}
+        {/* Cart items */}
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 mb-5">
           <p className="text-[11px] uppercase tracking-widest text-[#22244e]/40 font-bold mb-4">
-            Tu pedido
+            Tu carrito · {items.length} {items.length === 1 ? "tablero" : "tableros"}
           </p>
 
-          {/* Header con miniatura del producto */}
-          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[#e5e7eb]">
-            <div
-              className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-[#e5e7eb] relative"
-              style={{ backgroundColor: colorAcento + "22" }}
-            >
-              {(producto === "rutinas" || producto === "recompensas") && (
-                <Image
-                  src={`/productos/${producto}.png`}
-                  alt={NOMBRE_PRODUCTO[producto] ?? producto}
-                  fill
-                  sizes="64px"
-                  className="object-cover"
-                />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-[#22244e] truncate">
-                {NOMBRE_PRODUCTO[producto] ?? producto}
-              </p>
-              <p className="text-xs text-[#22244e]/60 truncate">Para {nombreNino}</p>
-            </div>
-            <div
-              className="w-5 h-5 rounded-full border border-[#e5e7eb] shrink-0"
-              style={{ backgroundColor: colorAcento }}
-              title="Color elegido"
-            />
+          <div className="space-y-4">
+            {itemsConPrecio.map((it) => (
+              <CartItemRow
+                key={it.id}
+                item={it}
+                price={it.precio}
+                onRemove={() => {
+                  track({ evento: "checkout_filled", data: { _removed: it.producto } });
+                  removeItem(it.id);
+                }}
+                onChangeFormato={(f) => setFormato(it.id, f)}
+              />
+            ))}
           </div>
 
-          <div className="flex justify-between text-sm">
-            <span className="text-[#22244e]/70">Precio del tablero</span>
-            {loadingPrecios ? (
-              <span className="w-20 h-4 bg-[#e5e7eb] rounded animate-pulse" />
+          {/* Add-another panel */}
+          <div className="mt-4 pt-4 border-t border-[#e5e7eb]">
+            {!showAddPanel ? (
+              <Button
+                type="button"
+                onClick={() => setShowAddPanel(true)}
+                variant="outline"
+                className="w-full border-dashed border-[#22244e]/30 text-[#22244e] hover:bg-[#22244e]/5 h-12 rounded-lg"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Agregar otro tablero
+              </Button>
             ) : (
-              <span className="font-bold text-[#22244e]">{fmt(precioImpresoEfectivo)}</span>
+              <div className="space-y-2">
+                <p className="text-xs text-[#22244e]/60 text-center">¿Qué tablero querés agregar?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link href="/personalizar/rutinas" className="block">
+                    <div className="rounded-lg border border-[#e5e7eb] hover:border-[#22244e] p-3 text-center transition-colors">
+                      <p className="text-sm font-bold text-[#22244e]">Rutinas</p>
+                      <p className="text-[10px] text-[#22244e]/50 mt-0.5">Día + noche</p>
+                    </div>
+                  </Link>
+                  <Link href="/personalizar/recompensas" className="block">
+                    <div className="rounded-lg border border-[#e5e7eb] hover:border-[#22244e] p-3 text-center transition-colors">
+                      <p className="text-sm font-bold text-[#22244e]">Recompensas</p>
+                      <p className="text-[10px] text-[#22244e]/50 mt-0.5">10 o 20 pasos</p>
+                    </div>
+                  </Link>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddPanel(false)}
+                  className="text-[11px] text-[#22244e]/40 hover:text-[#22244e] underline w-full text-center"
+                >
+                  Cancelar
+                </button>
+              </div>
             )}
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Tipo de entrega */}
-          <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-            <StepTitle n={1}>Elegí cómo querés recibirlo</StepTitle>
-
-            {tipoEntrega === "fisico" ? (
-              <>
-                <div className="rounded-xl border-2 border-[#22244e] bg-[#336aea]/10 p-4 flex items-start gap-3">
-                  <span className="text-2xl shrink-0">📦</span>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="font-bold text-sm text-[#22244e]">Impreso y enviado</p>
-                      <p className="font-bold text-sm text-[#22244e] shrink-0">{loadingPrecios ? "—" : fmt(precioImpreso)}</p>
-                    </div>
-                    <p className="text-xs text-[#22244e]/60 mt-0.5">
-                      Imprimimos en alta calidad y lo entregamos listo para colgar.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setTipoEntrega("digital")}
-                  className="mt-3 text-xs text-[#22244e]/40 hover:text-[#22244e] underline underline-offset-2 w-full text-center transition-colors"
-                >
-                  ¿Preferís solo el archivo digital para imprimir vos?
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="rounded-xl border-2 border-[#a8c8e8] bg-[#a8c8e8]/10 p-4 flex items-start gap-3">
-                  <span className="text-2xl shrink-0">📲</span>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="font-bold text-sm text-[#22244e]">Archivo digital</p>
-                      <p className="font-bold text-sm text-[#22244e] shrink-0">{loadingPrecios ? "—" : fmt(precioDigital)}</p>
-                    </div>
-                    <p className="text-xs text-[#22244e]/60 mt-0.5">
-                      Recibís el PDF listo para imprimir donde quieras.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setTipoEntrega("fisico"); setModalidad("pickup"); }}
-                  className="mt-3 text-xs text-[#22244e]/40 hover:text-[#22244e] underline underline-offset-2 w-full text-center transition-colors"
-                >
-                  ← Volver a impreso y enviado
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Modalidad de entrega (solo físico) */}
-          {tipoEntrega === "fisico" && (
+          {/* Modalidad — only if any item is físico */}
+          {anyFisico && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5">
-              <StepTitle n={2}>¿Pickup o delivery?</StepTitle>
+              <StepTitle n={1}>¿Pickup o delivery?</StepTitle>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -582,7 +565,7 @@ function CheckoutInner() {
                   <div className="font-bold text-sm text-[#22244e]">Pickup</div>
                   <div className="text-xs font-bold text-[#a8c5a0] mt-0.5">Gs. 0</div>
                   <div className="text-xs text-[#22244e]/50 mt-1 leading-relaxed">
-                    Retirás en Villamorra, Asunción. Dirección exacta por WhatsApp.
+                    Retirás en Villamorra, Asunción.
                   </div>
                 </button>
                 <button
@@ -602,41 +585,27 @@ function CheckoutInner() {
                       : "desde " + fmt(zonas[0]?.precio ?? PRECIO_DELIVERY_FALLBACK)}
                   </div>
                   <div className="text-xs text-[#22244e]/50 mt-1 leading-relaxed">
-                    A tu puerta. El precio se ajusta según tu ciudad.
+                    A tu puerta. Se ajusta según tu ciudad.
                   </div>
                 </button>
               </div>
             </div>
           )}
 
-          {/* Datos de entrega (solo delivery) */}
-          {tipoEntrega === "fisico" && modalidad === "delivery" && (
+          {/* Dirección — only if delivery */}
+          {anyFisico && modalidad === "delivery" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-              <StepTitle n={3}>Decinos a dónde te lo llevamos</StepTitle>
+              <StepTitle n={2}>Decinos a dónde te lo llevamos</StepTitle>
               <LocationPicker onChange={setLocation} />
-
-              {/* Calle + Número + Referencia. Aparecen después de elegir
-                  ciudad para que la cascada visual tenga sentido. */}
               <div className="grid grid-cols-3 gap-2">
-                <Input
-                  className="col-span-2"
-                  placeholder="Calle"
-                  value={calle}
-                  onChange={(e) => setCalle(e.target.value)}
-                />
-                <Input
-                  placeholder="Número"
-                  value={numero}
-                  onChange={(e) => setNumero(e.target.value)}
-                />
+                <Input className="col-span-2" placeholder="Calle"  value={calle}  onChange={(e) => setCalle(e.target.value)} />
+                <Input placeholder="Número" value={numero} onChange={(e) => setNumero(e.target.value)} />
               </div>
               <Input
-                placeholder="Referencia (opcional — ej. portón verde, casa esquinera)"
+                placeholder="Referencia (opcional — ej. portón verde)"
                 value={referencia}
                 onChange={(e) => setReferencia(e.target.value)}
               />
-
-              {/* Aviso de zona detectada */}
               {location.ciudad && zonaActual && (
                 <div className="bg-[#a8c5a0]/15 border border-[#a8c5a0]/40 rounded-lg px-3 py-2 text-xs text-[#22244e]/80">
                   Zona: <strong>{zonaActual.nombre}</strong> · Envío {fmt(zonaActual.precio)}
@@ -647,42 +616,19 @@ function CheckoutInner() {
 
           {/* Tus datos */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-            <StepTitle n={tipoEntrega === "fisico" && modalidad === "delivery" ? 4 : 3}>
+            <StepTitle n={anyFisico ? (modalidad === "delivery" ? 3 : 2) : 1}>
               Dejanos tus datos
             </StepTitle>
             <div className="grid grid-cols-2 gap-2">
-              <Input
-                placeholder="Nombre"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                autoComplete="given-name"
-              />
-              <Input
-                placeholder="Apellido"
-                value={apellido}
-                onChange={(e) => setApellido(e.target.value)}
-                autoComplete="family-name"
-              />
+              <Input placeholder="Nombre"   value={nombre}   onChange={(e) => setNombre(e.target.value)}   autoComplete="given-name" />
+              <Input placeholder="Apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} autoComplete="family-name" />
             </div>
-            <Input
-              placeholder="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-            />
-            <Input
-              placeholder="WhatsApp (ej: +595 981 123456)"
-              type="tel"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              autoComplete="tel"
-            />
+            <Input placeholder="Email" type="email" value={email}    onChange={(e) => setEmail(e.target.value)}    autoComplete="email" />
+            <Input placeholder="WhatsApp (ej: +595 981 123456)" type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} autoComplete="tel" />
             <p className="text-xs text-[#22244e]/50">
               Te contactamos por WhatsApp para confirmar y coordinar tu pedido.
             </p>
 
-            {/* Facturación — opcional, expandible */}
             <div className="pt-3 border-t border-[#e5e7eb]">
               <label className="flex items-center gap-2 text-sm text-[#22244e]/80 cursor-pointer">
                 <input
@@ -695,22 +641,14 @@ function CheckoutInner() {
               </label>
               {necesitaFactura && (
                 <div className="grid grid-cols-1 gap-2 mt-3">
-                  <Input
-                    placeholder="RUC"
-                    value={ruc}
-                    onChange={(e) => setRuc(e.target.value)}
-                  />
-                  <Input
-                    placeholder="Razón social"
-                    value={razonSocial}
-                    onChange={(e) => setRazonSocial(e.target.value)}
-                  />
+                  <Input placeholder="RUC"          value={ruc}         onChange={(e) => setRuc(e.target.value)} />
+                  <Input placeholder="Razón social" value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Cupón de descuento — opcional, sin número de paso */}
+          {/* Cupón */}
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
             <p className="text-[11px] uppercase tracking-widest text-[#22244e]/40 font-bold">
               ¿Tenés un cupón? <span className="text-[#22244e]/30 normal-case">· opcional</span>
@@ -721,11 +659,7 @@ function CheckoutInner() {
                   <span className="font-bold text-[#22244e]">{cuponAplicado.codigo}</span>
                   <span className="text-[#22244e]/60"> · −{fmt(descuentoCupon)}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={quitarCupon}
-                  className="text-xs text-[#22244e]/50 hover:text-red-600 underline underline-offset-2"
-                >
+                <button type="button" onClick={quitarCupon} className="text-xs text-[#22244e]/50 hover:text-red-600 underline underline-offset-2">
                   Quitar
                 </button>
               </div>
@@ -739,13 +673,7 @@ function CheckoutInner() {
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aplicarCupon(); } }}
                     className="uppercase"
                   />
-                  <Button
-                    type="button"
-                    onClick={aplicarCupon}
-                    disabled={!cuponInput.trim() || cuponLoading}
-                    variant="outline"
-                    className="border-[#22244e] text-[#22244e] h-10 px-5 shrink-0"
-                  >
+                  <Button type="button" onClick={aplicarCupon} disabled={!cuponInput.trim() || cuponLoading} variant="outline" className="border-[#22244e] text-[#22244e] h-10 px-5 shrink-0">
                     {cuponLoading ? "..." : "Aplicar"}
                   </Button>
                 </div>
@@ -754,12 +682,10 @@ function CheckoutInner() {
             )}
           </div>
 
-          {/* Pago con tarjeta (SmartFields embebido) — solo en modo embedded */}
+          {/* Pago embebido */}
           {checkoutMode === "embedded" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
-              <StepTitle
-                n={tipoEntrega === "fisico" && modalidad === "delivery" ? 5 : 4}
-              >
+              <StepTitle n={anyFisico ? (modalidad === "delivery" ? 4 : 3) : 2}>
                 Pagá con tu tarjeta
               </StepTitle>
               <Input
@@ -780,8 +706,8 @@ function CheckoutInner() {
           <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#e5e7eb] shadow-[0_-4px_24px_rgba(0,0,0,0.07)] px-4 pt-4 pb-6 z-50">
             <div className="max-w-md mx-auto space-y-1.5">
               <div className="flex justify-between text-sm text-[#22244e]/60">
-                <span>Tablero {tipoEntrega === "fisico" ? "Impreso" : "Digital"}</span>
-                <span>{fmt(precioBase)}</span>
+                <span>Subtotal ({items.length} {items.length === 1 ? "item" : "items"})</span>
+                <span>{fmt(subtotal)}</span>
               </div>
               {descuentoCupon > 0 && (
                 <div className="flex justify-between text-sm text-[#a8c5a0] font-semibold">
@@ -789,16 +715,18 @@ function CheckoutInner() {
                   <span>−{fmt(descuentoCupon)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-sm text-[#22244e]/60">
-                <span>Envío ({tipoEntrega === "fisico" ? (modalidad === "delivery" ? "Delivery" : "Pickup") : "Digital"})</span>
-                <span>{precioEnvio === 0 ? "Gs. 0" : fmt(precioEnvio)}</span>
-              </div>
+              {anyFisico && (
+                <div className="flex justify-between text-sm text-[#22244e]/60">
+                  <span>Envío ({modalidad === "delivery" ? "Delivery" : "Pickup"})</span>
+                  <span>{precioEnvio === 0 ? "Gs. 0" : fmt(precioEnvio)}</span>
+                </div>
+              )}
               <div className="flex justify-between font-bold text-[#22244e] pt-2 border-t border-[#e5e7eb]">
                 <span>Total</span>
                 {loadingPrecios ? (
                   <span className="w-24 h-5 bg-[#e5e7eb] rounded animate-pulse" />
                 ) : (
-                  <span className="text-lg">{fmt(precioTotal)}</span>
+                  <span className="text-lg">{fmt(total)}</span>
                 )}
               </div>
               <Button
@@ -809,8 +737,8 @@ function CheckoutInner() {
                 {loading
                   ? "Procesando..."
                   : checkoutMode === "embedded"
-                  ? `Pagar ${loadingPrecios ? "" : fmt(precioTotal)}`
-                  : `Ir a pagar ${loadingPrecios ? "" : fmt(precioTotal)}`}
+                  ? `Pagar ${loadingPrecios ? "" : fmt(total)}`
+                  : `Ir a pagar ${loadingPrecios ? "" : fmt(total)}`}
               </Button>
               {!formValido && !loading && (
                 <p className="text-[11px] text-[#22244e]/40 text-center mt-1.5">
@@ -832,6 +760,108 @@ function CheckoutInner() {
         </form>
       </div>
     </main>
+  );
+}
+
+// ─── Cart item row ─────────────────────────────────────────────────────────
+function CartItemRow({
+  item,
+  price,
+  onRemove,
+  onChangeFormato,
+}: {
+  item:    CartItem & { producto: Producto };
+  price:   number;
+  onRemove: () => void;
+  onChangeFormato: (f: Formato) => void;
+}) {
+  const productoLabel = NOMBRE_PRODUCTO[item.producto] ?? item.producto;
+
+  // Personalization summary — what feels meaningful per product
+  const summary = (() => {
+    const p = item.personalizacion as Record<string, unknown> | null;
+    if (!p) return "";
+    if (item.producto === "rutinas") {
+      const m = Array.isArray((p as { manana?: unknown }).manana) ? (p as { manana: unknown[] }).manana.length : 0;
+      const n = Array.isArray((p as { noche?: unknown }).noche)   ? (p as { noche: unknown[] }).noche.length   : 0;
+      return `${m} actividades de mañana · ${n} de noche`;
+    }
+    if (item.producto === "recompensas") {
+      const cantidad = (p as { cantidad?: number }).cantidad ?? 10;
+      return `${cantidad} pasos`;
+    }
+    return "";
+  })();
+
+  return (
+    <div className="flex gap-3">
+      <div
+        className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-[#e5e7eb] relative"
+        style={{ backgroundColor: item.color_acento + "22" }}
+      >
+        <Image
+          src={`/productos/${item.producto}.png`}
+          alt={productoLabel}
+          fill
+          sizes="64px"
+          className="object-cover"
+        />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-bold text-sm text-[#22244e] truncate">
+              {productoLabel}
+            </p>
+            <p className="text-xs text-[#22244e]/60 truncate">
+              Para {item.nombre_nino} · {summary}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Eliminar"
+            className="shrink-0 w-7 h-7 rounded-md text-[#22244e]/40 hover:text-red-600 hover:bg-red-50 flex items-center justify-center"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Format toggle */}
+        <div className="flex items-center gap-2 mt-2">
+          <div className="inline-flex rounded-lg border border-[#e5e7eb] overflow-hidden text-xs">
+            <button
+              type="button"
+              onClick={() => onChangeFormato("fisico")}
+              className={`px-2 py-1 flex items-center gap-1 transition-colors ${
+                item.formato === "fisico"
+                  ? "bg-[#22244e] text-white"
+                  : "bg-white text-[#22244e]/70 hover:bg-[#22244e]/5"
+              }`}
+            >
+              <Package className="w-3 h-3" />
+              Impreso
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeFormato("digital")}
+              className={`px-2 py-1 flex items-center gap-1 transition-colors ${
+                item.formato === "digital"
+                  ? "bg-[#22244e] text-white"
+                  : "bg-white text-[#22244e]/70 hover:bg-[#22244e]/5"
+              }`}
+            >
+              <Smartphone className="w-3 h-3" />
+              Digital
+            </button>
+          </div>
+          <span className="ml-auto text-sm font-bold text-[#22244e] tabular-nums">
+            {fmt(price)}
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 

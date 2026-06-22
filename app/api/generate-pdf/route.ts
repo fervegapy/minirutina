@@ -199,13 +199,40 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Pedido mode: fetch from DB (or use test hardcode)
-  const { pedidoId } = body;
+  // Pedido mode: fetch from DB (or use test hardcode).
+  // Accepts either:
+  //   { pedidoItemId } → new multi-item path, reads from pedido_items
+  //   { pedidoId }     → legacy single-item path, reads from pedidos
+  //   { pedidoId: "test" } → hardcoded test fixture
+  const { pedidoId, pedidoItemId } = body as {
+    pedidoId?:     string;
+    pedidoItemId?: string;
+  };
   let pedido: typeof TEST_PEDIDO;
+  // Used later when uploading to Storage — items get a per-item filename.
+  const storageId = pedidoItemId ?? pedidoId ?? "test";
 
   if (pedidoId === "test") {
     pedido = TEST_PEDIDO;
-  } else {
+  } else if (pedidoItemId) {
+    const { data, error } = await supabase
+      .from("pedido_items")
+      .select("*")
+      .eq("id", pedidoItemId)
+      .single();
+    if (error || !data) {
+      return NextResponse.json({ error: "Pedido item not found" }, { status: 404 });
+    }
+    // Map item shape → pedido shape for the generator.
+    pedido = {
+      ...TEST_PEDIDO,
+      nombre_nino:    data.nombre_nino,
+      color_acento:   data.color_acento,
+      producto:       data.producto,
+      personalizacion: data.personalizacion,
+      tipo_entrega:   data.tipo_entrega,
+    } as typeof TEST_PEDIDO;
+  } else if (pedidoId) {
     const { data, error } = await supabase
       .from("pedidos")
       .select("*")
@@ -216,6 +243,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Pedido not found" }, { status: 404 });
     }
     pedido = data;
+  } else {
+    return NextResponse.json({ error: "Missing pedidoId or pedidoItemId" }, { status: 400 });
   }
 
   const producto = pedido.producto ?? "rutinas";
@@ -247,8 +276,8 @@ export async function POST(req: NextRequest) {
   // download/preview without going through Supabase Storage.
   if (pedidoId === "test" || mode === "imprenta") {
     const fname = mode === "imprenta"
-      ? `imprenta-${pedido.nombre_nino ?? pedidoId}.pdf`
-      : `tablero-${pedido.nombre_nino ?? pedidoId}.pdf`;
+      ? `imprenta-${pedido.nombre_nino ?? storageId}.pdf`
+      : `tablero-${pedido.nombre_nino ?? storageId}.pdf`;
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
@@ -258,8 +287,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Upload to Supabase Storage
-  const fileName = `${pedidoId}.pdf`;
+  // Upload to Supabase Storage — per-item filenames keep multi-item
+  // pedidos from clobbering each other.
+  const fileName = `${storageId}.pdf`;
   const { error: uploadError } = await supabase.storage
     .from("pdfs")
     .upload(fileName, buffer, {
@@ -280,11 +310,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Could not create signed URL" }, { status: 500 });
   }
 
-  // Persist URL on the pedido
-  await supabase
-    .from("pedidos")
-    .update({ archivo_url: signed.signedUrl })
-    .eq("id", pedidoId);
+  // Persist URL on the pedido (legacy path only — pedido_items doesn't
+  // have an archivo_url column today, and the cliente PDF download path
+  // is only used by the legacy single-item /confirmacion page).
+  if (pedidoId && pedidoId !== "test") {
+    await supabase
+      .from("pedidos")
+      .update({ archivo_url: signed.signedUrl })
+      .eq("id", pedidoId);
+  }
 
   return NextResponse.json({ url: signed.signedUrl });
 }

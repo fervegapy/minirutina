@@ -105,30 +105,55 @@ export async function POST(req: NextRequest) {
     // Customer email
     const customerEmail = extractEmail(pedido.contacto);
 
-    // Server-side analytics — confirmed payment. Use the email as distinct_id
-    // so the event merges with the person identified browser-side.
+    // Fetch items so emails + analytics reflect the full cart.
+    const { data: itemsRows } = await supabaseAdmin
+      .from("pedido_items")
+      .select("producto, nombre_nino, tipo_entrega, precio_pyg, orden")
+      .eq("pedido_id", pedidoId)
+      .order("orden", { ascending: true });
+    const items = (itemsRows ?? []) as Array<{
+      producto: string; nombre_nino: string; tipo_entrega: string; precio_pyg: number;
+    }>;
+
+    // Subject / headline reflect single vs multi-item.
+    const subjectName = items.length > 1
+      ? `${items.length} tableros (${items.map((it) => it.nombre_nino).join(", ")})`
+      : `${pedido.nombre_nino} (${productoLabel})`;
+    const itemsListHtml = items.length > 0
+      ? `<ul style="margin:0 0 12px;padding-left:18px;font-size:14px;color:#22244ecc;">
+           ${items.map((it) =>
+             `<li>${NOMBRE_PRODUCTO[it.producto] ?? it.producto} — <strong>${it.nombre_nino}</strong>
+              <span style="color:#22244e88;">· ${it.tipo_entrega === "digital" ? "Digital" : "Impreso"} · ${fmtPyg(it.precio_pyg)}</span></li>`
+           ).join("")}
+         </ul>`
+      : "";
+
+    // Server-side analytics — confirmed payment.
     captureServerEvent({
       distinctId: customerEmail ?? pedidoId,
       event:      "pago_completado",
       properties: {
         pedido_id:      pedidoId,
         dlocal_payment: payment.id,
-        producto:       pedido.producto,
-        producto_label: productoLabel,
-        nombre_nino:    pedido.nombre_nino,
+        items_count:    items.length,
+        productos:      items.map((it) => it.producto),
         amount_pyg:     montoPyg,
         currency:       payment.currency ?? "PYG",
         payment_method: payment.payment_method_type ?? null,
       },
     }).catch(() => {});
+
     if (customerEmail) {
+      const greeting = items.length > 1
+        ? `Confirmamos tu pago de <strong>${fmtPyg(montoPyg)}</strong> por tus <strong>${items.length} tableros</strong>:`
+        : `Confirmamos tu pago de <strong>${fmtPyg(montoPyg)}</strong> para el <strong>${productoLabel}</strong> de <strong>${pedido.nombre_nino}</strong>.`;
       sendEmail({
         to:      customerEmail,
         subject: `Confirmamos tu pago — Minirutina #${pedidoId.slice(0, 8).toUpperCase()}`,
         html: `<!DOCTYPE html><html><body style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#22244e;padding:24px;">
           <h2 style="color:#22244e;">¡Pago recibido! 💳</h2>
-          <p>Confirmamos tu pago de <strong>${fmtPyg(montoPyg)}</strong> para el
-          <strong>${productoLabel}</strong> de <strong>${pedido.nombre_nino}</strong>.</p>
+          <p>${greeting}</p>
+          ${items.length > 1 ? itemsListHtml : ""}
           <p>Ya empezamos a prepararlo. Te avisamos por WhatsApp cuando esté listo
           (estimado: 48 horas).</p>
           <p style="font-size:12px;color:#22244e88;">Pedido #${pedidoId.slice(0,8).toUpperCase()} · minirutina.com</p>
@@ -142,11 +167,12 @@ export async function POST(req: NextRequest) {
     for (const adminEmail of adminEmails) {
       sendEmail({
         to:      adminEmail,
-        subject: `💸 Pago nuevo (dLocal) — ${pedido.nombre_nino} (${productoLabel})`,
+        subject: `💸 Pago nuevo (dLocal) — ${subjectName}`,
         html: `<!DOCTYPE html><html><body style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#22244e;padding:24px;">
           <h2>💸 Pago nuevo</h2>
-          <p>Pedido <strong>#${pedidoId.slice(0,8).toUpperCase()}</strong> de
-          <strong>${pedido.nombre_nino}</strong> — ${productoLabel}.</p>
+          <p>Pedido <strong>#${pedidoId.slice(0,8).toUpperCase()}</strong> ·
+          ${items.length > 1 ? `<strong>${items.length} items</strong>` : `<strong>${pedido.nombre_nino}</strong> — ${productoLabel}`}.</p>
+          ${itemsListHtml}
           <p style="font-size:18px;"><strong>${fmtPyg(montoPyg)}</strong></p>
           ${pedido.contacto ? `<p style="font-size:13px;color:#22244e88;">Contacto: ${pedido.contacto}</p>` : ""}
           <p><a href="https://www.minirutina.com/admin/pedidos/${pedidoId}" style="background:#22244e;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Ver en /admin/pedidos</a></p>

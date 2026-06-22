@@ -13,14 +13,14 @@ export default async function PedidoDetailPage({
   params: { id: string };
 }) {
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("pedidos")
-    .select("*")
-    .eq("id", params.id)
-    .single();
+  const [{ data: pedidoRow, error: pErr }, { data: itemsRows }] = await Promise.all([
+    supabase.from("pedidos").select("*").eq("id", params.id).single(),
+    supabase.from("pedido_items").select("*").eq("pedido_id", params.id).order("orden", { ascending: true }),
+  ]);
 
-  if (error || !data) notFound();
-  const pedido = data as Pedido;
+  if (pErr || !pedidoRow) notFound();
+  const pedido = pedidoRow as Pedido;
+  const items = (itemsRows ?? []) as import("@/types/pedido").PedidoItem[];
 
   return (
     <div className="max-w-5xl">
@@ -31,7 +31,7 @@ export default async function PedidoDetailPage({
         <ChevronLeft className="w-4 h-4" />
         Pedidos
       </Link>
-      <PedidoDetail pedido={pedido} />
+      <PedidoDetail pedido={pedido} items={items} />
     </div>
   );
 }

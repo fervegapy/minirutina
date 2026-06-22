@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import StepIndicator from "@/components/customizer/StepIndicator";
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
 import { track } from "@/lib/tracking";
+import { useCarrito } from "@/lib/carrito";
 
 // react-pdf needs DOM APIs at module load — client-only.
 const PdfPagesPreview = dynamic(
@@ -47,6 +48,7 @@ const STICKERS: { id: StickerId; emoji: string; label: string }[] = [
 
 export default function PersonalizarRecompensas() {
   const router = useRouter();
+  const { addItem } = useCarrito();
   const [step, setStep] = useState(0);
   const [nombre, setNombre] = useState("");
   const [genero, setGenero] = useState<Genero | null>(null);
@@ -122,15 +124,21 @@ export default function PersonalizarRecompensas() {
   };
 
   const continuar = () => {
-    track({ evento: "checkout_started", producto: "recompensas" });
-    const params = new URLSearchParams({
-      producto: "recompensas",
-      nombre_nino: nombre,
-      // Color de acento se decide por género — guardamos el del género para compat.
-      color_acento: genero === "nina" ? "#B86F60" : "#3D5C7E",
-      personalizacion: JSON.stringify({ cantidad, genero, sticker }),
+    // Color de acento se decide por género — guardamos el del género para compat.
+    const colorAcento = genero === "nina" ? "#B86F60" : "#3D5C7E";
+    const item = addItem({
+      producto:        "recompensas",
+      nombre_nino:     nombre,
+      color_acento:    colorAcento,
+      genero,
+      personalizacion: { cantidad, genero, sticker },
     });
-    router.push(`/checkout?${params.toString()}`);
+    track({
+      evento:   "checkout_started",
+      producto: "recompensas",
+      data:     { cart_item_id: item.id, formato: item.formato, cantidad },
+    });
+    router.push("/checkout");
   };
 
   return (

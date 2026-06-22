@@ -64,7 +64,13 @@ const formatoFecha = (iso: string) =>
     minute: "2-digit",
   });
 
-export default function PedidoDetail({ pedido }: { pedido: Pedido }) {
+export default function PedidoDetail({
+  pedido,
+  items = [],
+}: {
+  pedido: Pedido;
+  items?: import("@/types/pedido").PedidoItem[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -181,6 +187,40 @@ Pedido ID: ${pedido.id.slice(0, 8)}
     a.click();
   };
 
+  // Per-item PDF download — uses the multi-item /api/generate-pdf path.
+  const descargarItem = async (
+    item: import("@/types/pedido").PedidoItem,
+    mode: "cliente" | "imprenta",
+  ) => {
+    try {
+      const res = await fetch("/api/generate-pdf", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ pedidoItemId: item.id, mode }),
+      });
+      if (!res.ok) {
+        alert("No se pudo generar el PDF de este item.");
+        return;
+      }
+      const ct = res.headers.get("content-type") ?? "";
+      let blobUrl: string;
+      if (ct.includes("application/pdf")) {
+        const blob = await res.blob();
+        blobUrl = URL.createObjectURL(blob);
+      } else {
+        const { url } = await res.json();
+        blobUrl = url;
+      }
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${mode === "imprenta" ? "imprenta" : "tablero"}-${item.nombre_nino}-${item.id.slice(0, 8)}.pdf`;
+      a.click();
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo descargar el PDF.");
+    }
+  };
+
   const avanzarEstado = () => {
     if (!proximo) return;
     startTransition(async () => {
@@ -215,18 +255,78 @@ Pedido ID: ${pedido.id.slice(0, 8)}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Columna izquierda: data del pedido */}
         <div className="lg:col-span-2 space-y-5">
+          {/* Items del pedido (carrito multi-item). Para pedidos legacy
+              que solo tienen 1 item el detalle se ve igual de prolijo. */}
+          {items.length > 0 && (
+            <Card className="bg-white">
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Items del pedido · {items.length}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {items.map((it, i) => (
+                  <div
+                    key={it.id}
+                    className={`${i > 0 ? "pt-3 border-t border-zinc-100" : ""}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-zinc-900 text-sm">
+                          {PRODUCTO_LABEL[it.producto] ?? it.producto}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-0.5">
+                          Para <strong className="text-zinc-700">{it.nombre_nino}</strong>
+                          {" · "}
+                          <span className={it.tipo_entrega === "digital" ? "text-sky-600" : "text-zinc-600"}>
+                            {it.tipo_entrega === "digital" ? "📲 Digital" : "📦 Impreso"}
+                          </span>
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm font-bold text-zinc-900 tabular-nums">
+                        Gs. {it.precio_pyg.toLocaleString("es-PY")}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => descargarItem(it, "cliente")}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded transition-colors"
+                      >
+                        <FileDown className="w-3 h-3" />
+                        PDF cliente
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => descargarItem(it, "imprenta")}
+                        className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded transition-colors"
+                      >
+                        <FileDown className="w-3 h-3" />
+                        PDF imprenta
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Resumen */}
           <Card className="bg-white">
             <CardHeader>
               <CardTitle className="text-base">Resumen</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <Row icon={<Package className="w-4 h-4 text-zinc-400" />}
-                   label="Producto"
-                   value={PRODUCTO_LABEL[pedido.producto] ?? pedido.producto} />
-              <Row icon={<Truck className="w-4 h-4 text-zinc-400" />}
-                   label="Tipo de entrega"
-                   value={pedido.tipo_entrega === "fisico" ? "Físico" : "Digital"} />
+              {items.length === 0 && (
+                <>
+                  <Row icon={<Package className="w-4 h-4 text-zinc-400" />}
+                       label="Producto"
+                       value={PRODUCTO_LABEL[pedido.producto] ?? pedido.producto} />
+                  <Row icon={<Truck className="w-4 h-4 text-zinc-400" />}
+                       label="Tipo de entrega"
+                       value={pedido.tipo_entrega === "fisico" ? "Físico" : "Digital"} />
+                </>
+              )}
               {pedido.direccion && (
                 <Row icon={<MapPin className="w-4 h-4 text-zinc-400" />}
                      label="Dirección"

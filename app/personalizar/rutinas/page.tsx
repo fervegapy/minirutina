@@ -12,6 +12,7 @@ import IconPicker, {
 } from "@/components/customizer/IconPicker";
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
 import { track } from "@/lib/tracking";
+import { useCarrito } from "@/lib/carrito";
 
 // react-pdf depends on browser DOM APIs (DOMMatrix, etc.) — load it client-only
 // to avoid breaking the static prerender.
@@ -51,6 +52,7 @@ const STEPS_META: { title: string; sub: (nombre: string) => string }[] = [
 
 export default function PersonalizarRutinas() {
   const router = useRouter();
+  const { addItem } = useCarrito();
   const [step, setStep] = useState(0);
   const [nombre, setNombre] = useState("");
   const [genero, setGenero] = useState<Genero | null>(null);
@@ -153,14 +155,21 @@ export default function PersonalizarRutinas() {
   };
 
   const continuar = () => {
-    track({ evento: "checkout_started", producto: "rutinas" });
-    const params = new URLSearchParams({
-      producto: "rutinas",
-      nombre_nino: nombre,
-      color_acento: color,
-      personalizacion: JSON.stringify({ manana, noche, genero }),
+    // Add the personalised tablero to the cart. Format defaults to
+    // 'fisico'; the customer can flip to digital per-item in /checkout.
+    const item = addItem({
+      producto:        "rutinas",
+      nombre_nino:     nombre,
+      color_acento:    color,
+      genero,
+      personalizacion: { manana, noche, genero },
     });
-    router.push(`/checkout?${params.toString()}`);
+    track({
+      evento:   "checkout_started",
+      producto: "rutinas",
+      data:     { cart_item_id: item.id, formato: item.formato },
+    });
+    router.push("/checkout");
   };
 
   return (

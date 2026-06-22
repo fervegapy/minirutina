@@ -25,7 +25,10 @@ export type TrackEvent =
   | "cupon_aplicado"
   | "cupon_invalido"
   | "pago_iniciado"
-  | "pago_fallido_cliente";
+  | "pago_fallido_cliente"
+  | "add_to_cart"
+  | "remove_from_cart"
+  | "cart_viewed";
 
 interface TrackArgs {
   evento:    TrackEvent;
