@@ -1,17 +1,16 @@
 "use client";
 
-// Map-based delivery address picker. Built on OpenStreetMap + Leaflet
-// (no API key) with Nominatim for forward/reverse geocoding.
+// Map-based delivery address picker. Built on OpenStreetMap tiles + Leaflet.
 //
-// Three ways to set the address, all of which converge on a single
-// lat/lng + auto-filled (but editable) text fields:
-//   1. "Usar mi ubicación"  → browser geolocation → reverse geocode
-//   2. Address search box    → Nominatim forward geocode → pick a result
-//   3. Drag the pin          → reverse geocode the dropped point
+// The map captures an exact lat/lng (always precise, used for courier nav).
+// Street name/number are typed manually — Paraguay doesn't have sufficient
+// street-level coverage in any free geocoding service (OSM, Mapbox, Nominatim)
+// to make reverse geocoding reliable. Google Maps is the only service with
+// good PY coverage but requires billing setup.
 //
-// The text fields stay editable because Nominatim's city names don't
-// always match our delivery_zonas exactly — the customer can correct the
-// ciudad so zona pricing resolves. The component emits on every change.
+// "Mi ubicación" uses geolocation to center the map, but city/dept autofill
+// comes from Mapbox (locality/place level only — no street data in PY).
+// Forward search (Mapbox) works for city/landmark level, not street numbers.
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
@@ -35,37 +34,47 @@ interface Props {
 const DEFAULT_CENTER: [number, number] = [-25.2987, -57.6359];
 const DEFAULT_ZOOM = 13;
 
-interface NominatimAddress {
-  road?:         string;
-  house_number?: string;
-  neighbourhood?: string;
-  suburb?:       string;
-  quarter?:      string;
-  city?:         string;
-  town?:         string;
-  village?:      string;
-  municipality?: string;
-  city_district?: string;
-  state?:        string;
-  region?:       string;
-}
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
+const MAPBOX_BASE  = "https://api.mapbox.com/geocoding/v5/mapbox.places";
 
-interface NominatimResult {
-  lat:          string;
-  lon:          string;
-  display_name: string;
-  address?:     NominatimAddress;
+// ─── Mapbox GeoJSON shapes ─────────────────────────────────────────────────
+interface MapboxContext { id: string; text: string; }
+interface MapboxFeature {
+  place_name:  string;
+  place_type?: string[];
+  center:      [number, number];   // [lng, lat]
+  text:        string;             // primary name (street or place)
+  address?:    string;             // house number (on address features)
+  context?:    MapboxContext[];
 }
+interface MapboxResponse { features: MapboxFeature[]; }
 
-function addressToValue(a: NominatimAddress, lat: number, lng: number): MapLocationValue {
+// Mapbox has locality/place/region data for Paraguay but NOT street-level
+// (address type). So we only autofill ciudad + departamento from the geocoder.
+// Calle + número are always entered manually by the customer.
+function featureToPartial(f: MapboxFeature): Partial<MapLocationValue> & { lat: number; lng: number } {
+  const ctx = f.context ?? [];
+  const get = (prefix: string) =>
+    ctx.find((c) => c.id.startsWith(prefix))?.text ?? "";
+
+  // Mapbox hierarchy for PY: region > place > locality > neighborhood
+  // place = ciudad (Asunción, Luque…)
+  // locality = barrio/localidad pequeña
+  const isCity = f.place_type?.includes("place");
+  const ciudad = isCity
+    ? f.text                       // the feature itself is the city
+    : get("place");                // city is in context
+  const barrio = isCity
+    ? get("locality") || get("neighborhood")
+    : (f.place_type?.includes("locality") ? f.text : get("locality") || get("neighborhood"));
+  const depto = get("region");
+
   return {
-    departamento: a.state ?? a.region ?? "",
-    ciudad:       a.city ?? a.town ?? a.village ?? a.municipality ?? a.city_district ?? "",
-    barrio:       a.suburb ?? a.neighbourhood ?? a.quarter ?? "",
-    calle:        a.road ?? "",
-    numero:       a.house_number ?? "",
-    lat,
-    lng,
+    ciudad:       ciudad ?? "",
+    departamento: depto  ?? "",
+    barrio:       barrio ?? "",
+    lat:  f.center[1],
+    lng:  f.center[0],
   };
 }
 
@@ -82,7 +91,7 @@ export default function MapLocationPicker({ onChange }: Props) {
   });
 
   const [query, setQuery]       = useState("");
-  const [results, setResults]   = useState<NominatimResult[]>([]);
+  const [results, setResults]   = useState<MapboxFeature[]>([]);
   const [searching, setSearching] = useState(false);
   const [geoStatus, setGeoStatus] = useState<"idle" | "locating" | "denied" | "error">("idle");
   const [mapReady, setMapReady]   = useState(false);
@@ -164,21 +173,22 @@ export default function MapLocationPicker({ onChange }: Props) {
 
   // ─── Reverse geocode (coords → address) ──────────────────────────────────
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
-    // Optimistic: set coords immediately so the order has a pin even if the
-    // reverse lookup is slow/fails.
+    // Always set coords immediately — the pin is the source of truth.
     patch({ lat, lng });
+    if (!MAPBOX_TOKEN) return;
     try {
+      // Ask for place/locality/region — the levels Mapbox has for Paraguay.
+      // We intentionally skip 'address' since PY street coverage is near-zero.
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&accept-language=es&zoom=18&lat=${lat}&lon=${lng}`,
-        { headers: { Accept: "application/json" } },
+        `${MAPBOX_BASE}/${lng},${lat}.json?language=es&types=locality,place,region&access_token=${MAPBOX_TOKEN}`,
       );
       if (!res.ok) return;
-      const json = (await res.json()) as NominatimResult;
-      if (json.address) patch(addressToValue(json.address, lat, lng));
+      const json = (await res.json()) as MapboxResponse;
+      const feature = json.features[0];
+      if (feature) patch(featureToPartial(feature));
     } catch {
       /* keep the coords-only patch */
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patch]);
 
   // ─── Geolocation ──────────────────────────────────────────────────────────
@@ -202,34 +212,31 @@ export default function MapLocationPicker({ onChange }: Props) {
   // ─── Forward search (text → candidates), debounced ────────────────────────
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 3) { setResults([]); return; }
+    if (q.length < 3 || !MAPBOX_TOKEN) { setResults([]); return; }
     setSearching(true);
     const t = setTimeout(async () => {
       try {
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=py&addressdetails=1&accept-language=es&limit=5&q=${encodeURIComponent(q)}`,
-          { headers: { Accept: "application/json" } },
+          `${MAPBOX_BASE}/${encodeURIComponent(q)}.json?country=py&language=es&types=address,place&limit=5&access_token=${MAPBOX_TOKEN}`,
         );
-        const json = res.ok ? ((await res.json()) as NominatimResult[]) : [];
-        setResults(json);
+        const json = res.ok ? ((await res.json()) as MapboxResponse) : { features: [] };
+        setResults(json.features);
       } catch {
         setResults([]);
       } finally {
         setSearching(false);
       }
-    }, 600); // Nominatim policy: ≤1 req/s
+    }, 300);
     return () => clearTimeout(t);
   }, [query]);
 
-  const pickResult = useCallback((r: NominatimResult) => {
-    const lat = parseFloat(r.lat);
-    const lng = parseFloat(r.lon);
+  const pickResult = useCallback((f: MapboxFeature) => {
+    const [lng, lat] = f.center;
     setQuery("");
     setResults([]);
     moveTo(lat, lng);
-    if (r.address) patch(addressToValue(r.address, lat, lng));
-    else reverseGeocode(lat, lng);
-  }, [moveTo, patch, reverseGeocode]);
+    patch(featureToPartial(f));
+  }, [moveTo, patch]);
 
   return (
     <div className="space-y-3">
@@ -239,7 +246,7 @@ export default function MapLocationPicker({ onChange }: Props) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscá tu dirección (ej. Av. España 1234)"
+            placeholder="Buscá tu barrio o ciudad (ej. Villa Morra, Luque)"
             className={inputClass}
             autoComplete="off"
           />
@@ -248,14 +255,14 @@ export default function MapLocationPicker({ onChange }: Props) {
               {searching && results.length === 0 && (
                 <div className="px-3 py-2 text-xs text-[#22244e]/50">Buscando…</div>
               )}
-              {results.map((r, i) => (
+              {results.map((f, i) => (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => pickResult(r)}
+                  onClick={() => pickResult(f)}
                   className="block w-full text-left px-3 py-2 text-xs text-[#22244e] hover:bg-[#336aea]/10 border-b border-[#e5e7eb] last:border-0"
                 >
-                  {r.display_name}
+                  {f.place_name}
                 </button>
               ))}
             </div>
@@ -297,11 +304,11 @@ export default function MapLocationPicker({ onChange }: Props) {
       {value.lat != null ? (
         <div className="flex items-center gap-1.5 text-[11px] text-[#a8c5a0] font-semibold">
           <span>📍</span>
-          <span>Ubicación marcada — el texto se puede corregir abajo si el nombre de la calle no es exacto.</span>
+          <span>Ubicación marcada — completá calle y número abajo.</span>
         </div>
       ) : (
         <p className="text-[11px] text-[#22244e]/50 text-center">
-          Tocá el mapa, arrastrá el pin o buscá tu dirección arriba.
+          Tocá el mapa o arrastrá el pin para marcar tu casa exacta.
         </p>
       )}
 
