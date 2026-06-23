@@ -31,7 +31,7 @@ export default function FAQ() {
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-12">
           <span className="text-xs font-bold uppercase tracking-widest text-[#336aea] mb-3 block">
-            Dudas frecuentes
+            Respondemos tus dudas
           </span>
           <h2 className="text-3xl md:text-4xl font-bold text-[#22244e]">
             Preguntas frecuentes

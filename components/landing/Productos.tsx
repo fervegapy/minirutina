@@ -61,10 +61,10 @@ export default async function Productos() {
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
           <span className="text-xs font-bold uppercase tracking-widest text-[#336aea] mb-3 block">
-            Dos opciones
+            Dos tableros
           </span>
           <h2 className="text-3xl md:text-4xl font-bold text-[#22244e] mb-4">
-            Para diferentes momentos
+            Para ordenar el día o reforzar un hábito
           </h2>
           <p className="text-[#22244e]/60 max-w-md mx-auto">
             Cada uno se personaliza con el nombre, los colores y las actividades de tu hijo.

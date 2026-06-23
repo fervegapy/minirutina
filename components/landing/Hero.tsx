@@ -13,15 +13,14 @@ export default function Hero() {
         <div className="flex items-center px-6 py-14 md:py-20 md:px-12 lg:px-16 order-2 md:order-1">
           <div className="max-w-md">
             <span className="inline-block bg-[#336aea]/20 text-[#22244e] text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-6">
-              Personalizá, confirmá y recibí en tu casa
+              Personalizá y recibí impreso, listo para usar
             </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#22244e] leading-[1.05] mb-6">
-              Más calma en casa,
-              <br />
-              <span className="text-[#336aea]">más autonomía en tus peques.</span>
+              Hacé que las actividades del día a día{" "}
+              <span className="text-[#336aea]">dejen de ser una pelea.</span>
             </h1>
             <p className="text-[#22244e]/70 text-lg leading-relaxed mb-8">
-              Tableros visuales hechos a su medida que ayudan a tu hijo a saber qué sigue, reducir la ansiedad e ir ganando independencia día a día.
+              Tableros visuales personalizados que le muestran a tu peque el paso a paso al despertar y a la noche, y le ayudan a crear buenos hábitos.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link href="#productos">
