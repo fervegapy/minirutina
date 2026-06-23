@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayment, verifyWebhookSignature } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmail } from "@/lib/email";
+import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
+import { extraerNombre } from "@/lib/contacto";
 import { captureServerEvent } from "@/lib/posthog-server";
 
 export const runtime = "nodejs";
@@ -99,7 +101,6 @@ export async function POST(req: NextRequest) {
     }
 
     const pedido = updated[0] as { id: string; nombre_nino: string; producto: string; contacto?: string | null };
-    const productoLabel = NOMBRE_PRODUCTO[pedido.producto] ?? pedido.producto;
     const montoPyg = Number(payment.amount) || 0;
 
     // Customer email
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
     // Subject / headline reflect single vs multi-item.
     const subjectName = items.length > 1
       ? `${items.length} tableros (${items.map((it) => it.nombre_nino).join(", ")})`
-      : `${pedido.nombre_nino} (${productoLabel})`;
+      : `${pedido.nombre_nino} (${productoLabel(pedido.producto)})`;
     const itemsListHtml = items.length > 0
       ? `<ul style="margin:0 0 12px;padding-left:18px;font-size:14px;color:#22244ecc;">
            ${items.map((it) =>
@@ -144,20 +145,27 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
 
     if (customerEmail) {
-      const greeting = items.length > 1
-        ? `Confirmamos tu pago de <strong>${fmtPyg(montoPyg)}</strong> por tus <strong>${items.length} tableros</strong>:`
-        : `Confirmamos tu pago de <strong>${fmtPyg(montoPyg)}</strong> para el <strong>${productoLabel}</strong> de <strong>${pedido.nombre_nino}</strong>.`;
-      sendEmail({
-        to:      customerEmail,
-        subject: `Confirmamos tu pago — Minirutina #${pedidoId.slice(0, 8).toUpperCase()}`,
-        html: `<!DOCTYPE html><html><body style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#22244e;padding:24px;">
-          <h2 style="color:#22244e;">¡Pago recibido! 💳</h2>
-          <p>${greeting}</p>
-          ${items.length > 1 ? itemsListHtml : ""}
-          <p>Ya empezamos a prepararlo. Te avisamos por WhatsApp cuando esté listo
-          (estimado: 48 horas).</p>
-          <p style="font-size:12px;color:#22244e88;">Pedido #${pedidoId.slice(0,8).toUpperCase()} · minirutina.com</p>
-        </body></html>`,
+      // Map items → branded email summary. Fall back to the pedido's legacy
+      // columns when there are no pedido_items rows (old single-item orders).
+      const emailItems = items.length > 0
+        ? items.map((it) => ({
+            productoLabel: productoLabel(it.producto),
+            nombreNino:    it.nombre_nino,
+            tipoEntrega:   it.tipo_entrega === "digital" ? ("digital" as const) : ("fisico" as const),
+            precioPyg:     it.precio_pyg,
+          }))
+        : [{
+            productoLabel: productoLabel(pedido.producto),
+            nombreNino:    pedido.nombre_nino,
+            tipoEntrega:   ("fisico" as const),
+            precioPyg:     montoPyg,
+          }];
+      enviarPedidoConfirmado({
+        to:            customerEmail,
+        nombreCliente: extraerNombre(pedido.contacto),
+        pedidoId,
+        items:         emailItems,
+        total:         montoPyg,
       }).catch((e) => console.error("[dlocal/webhook] customer email failed:", e));
     }
 
@@ -171,7 +179,7 @@ export async function POST(req: NextRequest) {
         html: `<!DOCTYPE html><html><body style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#22244e;padding:24px;">
           <h2>💸 Pago nuevo</h2>
           <p>Pedido <strong>#${pedidoId.slice(0,8).toUpperCase()}</strong> ·
-          ${items.length > 1 ? `<strong>${items.length} items</strong>` : `<strong>${pedido.nombre_nino}</strong> — ${productoLabel}`}.</p>
+          ${items.length > 1 ? `<strong>${items.length} items</strong>` : `<strong>${pedido.nombre_nino}</strong> — ${productoLabel(pedido.producto)}`}.</p>
           ${itemsListHtml}
           <p style="font-size:18px;"><strong>${fmtPyg(montoPyg)}</strong></p>
           ${pedido.contacto ? `<p style="font-size:13px;color:#22244e88;">Contacto: ${pedido.contacto}</p>` : ""}

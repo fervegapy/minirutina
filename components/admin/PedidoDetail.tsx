@@ -30,7 +30,7 @@ import {
 } from "@/lib/contacto";
 import { plantillaWhatsappCliente } from "@/lib/wa-templates";
 import { COURIERS, courierPorId, type CourierId } from "@/lib/courier";
-import { cambiarEstadoPedido } from "@/app/admin/(dashboard)/pedidos/[id]/actions";
+import { cambiarEstadoPedido, enviarRecordatorioPagoManual } from "@/app/admin/(dashboard)/pedidos/[id]/actions";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -228,6 +228,17 @@ Pedido ID: ${pedido.id.slice(0, 8)}
       if (r.ok) router.refresh();
       else alert(r.error ?? "Error al cambiar estado");
     });
+  };
+
+  // Manual "recordatorio de pago" email — only relevant while pending.
+  const [enviandoRecord, setEnviandoRecord] = useState(false);
+  const [recordatorioMsg, setRecordatorioMsg] = useState<string | null>(null);
+  const enviarRecordatorio = async () => {
+    setEnviandoRecord(true);
+    setRecordatorioMsg(null);
+    const r = await enviarRecordatorioPagoManual(pedido.id);
+    setEnviandoRecord(false);
+    setRecordatorioMsg(r.ok ? "✓ Recordatorio enviado" : (r.error ?? "Error al enviar"));
   };
 
   return (
@@ -598,6 +609,28 @@ Pedido ID: ${pedido.id.slice(0, 8)}
               <CardTitle className="text-base">Acciones</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2.5">
+              {/* Recordatorio de pago — solo mientras está pendiente */}
+              {pedido.estado === "pendiente" && (
+                <>
+                  <ActionButton
+                    onClick={enviarRecordatorio}
+                    disabled={enviandoRecord || !email}
+                    icon={<Mail className="w-4 h-4 text-amber-600" />}
+                  >
+                    {enviandoRecord
+                      ? "Enviando..."
+                      : email
+                        ? "Enviar recordatorio de pago"
+                        : "Sin email registrado"}
+                  </ActionButton>
+                  {recordatorioMsg && (
+                    <p className={`text-[11px] ${recordatorioMsg.startsWith("✓") ? "text-emerald-600" : "text-red-600"}`}>
+                      {recordatorioMsg}
+                    </p>
+                  )}
+                </>
+              )}
+
               {/* Notificar cliente */}
               {waLink ? (
                 <a href={waLink} target="_blank" rel="noopener noreferrer">

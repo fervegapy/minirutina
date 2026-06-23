@@ -8,6 +8,13 @@ export function extraerEmail(contacto: string | null | undefined): string | null
   return m?.[1]?.trim() ?? null;
 }
 
+// "Nombre: Fer Vega | Email: ..." → "Fer Vega". Stops at the " | " separator.
+export function extraerNombre(contacto: string | null | undefined): string | null {
+  if (!contacto) return null;
+  const m = contacto.match(/Nombre:\s*([^|·]+)/i);
+  return m?.[1]?.trim() || null;
+}
+
 export function extraerWhatsapp(contacto: string | null | undefined): string | null {
   if (!contacto) return null;
   // Capture digits/spaces/dashes/parens/plus after "WhatsApp:" until the next separator
