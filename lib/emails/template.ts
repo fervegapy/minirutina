@@ -22,17 +22,32 @@ export function fmtPyg(n: number): string {
   return "Gs. " + Math.round(n).toLocaleString("es-PY");
 }
 
+/** Header logo: real logo image (site_config.logo_url) on a cream bar — same
+ *  as the website navbar. Falls back to the wordmark when no logo is set. */
+function headerHtml(logoUrl?: string | null): string {
+  const inner = logoUrl
+    ? `<img src="${logoUrl}" alt="Minirutina" height="36" style="height:36px;width:auto;display:inline-block;border:0;outline:none;text-decoration:none;" />`
+    : `<span style="font-size:26px;font-weight:800;color:${BLUE};letter-spacing:-0.5px;">🌿 minirutina</span>`;
+  return `<tr>
+    <td style="background:${BG};border:1px solid ${BORDER};border-bottom:none;border-radius:16px 16px 0 0;padding:24px 32px;text-align:center;">
+      ${inner}
+    </td>
+  </tr>`;
+}
+
 /** Full HTML document wrapping the given inner content with header + footer. */
 export function renderEmailShell({
   preheader = "",
   heading,
   intro,
   contentHtml,
+  logoUrl,
 }: {
   preheader?: string;
   heading: string;
   intro?: string;
   contentHtml: string;
+  logoUrl?: string | null;
 }): string {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -49,16 +64,7 @@ export function renderEmailShell({
         <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
 
           <!-- Header -->
-          <tr>
-            <td style="background:${DARK};border-radius:16px 16px 0 0;padding:28px 32px;text-align:center;">
-              <p style="margin:0;font-size:28px;font-weight:800;color:${BLUE};letter-spacing:-0.5px;">
-                Minirutina
-              </p>
-              <p style="margin:6px 0 0;font-size:13px;color:rgba(255,255,255,0.5);">
-                Tableros personalizados para niños
-              </p>
-            </td>
-          </tr>
+          ${headerHtml(logoUrl)}
 
           <!-- Body -->
           <tr>

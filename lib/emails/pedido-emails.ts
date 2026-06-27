@@ -9,6 +9,7 @@
 //   3. en camino              — auto, admin marks estado = enviado
 //   4. feedback               — auto, admin marks estado = entregado
 import { sendEmail } from "@/lib/email";
+import { getSiteConfig } from "@/lib/site-config";
 import {
   renderEmailShell,
   summaryCard,
@@ -34,6 +35,20 @@ export function productoLabel(producto: string): string {
 // degrade gracefully when not yet configured.
 const WHATSAPP     = (process.env.NEXT_PUBLIC_WHATSAPP ?? "").replace(/\D/g, "");
 const FEEDBACK_URL = process.env.FEEDBACK_FORM_URL ?? "";
+const SITE         = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://minirutina.com").replace(/\/$/, "");
+
+// Logo for the email header — same one the website navbar/footer uses.
+// Cached per process so we don't refetch site_config on every email.
+let logoCache: string | null | undefined;
+async function getLogoUrl(): Promise<string | null> {
+  if (logoCache !== undefined) return logoCache;
+  try {
+    logoCache = (await getSiteConfig()).logo_url ?? null;
+  } catch {
+    logoCache = null;
+  }
+  return logoCache;
+}
 
 function saludo(nombreCliente?: string | null): string {
   return nombreCliente ? `Hola ${nombreCliente.split(" ")[0]},` : "Hola,";
@@ -54,29 +69,37 @@ export interface BuiltEmail { subject: string; html: string }
 interface BaseArgs {
   nombreCliente?: string | null;
   pedidoId:       string;
+  logoUrl?:       string | null;
 }
 interface CartArgs extends BaseArgs { items: EmailItemSummary[]; total: number }
 interface ShipArgs extends BaseArgs { nombreNino?: string | null }
 
 // ─── 1. Recordatorio de pago ───────────────────────────────────────────────
-export function buildRecordatorioPago({ nombreCliente, pedidoId, items, total }: CartArgs): BuiltEmail {
+export function buildRecordatorioPago({ nombreCliente, pedidoId, items, total, logoUrl }: CartArgs): BuiltEmail {
   const html = renderEmailShell({
+    logoUrl,
     preheader: "Tu pedido te está esperando — completá el pago cuando quieras.",
     heading:   "Tu tablero te está esperando 💛",
     intro:     `${saludo(nombreCliente)} dejaste tu pedido casi listo. En cuanto confirmes el pago empezamos a prepararlo.`,
-    contentHtml: summaryCard(items, total) + comoPagarBox() + pedidoNumero(pedidoId),
+    contentHtml:
+      summaryCard(items, total) +
+      emailButton(`${SITE}/pagar/${pedidoId}`, "Completá tu pedido") +
+      `<div style="height:16px;"></div>` +
+      comoPagarBox() +
+      pedidoNumero(pedidoId),
   });
   return { subject: "Tu pedido en Minirutina te está esperando", html };
 }
 
 // ─── 2. Pedido confirmado ──────────────────────────────────────────────────
-export function buildPedidoConfirmado({ nombreCliente, pedidoId, items, total }: CartArgs): BuiltEmail {
+export function buildPedidoConfirmado({ nombreCliente, pedidoId, items, total, logoUrl }: CartArgs): BuiltEmail {
   const todosDigitales = items.length > 0 && items.every((it) => it.tipoEntrega === "digital");
   const progreso = todosDigitales
     ? infoBox("Próximo paso", "Estamos preparando tu archivo. Te lo enviamos por email apenas esté listo.")
     : timeline(1);
 
   const html = renderEmailShell({
+    logoUrl,
     preheader: "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
     heading:   "Tu pedido está confirmado ✅",
     intro:     `${saludo(nombreCliente)} recibimos tu pago de ${fmtPyg(total)}. ${
@@ -90,7 +113,7 @@ export function buildPedidoConfirmado({ nombreCliente, pedidoId, items, total }:
 }
 
 // ─── 3. En camino ──────────────────────────────────────────────────────────
-export function buildEnCamino({ nombreCliente, pedidoId, nombreNino }: ShipArgs): BuiltEmail {
+export function buildEnCamino({ nombreCliente, pedidoId, nombreNino, logoUrl }: ShipArgs): BuiltEmail {
   const content =
     timeline(2) +
     infoBox(
@@ -100,6 +123,7 @@ export function buildEnCamino({ nombreCliente, pedidoId, nombreNino }: ShipArgs)
     pedidoNumero(pedidoId);
 
   const html = renderEmailShell({
+    logoUrl,
     preheader:   "Tu pedido va en camino.",
     heading:     "Tu pedido va en camino 🚚",
     intro:       `${saludo(nombreCliente)} ${nombreNino ? `el tablero de ${nombreNino}` : "tu pedido"} ya está en camino a tu dirección.`,
@@ -109,10 +133,10 @@ export function buildEnCamino({ nombreCliente, pedidoId, nombreNino }: ShipArgs)
 }
 
 // ─── 4. Feedback ───────────────────────────────────────────────────────────
-export function buildFeedback({ nombreCliente, pedidoId, nombreNino }: ShipArgs): BuiltEmail {
-  const cta = FEEDBACK_URL
-    ? emailButton(FEEDBACK_URL, "Dejar mi opinión")
-    : `<p style="margin:0;font-size:14px;color:#22244ecc;line-height:1.6;">Respondé este email y contanos cómo te fue 💛</p>`;
+export function buildFeedback({ nombreCliente, pedidoId, nombreNino, logoUrl }: ShipArgs): BuiltEmail {
+  // Primary CTA always present. Points to the feedback form when configured,
+  // otherwise to the site contact page as a safe interim destination.
+  const destino = FEEDBACK_URL || `${SITE}/contacto`;
 
   const content =
     timeline(3) +
@@ -120,11 +144,12 @@ export function buildFeedback({ nombreCliente, pedidoId, nombreNino }: ShipArgs)
       "¿Nos contás cómo te fue?",
       `Tu opinión nos ayuda muchísimo${nombreNino ? ` — y nos encantaría saber cómo le está yendo a ${nombreNino} con su tablero` : ""}. Te toma menos de un minuto.`,
     ) +
-    cta +
+    emailButton(destino, "Dejar mi opinión") +
     `<div style="height:8px;"></div>` +
     pedidoNumero(pedidoId);
 
   const html = renderEmailShell({
+    logoUrl,
     preheader:   "¡Tu tablero llegó! Contanos cómo te fue.",
     heading:     "¡Tu tablero llegó! 🎉",
     intro:       `${saludo(nombreCliente)} esperamos que ${nombreNino ? `${nombreNino} disfrute` : "disfruten"} su nuevo tablero. Nos encantaría saber qué te pareció.`,
@@ -133,20 +158,20 @@ export function buildFeedback({ nombreCliente, pedidoId, nombreNino }: ShipArgs)
   return { subject: "¿Cómo te fue con tu tablero de Minirutina?", html };
 }
 
-// ─── Senders ────────────────────────────────────────────────────────────────
-export function enviarRecordatorioPago(args: CartArgs & { to: string }) {
-  const { subject, html } = buildRecordatorioPago(args);
+// ─── Senders (fetch logo, then dispatch) ─────────────────────────────────────
+export async function enviarRecordatorioPago(args: CartArgs & { to: string }) {
+  const { subject, html } = buildRecordatorioPago({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }
-export function enviarPedidoConfirmado(args: CartArgs & { to: string }) {
-  const { subject, html } = buildPedidoConfirmado(args);
+export async function enviarPedidoConfirmado(args: CartArgs & { to: string }) {
+  const { subject, html } = buildPedidoConfirmado({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }
-export function enviarEnCamino(args: ShipArgs & { to: string }) {
-  const { subject, html } = buildEnCamino(args);
+export async function enviarEnCamino(args: ShipArgs & { to: string }) {
+  const { subject, html } = buildEnCamino({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }
-export function enviarFeedback(args: ShipArgs & { to: string }) {
-  const { subject, html } = buildFeedback(args);
+export async function enviarFeedback(args: ShipArgs & { to: string }) {
+  const { subject, html } = buildFeedback({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }

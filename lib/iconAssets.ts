@@ -9,9 +9,15 @@ export type Genero = "nino" | "nina";
 export const GENDERED_ICONS = new Set<string>([
   "agua",
   "cama",
+  "calma",
   "cancion",
+  "cara",
+  "charla",
   "levantarse",
+  "ordenar",
+  "peinarse",
   "vestirse",
+  "zapatos",
 ]);
 
 /** Returns just the filename (without the leading folder). */
