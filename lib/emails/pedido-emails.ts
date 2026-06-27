@@ -15,6 +15,7 @@ import {
   summaryCard,
   infoBox,
   emailButton,
+  whatsappButton,
   timeline,
   pedidoNumero,
   fmtPyg,
@@ -86,6 +87,7 @@ export function buildRecordatorioPago({ nombreCliente, pedidoId, items, total, l
       emailButton(`${SITE}/pagar/${pedidoId}`, "Completá tu pedido") +
       `<div style="height:16px;"></div>` +
       comoPagarBox() +
+      whatsappButton(pedidoId, WHATSAPP) +
       pedidoNumero(pedidoId),
   });
   return { subject: "Tu pedido en Minirutina te está esperando", html };
@@ -107,7 +109,7 @@ export function buildPedidoConfirmado({ nombreCliente, pedidoId, items, total, l
         ? "Ya estamos preparando tu archivo."
         : "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso."
     }`,
-    contentHtml: progreso + summaryCard(items, total) + pedidoNumero(pedidoId),
+    contentHtml: progreso + summaryCard(items, total) + whatsappButton(pedidoId, WHATSAPP) + pedidoNumero(pedidoId),
   });
   return { subject: `Tu pedido está confirmado — Minirutina #${pedidoId.slice(0, 8).toUpperCase()}`, html };
 }
@@ -120,6 +122,7 @@ export function buildEnCamino({ nombreCliente, pedidoId, nombreNino, logoUrl }: 
       "Llega pronto",
       "Tu pedido ya salió rumbo a tu dirección. Si coordinamos la entrega por WhatsApp, te escribimos para confirmar el horario.",
     ) +
+    whatsappButton(pedidoId, WHATSAPP) +
     pedidoNumero(pedidoId);
 
   const html = renderEmailShell({
@@ -146,6 +149,7 @@ export function buildFeedback({ nombreCliente, pedidoId, nombreNino, logoUrl }: 
     ) +
     emailButton(destino, "Dejar mi opinión") +
     `<div style="height:8px;"></div>` +
+    whatsappButton(pedidoId, WHATSAPP) +
     pedidoNumero(pedidoId);
 
   const html = renderEmailShell({

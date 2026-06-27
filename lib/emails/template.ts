@@ -145,6 +145,17 @@ export function infoBox(title: string, bodyHtml: string, tint: "blue" | "plain" 
   </table>`;
 }
 
+/** WhatsApp contact button pre-filled with the order number. */
+export function whatsappButton(pedidoId: string, waNumber: string): string {
+  if (!waNumber) return "";
+  const nro  = pedidoId.slice(0, 8).toUpperCase();
+  const text = encodeURIComponent(`Hola Mini Rutina, les escribo en relación al pedido ${nro}`);
+  return `<table cellpadding="0" cellspacing="0" style="margin:8px 0 16px;"><tr><td
+    style="background:#25D366;border-radius:10px;">
+    <a href="https://wa.me/${waNumber}?text=${text}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">💬 Escribinos por WhatsApp</a>
+  </td></tr></table>`;
+}
+
 /** Order number chip. */
 export function pedidoNumero(pedidoId: string): string {
   return `<p style="margin:0;font-size:13px;color:#22244e66;">
