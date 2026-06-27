@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createPayment } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
+import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
 
 interface Body {
   pedidoId:     string;
@@ -60,11 +61,63 @@ export async function POST(req: NextRequest) {
 
     const totalPyg = Math.round(Math.max(0, productoPyg - descuento) + envioPyg);
 
-    if (!pedidoId || totalPyg <= 0) {
+    if (!pedidoId || (totalPyg <= 0 && descuento === 0)) {
       return NextResponse.json({ ok: false, error: "Datos del pedido incompletos." }, { status: 400 });
     }
 
     const origin = req.headers.get("origin") ?? "https://www.minirutina.com";
+
+    // ─── Cupón 100 % — bypass dLocal ─────────────────────────────────────────
+    // dLocal rejects payments under ~1 USD. When a coupon covers the full
+    // amount, we mark the pedido as pagado directly and skip the payment flow.
+    if (totalPyg === 0) {
+      await supabaseAdmin.from("pedidos").update({
+        estado:          "pagado",
+        metodo_pago:     "cupon_100",
+        cupon_codigo:    cuponAplicado?.codigo ?? null,
+        cupon_descuento: descuento > 0 ? descuento : null,
+      }).eq("id", pedidoId);
+
+      if (cuponAplicado && descuento > 0) {
+        await supabaseAdmin.from("cupon_usos").insert({
+          cupon_id:        cuponAplicado.id,
+          codigo:          cuponAplicado.codigo,
+          pedido_id:       pedidoId,
+          email:           email ?? null,
+          monto_original:  Math.round(productoPyg + envioPyg),
+          monto_descuento: descuento,
+          monto_final:     0,
+        });
+        const { data: cuRow } = await supabaseAdmin
+          .from("cupones").select("usos").eq("id", cuponAplicado.id).maybeSingle();
+        await supabaseAdmin.from("cupones")
+          .update({ usos: (cuRow?.usos ?? 0) + 1 }).eq("id", cuponAplicado.id);
+      }
+
+      // Send confirmation email fire-and-forget
+      if (email?.includes("@")) {
+        const { data: itemRows } = await supabaseAdmin
+          .from("pedido_items")
+          .select("producto, nombre_nino, tipo_entrega, precio_pyg")
+          .eq("pedido_id", pedidoId);
+        const emailItems = (itemRows ?? []).map((it) => ({
+          productoLabel: productoLabel(it.producto),
+          nombreNino:    it.nombre_nino,
+          tipoEntrega:   it.tipo_entrega === "digital" ? "digital" as const : "fisico" as const,
+          precioPyg:     Number(it.precio_pyg) || 0,
+        }));
+        enviarPedidoConfirmado({
+          to:            email,
+          nombreCliente: body.nombreComprador ?? null,
+          pedidoId,
+          items:         emailItems,
+          total:         0,
+        }).catch(() => {});
+      }
+
+      const confirmUrl = `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`;
+      return NextResponse.json({ ok: true, url: confirmUrl });
+    }
     const nombreProducto = NOMBRE_PRODUCTO[producto] ?? "Tablero personalizado";
     const entregaTxt = tipoEntrega === "digital"
       ? "Digital (PDF)"
