@@ -8,7 +8,7 @@
 //   2. pedido confirmado      — auto, dLocal webhook on PAID
 //   3. en camino              — auto, admin marks estado = enviado
 //   4. feedback               — auto, admin marks estado = entregado
-import { sendEmail } from "@/lib/email";
+import { sendEmail, type EmailAttachment } from "@/lib/email";
 import { getSiteConfig } from "@/lib/site-config";
 import {
   renderEmailShell,
@@ -94,21 +94,38 @@ export function buildRecordatorioPago({ nombreCliente, pedidoId, items, total, l
 }
 
 // ─── 2. Pedido confirmado ──────────────────────────────────────────────────
-export function buildPedidoConfirmado({ nombreCliente, pedidoId, items, total, logoUrl }: CartArgs): BuiltEmail {
+// `conAdjuntos` = the digital file(s) travel attached to this same email, so
+// the copy says "adjuntamos tu archivo" instead of "lo preparamos".
+export function buildPedidoConfirmado(
+  { nombreCliente, pedidoId, items, total, logoUrl }: CartArgs,
+  conAdjuntos = false,
+): BuiltEmail {
   const todosDigitales = items.length > 0 && items.every((it) => it.tipoEntrega === "digital");
-  const progreso = todosDigitales
-    ? infoBox("Próximo paso", "Estamos preparando tu archivo. Te lo enviamos por email apenas esté listo.")
-    : timeline(1);
+  const hayDigitales   = items.some((it) => it.tipoEntrega === "digital");
+
+  let progreso: string;
+  if (todosDigitales) {
+    progreso = conAdjuntos
+      ? infoBox("Tu archivo está listo 📎", "Adjuntamos tu tablero en este correo, listo para imprimir en casa o donde prefieras.")
+      : infoBox("Próximo paso", "Estamos preparando tu archivo. Te lo enviamos por email apenas esté listo.");
+  } else {
+    // Mixed cart: show the physical timeline; note the digital file is attached.
+    progreso = (conAdjuntos && hayDigitales
+      ? infoBox("Tu archivo digital 📎", "Adjuntamos en este correo el tablero de la versión digital. Los impresos siguen el proceso de abajo.")
+      : "") + timeline(1);
+  }
+
+  const intro = `${saludo(nombreCliente)} recibimos tu pago de ${fmtPyg(total)}. ${
+    todosDigitales
+      ? (conAdjuntos ? "Adjuntamos tu archivo en este correo." : "Ya estamos preparando tu archivo.")
+      : "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso."
+  }`;
 
   const html = renderEmailShell({
     logoUrl,
-    preheader: "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
+    preheader: conAdjuntos ? "Tu archivo está listo — lo adjuntamos en este correo." : "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
     heading:   "Tu pedido está confirmado ✅",
-    intro:     `${saludo(nombreCliente)} recibimos tu pago de ${fmtPyg(total)}. ${
-      todosDigitales
-        ? "Ya estamos preparando tu archivo."
-        : "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso."
-    }`,
+    intro,
     contentHtml: progreso + summaryCard(items, total) + whatsappButton(pedidoId, WHATSAPP) + pedidoNumero(pedidoId),
   });
   return { subject: `Tu pedido está confirmado — Minirutina #${pedidoId.slice(0, 8).toUpperCase()}`, html };
@@ -167,9 +184,13 @@ export async function enviarRecordatorioPago(args: CartArgs & { to: string }) {
   const { subject, html } = buildRecordatorioPago({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }
-export async function enviarPedidoConfirmado(args: CartArgs & { to: string }) {
-  const { subject, html } = buildPedidoConfirmado({ ...args, logoUrl: await getLogoUrl() });
-  return sendEmail({ to: args.to, subject, html });
+export async function enviarPedidoConfirmado(args: CartArgs & { to: string; attachments?: EmailAttachment[] }) {
+  const attachments = args.attachments ?? [];
+  const { subject, html } = buildPedidoConfirmado(
+    { ...args, logoUrl: await getLogoUrl() },
+    attachments.length > 0,
+  );
+  return sendEmail({ to: args.to, subject, html, attachments });
 }
 export async function enviarEnCamino(args: ShipArgs & { to: string }) {
   const { subject, html } = buildEnCamino({ ...args, logoUrl: await getLogoUrl() });

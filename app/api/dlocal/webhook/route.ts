@@ -9,6 +9,7 @@ import { getPayment, verifyWebhookSignature } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmail } from "@/lib/email";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
+import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import { extraerNombre } from "@/lib/contacto";
 import { captureServerEvent } from "@/lib/posthog-server";
 
@@ -160,12 +161,19 @@ export async function POST(req: NextRequest) {
             tipoEntrega:   ("fisico" as const),
             precioPyg:     montoPyg,
           }];
+      // Auto-generate the print-ready PDF for any digital item and attach it
+      // to the confirmation email. Físico items go through producción/envío.
+      const adjuntos = await generarAdjuntosDigitales(pedidoId).catch((e) => {
+        console.error("[dlocal/webhook] adjuntos digitales fallaron:", e);
+        return [];
+      });
       enviarPedidoConfirmado({
         to:            customerEmail,
         nombreCliente: extraerNombre(pedido.contacto),
         pedidoId,
         items:         emailItems,
         total:         montoPyg,
+        attachments:   adjuntos,
       }).catch((e) => console.error("[dlocal/webhook] customer email failed:", e));
     }
 

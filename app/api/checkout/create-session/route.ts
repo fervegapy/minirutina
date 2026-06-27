@@ -17,6 +17,7 @@ import { createPayment } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
+import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 
 interface Body {
   pedidoId:     string;
@@ -106,12 +107,15 @@ export async function POST(req: NextRequest) {
           tipoEntrega:   it.tipo_entrega === "digital" ? "digital" as const : "fisico" as const,
           precioPyg:     Number(it.precio_pyg) || 0,
         }));
+        // Attach the print-ready PDF for any digital item (same as the paid path).
+        const adjuntos = await generarAdjuntosDigitales(pedidoId).catch(() => []);
         enviarPedidoConfirmado({
           to:            email,
           nombreCliente: body.nombreComprador ?? null,
           pedidoId,
           items:         emailItems,
           total:         0,
+          attachments:   adjuntos,
         }).catch(() => {});
       }
 
