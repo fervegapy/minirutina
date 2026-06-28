@@ -1,11 +1,14 @@
 "use client";
 
-const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP ?? "";
-const WA_TEXT   = encodeURIComponent("Hola Mini Rutina, les escribo desde la web y me gustaría saber");
-const WA_URL    = `https://wa.me/${WA_NUMBER}?text=${WA_TEXT}`;
+import { waMeUrl } from "@/lib/contacto";
+
+const WA_URL = waMeUrl(
+  process.env.NEXT_PUBLIC_WHATSAPP ?? null,
+  "Hola Minirutina, les escribo desde la web y me gustaría hacer una consulta.",
+);
 
 export default function WhatsAppFloat() {
-  if (!WA_NUMBER) return null;
+  if (!WA_URL) return null;
   return (
     <a
       href={WA_URL}

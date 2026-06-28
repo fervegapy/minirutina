@@ -3,7 +3,6 @@ import { Rubik, Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteConfig } from "@/lib/site-config";
 import PostHogProvider from "@/components/PostHogProvider";
-import WhatsAppFloat from "@/components/WhatsAppFloat";
 
 // Force dynamic rendering so generateMetadata() always reads the latest
 // site_config (logo/favicon/title change → next request, not next deploy).
@@ -63,7 +62,6 @@ export default function RootLayout({
     <html lang="es" className={`${inter.variable} ${rubik.variable}`}>
       <body className="antialiased">
         <PostHogProvider>{children}</PostHogProvider>
-        <WhatsAppFloat />
       </body>
     </html>
   );

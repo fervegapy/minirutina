@@ -16,6 +16,7 @@ import {
   CreditCard,
   ExternalLink,
   FileText,
+  Send,
 } from "lucide-react";
 import type { Pedido, EstadoPedido } from "@/types/pedido";
 import {
@@ -30,7 +31,7 @@ import {
 } from "@/lib/contacto";
 import { plantillaWhatsappCliente } from "@/lib/wa-templates";
 import { COURIERS, courierPorId, type CourierId } from "@/lib/courier";
-import { cambiarEstadoPedido, enviarRecordatorioPagoManual } from "@/app/admin/(dashboard)/pedidos/[id]/actions";
+import { cambiarEstadoPedido, enviarRecordatorioPagoManual, reenviarConfirmacionPago } from "@/app/admin/(dashboard)/pedidos/[id]/actions";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -239,6 +240,24 @@ Pedido ID: ${pedido.id.slice(0, 8)}
     const r = await enviarRecordatorioPagoManual(pedido.id);
     setEnviandoRecord(false);
     setRecordatorioMsg(r.ok ? "✓ Recordatorio enviado" : (r.error ?? "Error al enviar"));
+  };
+
+  // Reenviar email de confirmación + regenerar el PDF digital. Sirve para
+  // recuperar pedidos donde el email automático del webhook no llegó.
+  const [reenviandoConf, setReenviandoConf] = useState(false);
+  const [confMsg, setConfMsg] = useState<string | null>(null);
+  const reenviarConfirmacion = async () => {
+    setReenviandoConf(true);
+    setConfMsg(null);
+    const r = await reenviarConfirmacionPago(pedido.id);
+    setReenviandoConf(false);
+    if (r.ok) {
+      setConfMsg(r.sinAdjuntos
+        ? "✓ Email enviado (sin PDF adjunto — ningún item digital)"
+        : "✓ Confirmación + PDF enviados");
+    } else {
+      setConfMsg(r.error ?? "Error al reenviar");
+    }
   };
 
   return (
@@ -626,6 +645,30 @@ Pedido ID: ${pedido.id.slice(0, 8)}
                   {recordatorioMsg && (
                     <p className={`text-[11px] ${recordatorioMsg.startsWith("✓") ? "text-emerald-600" : "text-red-600"}`}>
                       {recordatorioMsg}
+                    </p>
+                  )}
+                </>
+              )}
+
+              {/* Reenviar confirmación + PDF — para recuperar pedidos donde
+                  el email automático del pago no llegó. Disponible una vez
+                  pagado. */}
+              {pedido.estado !== "pendiente" && (
+                <>
+                  <ActionButton
+                    onClick={reenviarConfirmacion}
+                    disabled={reenviandoConf || !email}
+                    icon={<Send className="w-4 h-4 text-sky-600" />}
+                  >
+                    {reenviandoConf
+                      ? "Reenviando..."
+                      : email
+                        ? "Reenviar confirmación + PDF"
+                        : "Sin email registrado"}
+                  </ActionButton>
+                  {confMsg && (
+                    <p className={`text-[11px] ${confMsg.startsWith("✓") ? "text-emerald-600" : "text-red-600"}`}>
+                      {confMsg}
                     </p>
                   )}
                 </>
