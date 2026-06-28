@@ -167,14 +167,40 @@ export async function POST(req: NextRequest) {
         console.error("[dlocal/webhook] adjuntos digitales fallaron:", e);
         return [];
       });
-      enviarPedidoConfirmado({
+
+      // Visibility: a digital order that produced no PDF is a silent failure
+      // (e.g. a render error swallowed per-item). Flag it to PostHog so it's
+      // queryable instead of vanishing.
+      const tieneDigital = items.some((it) => it.tipo_entrega === "digital");
+      if (tieneDigital && adjuntos.length === 0) {
+        console.error("[dlocal/webhook] pedido", pedidoId, "es digital pero no se generó ningún PDF");
+        captureServerEvent({
+          distinctId: customerEmail,
+          event:      "pdf_digital_fallido",
+          properties: { pedido_id: pedidoId, productos: items.map((it) => it.producto) },
+        }).catch(() => {});
+      }
+
+      // Await + inspect the result. sendEmail RESOLVES with { ok:false } on a
+      // Resend error (it doesn't throw), so a plain .catch would miss it and
+      // the failure would be invisible. Awaiting also matters on serverless,
+      // where the function can freeze right after returning the response.
+      const envio = await enviarPedidoConfirmado({
         to:            customerEmail,
         nombreCliente: extraerNombre(pedido.contacto),
         pedidoId,
         items:         emailItems,
         total:         montoPyg,
         attachments:   adjuntos,
-      }).catch((e) => console.error("[dlocal/webhook] customer email failed:", e));
+      }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
+      if (!envio.ok) {
+        console.error("[dlocal/webhook] email de confirmación NO se envió para", pedidoId, ":", envio.error);
+        captureServerEvent({
+          distinctId: customerEmail,
+          event:      "email_confirmacion_fallido",
+          properties: { pedido_id: pedidoId, error: envio.error ?? "unknown", adjuntos: adjuntos.length },
+        }).catch(() => {});
+      }
     }
 
     // Admin notification
