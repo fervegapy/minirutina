@@ -49,6 +49,7 @@ export const ICONOS_NOCHE = [
   { id: "cepillarse",     label: "Cepillarse" },
   { id: "ir_bano",        label: "Ir al baño" },
   { id: "leche",          label: "Leche" },
+  { id: "remedios",       label: "Remedios" },
   { id: "calma",          label: "Tiempo de calma" },
   { id: "cuento",         label: "Cuento" },
   { id: "cancion",        label: "Canción" },
