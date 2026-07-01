@@ -17,7 +17,6 @@ import { createPayment } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
-import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 
 interface Body {
   pedidoId:     string;
@@ -95,28 +94,38 @@ export async function POST(req: NextRequest) {
           .update({ usos: (cuRow?.usos ?? 0) + 1 }).eq("id", cuponAplicado.id);
       }
 
-      // Send confirmation email fire-and-forget
+      // Confirmation email. Unlike the dLocal flow (which attaches the PDF),
+      // the 100%-coupon path sends a download BUTTON per digital item so no
+      // heavy PDF generation runs inside this request. We AWAIT the send so it
+      // can't be cut off when the serverless function returns.
       if (email?.includes("@")) {
         const { data: itemRows } = await supabaseAdmin
           .from("pedido_items")
-          .select("producto, nombre_nino, tipo_entrega, precio_pyg")
-          .eq("pedido_id", pedidoId);
-        const emailItems = (itemRows ?? []).map((it) => ({
+          .select("id, producto, nombre_nino, tipo_entrega, precio_pyg")
+          .eq("pedido_id", pedidoId)
+          .order("orden", { ascending: true });
+        const rows = itemRows ?? [];
+        const emailItems = rows.map((it) => ({
           productoLabel: productoLabel(it.producto),
           nombreNino:    it.nombre_nino,
           tipoEntrega:   it.tipo_entrega === "digital" ? "digital" as const : "fisico" as const,
           precioPyg:     Number(it.precio_pyg) || 0,
         }));
-        // Attach the print-ready PDF for any digital item (same as the paid path).
-        const adjuntos = await generarAdjuntosDigitales(pedidoId).catch(() => []);
-        enviarPedidoConfirmado({
+        // One download button per digital item.
+        const downloadButtons = rows
+          .filter((it) => it.tipo_entrega === "digital")
+          .map((it) => ({
+            label: `Descargar tablero de ${it.nombre_nino}`,
+            href:  `${origin}/api/pdf/${it.id}`,
+          }));
+        await enviarPedidoConfirmado({
           to:            email,
           nombreCliente: body.nombreComprador ?? null,
           pedidoId,
           items:         emailItems,
           total:         0,
-          attachments:   adjuntos,
-        }).catch(() => {});
+          downloadButtons,
+        }).catch((e) => console.error("[create-session] cupón-100 email falló:", e));
       }
 
       const confirmUrl = `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`;
