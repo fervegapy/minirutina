@@ -32,7 +32,7 @@ type SupabaseAdminClient = Awaited<ReturnType<typeof asegurarAdmin>>;
 async function resumenPedido(supabase: SupabaseAdminClient, pedidoId: string) {
   const { data: pedido } = await supabase
     .from("pedidos")
-    .select("nombre_nino, producto, contacto, costo_envio")
+    .select("nombre_nino, producto, contacto, costo_envio, cupon_descuento")
     .eq("id", pedidoId)
     .single();
   if (!pedido) return null;
@@ -51,7 +51,8 @@ async function resumenPedido(supabase: SupabaseAdminClient, pedidoId: string) {
   }));
 
   const subtotal = items.reduce((s, it) => s + it.precioPyg, 0);
-  const total = subtotal + (Number(pedido.costo_envio) || 0);
+  const descuento = Number(pedido.cupon_descuento) || 0;
+  const total = Math.max(0, subtotal - descuento) + (Number(pedido.costo_envio) || 0);
 
   return {
     email:         extraerEmail(pedido.contacto),

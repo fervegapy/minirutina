@@ -17,6 +17,7 @@ import { createPayment } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 interface Body {
   pedidoId:     string;
@@ -118,14 +119,26 @@ export async function POST(req: NextRequest) {
             label: `Descargar tablero de ${it.nombre_nino}`,
             href:  `${origin}/api/pdf/${it.id}`,
           }));
-        await enviarPedidoConfirmado({
+        // Await + inspect the result. sendEmail RESOLVES with { ok:false } on
+        // a Resend error (it doesn't throw), so a plain .catch would miss it.
+        // Awaiting also matters on serverless, where the function can freeze
+        // right after returning the response.
+        const envio = await enviarPedidoConfirmado({
           to:            email,
           nombreCliente: body.nombreComprador ?? null,
           pedidoId,
           items:         emailItems,
           total:         0,
           downloadButtons,
-        }).catch((e) => console.error("[create-session] cupón-100 email falló:", e));
+        }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
+        if (!envio.ok) {
+          console.error("[create-session] cupón-100 email NO se envió para", pedidoId, ":", envio.error);
+          captureServerEvent({
+            distinctId: email,
+            event:      "email_confirmacion_fallido",
+            properties: { pedido_id: pedidoId, error: envio.error ?? "unknown", origen: "cupon_100" },
+          }).catch(() => {});
+        }
       }
 
       const confirmUrl = `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`;
