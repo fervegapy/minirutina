@@ -13,7 +13,7 @@ export default function Hero() {
         <div className="flex items-center px-6 py-14 md:py-20 md:px-12 lg:px-16 order-2 md:order-1">
           <div className="max-w-md">
             <span className="inline-block bg-[#336aea]/20 text-[#22244e] text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-6">
-              Personalizá y recibí impreso, listo para usar
+              Personalizá y te enviamos en 48hs
             </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#22244e] leading-[1.05] mb-6">
               Hacé que las actividades del día a día{" "}
