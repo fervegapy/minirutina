@@ -1,18 +1,51 @@
 "use client";
 
-const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP ?? "";
-const WA_TEXT   = encodeURIComponent("Hola Mini Rutina, les escribo desde la web y me gustaría saber");
-const WA_URL    = `https://wa.me/${WA_NUMBER}?text=${WA_TEXT}`;
+import { useEffect, useState } from "react";
+import { waMeUrl } from "@/lib/contacto";
+
+const WA_URL = waMeUrl(
+  process.env.NEXT_PUBLIC_WHATSAPP ?? null,
+  "Hola Minirutina, les escribo desde la web y me gustaría hacer una consulta.",
+);
+
+// Mostrar el FAB recién cuando se pasó este % de scroll de la página.
+const SCROLL_THRESHOLD = 0.75;
 
 export default function WhatsAppFloat() {
-  if (!WA_NUMBER) return null;
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const el = document.documentElement;
+      const max = el.scrollHeight - el.clientHeight;
+      // En páginas que no scrollean (max <= 0) no se muestra.
+      const progress = max > 0 ? el.scrollTop / max : 0;
+      setVisible(progress >= SCROLL_THRESHOLD);
+    };
+    onScroll(); // evaluar la posición inicial (por si carga scrolleada)
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  if (!WA_URL) return null;
+
   return (
     <a
       href={WA_URL}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Escribinos por WhatsApp"
-      className="fixed bottom-5 right-5 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-transform hover:scale-110"
+      aria-hidden={!visible}
+      tabIndex={visible ? 0 : -1}
+      className={`fixed bottom-5 right-5 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${
+        visible
+          ? "opacity-100 translate-y-0 pointer-events-auto"
+          : "opacity-0 translate-y-3 pointer-events-none"
+      }`}
       style={{ backgroundColor: "#25D366" }}
     >
       <svg viewBox="0 0 24 24" fill="white" width="28" height="28" xmlns="http://www.w3.org/2000/svg">

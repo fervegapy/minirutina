@@ -5,6 +5,7 @@ import Productos from "@/components/landing/Productos";
 import ParaQuienEs from "@/components/landing/ParaQuienEs";
 import FAQ from "@/components/landing/FAQ";
 import Footer from "@/components/landing/Footer";
+import WhatsAppFloat from "@/components/WhatsAppFloat";
 
 export default function Home() {
   return (
@@ -18,6 +19,9 @@ export default function Home() {
         <FAQ />
       </main>
       <Footer />
+      {/* FAB solo en la home: en el resto del flujo (customizers, checkout)
+          molesta la conversión, ahí WhatsApp queda accesible desde el footer. */}
+      <WhatsAppFloat />
     </div>
   );
 }

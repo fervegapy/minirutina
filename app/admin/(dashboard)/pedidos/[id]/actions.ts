@@ -7,9 +7,11 @@ import { extraerEmail, extraerNombre } from "@/lib/contacto";
 import {
   enviarEnCamino,
   enviarFeedback,
+  enviarPedidoConfirmado,
   enviarRecordatorioPago,
   productoLabel,
 } from "@/lib/emails/pedido-emails";
+import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import type { EstadoPedido } from "@/types/pedido";
 
 // Re-check admin status server-side. The middleware already protects /admin
@@ -119,6 +121,40 @@ export async function enviarRecordatorioPagoManual(
     });
     if (!res.ok) return { ok: false, error: res.error ?? "No se pudo enviar el email." };
     return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+// Manual "reenviar confirmación de pago" — regenerates the digital PDF(s) and
+// re-sends the same confirmation email the dLocal webhook sends on payment.
+// Used to recover orders where the automatic email failed (Resend hiccup,
+// webhook never fired, etc.). Surfaces the real send error so the team can see
+// WHY it failed instead of it being swallowed by a fire-and-forget .catch.
+export async function reenviarConfirmacionPago(
+  pedidoId: string,
+): Promise<{ ok: boolean; error?: string; sinAdjuntos?: boolean }> {
+  try {
+    const supabase = await asegurarAdmin();
+    const r = await resumenPedido(supabase, pedidoId);
+    if (!r) return { ok: false, error: "No se encontró el pedido." };
+    if (!r.email) return { ok: false, error: "Este pedido no tiene email registrado." };
+    if (r.items.length === 0) return { ok: false, error: "El pedido no tiene items." };
+
+    // Regenerate the print-ready PDF(s) for any digital item — same as the
+    // payment webhook. Físico-only pedidos get an email with no attachment.
+    const adjuntos = await generarAdjuntosDigitales(pedidoId);
+
+    const res = await enviarPedidoConfirmado({
+      to:            r.email,
+      nombreCliente: r.nombreCliente,
+      pedidoId,
+      items:         r.items,
+      total:         r.total,
+      attachments:   adjuntos,
+    });
+    if (!res.ok) return { ok: false, error: res.error ?? "No se pudo enviar el email." };
+    return { ok: true, sinAdjuntos: adjuntos.length === 0 };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error" };
   }

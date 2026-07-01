@@ -1,9 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getSiteConfig } from "@/lib/site-config";
+import { waMeUrl } from "@/lib/contacto";
 
 export default async function Footer() {
   const cfg = await getSiteConfig();
+  // WhatsApp lives here in the footer for the rest of the flow — the floating
+  // button is only on the home so it doesn't block conversion CTAs.
+  const waUrl = waMeUrl(
+    process.env.NEXT_PUBLIC_WHATSAPP ?? null,
+    "Hola Minirutina, les escribo desde la web y me gustaría hacer una consulta.",
+  );
   return (
     <footer className="bg-[#22244e] px-6 py-12">
       <div className="max-w-5xl mx-auto">
@@ -54,6 +61,16 @@ export default async function Footer() {
                 Ayuda
               </p>
               <div className="space-y-2">
+                {waUrl && (
+                  <a
+                    href={waUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-white/60 hover:text-white transition-colors"
+                  >
+                    WhatsApp
+                  </a>
+                )}
                 <Link href="/contacto" className="block text-white/60 hover:text-white transition-colors">
                   Contacto
                 </Link>
