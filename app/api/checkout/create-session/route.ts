@@ -17,7 +17,8 @@ import { createPayment } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
-import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
+import { captureServerEvent } from "@/lib/posthog-server";
+import { notificarPagoTelegram } from "@/lib/telegram";
 
 interface Body {
   pedidoId:     string;
@@ -95,28 +96,65 @@ export async function POST(req: NextRequest) {
           .update({ usos: (cuRow?.usos ?? 0) + 1 }).eq("id", cuponAplicado.id);
       }
 
-      // Send confirmation email fire-and-forget
+      const { data: itemRows } = await supabaseAdmin
+        .from("pedido_items")
+        .select("id, producto, nombre_nino, tipo_entrega, precio_pyg")
+        .eq("pedido_id", pedidoId)
+        .order("orden", { ascending: true });
+      const rows = itemRows ?? [];
+
+      // Team Telegram ping — fire-and-forget, independent of customer email.
+      notificarPagoTelegram({
+        pedidoId,
+        items: rows.map((it) => ({
+          producto:    productoLabel(it.producto),
+          nombreNino:  it.nombre_nino,
+          tipoEntrega: it.tipo_entrega,
+          precioPyg:   Number(it.precio_pyg) || 0,
+        })),
+        totalPyg: 0,
+        metodo:   `Cupón 100% (${cuponAplicado?.codigo ?? "?"})`,
+        contacto: email ?? null,
+      }).catch(() => {});
+
+      // Confirmation email. Unlike the dLocal flow (which attaches the PDF),
+      // the 100%-coupon path sends a download BUTTON per digital item so no
+      // heavy PDF generation runs inside this request. We AWAIT the send so it
+      // can't be cut off when the serverless function returns.
       if (email?.includes("@")) {
-        const { data: itemRows } = await supabaseAdmin
-          .from("pedido_items")
-          .select("producto, nombre_nino, tipo_entrega, precio_pyg")
-          .eq("pedido_id", pedidoId);
-        const emailItems = (itemRows ?? []).map((it) => ({
+        const emailItems = rows.map((it) => ({
           productoLabel: productoLabel(it.producto),
           nombreNino:    it.nombre_nino,
           tipoEntrega:   it.tipo_entrega === "digital" ? "digital" as const : "fisico" as const,
           precioPyg:     Number(it.precio_pyg) || 0,
         }));
-        // Attach the print-ready PDF for any digital item (same as the paid path).
-        const adjuntos = await generarAdjuntosDigitales(pedidoId).catch(() => []);
-        enviarPedidoConfirmado({
+        // One download button per digital item.
+        const downloadButtons = rows
+          .filter((it) => it.tipo_entrega === "digital")
+          .map((it) => ({
+            label: `Descargar tablero de ${it.nombre_nino}`,
+            href:  `${origin}/api/pdf/${it.id}`,
+          }));
+        // Await + inspect the result. sendEmail RESOLVES with { ok:false } on
+        // a Resend error (it doesn't throw), so a plain .catch would miss it.
+        // Awaiting also matters on serverless, where the function can freeze
+        // right after returning the response.
+        const envio = await enviarPedidoConfirmado({
           to:            email,
           nombreCliente: body.nombreComprador ?? null,
           pedidoId,
           items:         emailItems,
           total:         0,
-          attachments:   adjuntos,
-        }).catch(() => {});
+          downloadButtons,
+        }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
+        if (!envio.ok) {
+          console.error("[create-session] cupón-100 email NO se envió para", pedidoId, ":", envio.error);
+          captureServerEvent({
+            distinctId: email,
+            event:      "email_confirmacion_fallido",
+            properties: { pedido_id: pedidoId, error: envio.error ?? "unknown", origen: "cupon_100" },
+          }).catch(() => {});
+        }
       }
 
       const confirmUrl = `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`;

@@ -12,6 +12,7 @@ import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-email
 import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import { extraerNombre } from "@/lib/contacto";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { notificarPagoTelegram } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -129,6 +130,27 @@ export async function POST(req: NextRequest) {
            ).join("")}
          </ul>`
       : "";
+
+    // Team Telegram ping — fire-and-forget, never blocks the webhook.
+    notificarPagoTelegram({
+      pedidoId,
+      items: items.length > 0
+        ? items.map((it) => ({
+            producto:    productoLabel(it.producto),
+            nombreNino:  it.nombre_nino,
+            tipoEntrega: it.tipo_entrega,
+            precioPyg:   it.precio_pyg,
+          }))
+        : [{
+            producto:    productoLabel(pedido.producto),
+            nombreNino:  pedido.nombre_nino,
+            tipoEntrega: "fisico",
+            precioPyg:   montoPyg,
+          }],
+      totalPyg: montoPyg,
+      metodo:   "dLocal",
+      contacto: pedido.contacto,
+    }).catch(() => {});
 
     // Server-side analytics — confirmed payment.
     captureServerEvent({

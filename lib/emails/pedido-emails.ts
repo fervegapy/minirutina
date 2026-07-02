@@ -94,36 +94,59 @@ export function buildRecordatorioPago({ nombreCliente, pedidoId, items, total, l
 }
 
 // ─── 2. Pedido confirmado ──────────────────────────────────────────────────
-// `conAdjuntos` = the digital file(s) travel attached to this same email, so
-// the copy says "adjuntamos tu archivo" instead of "lo preparamos".
+// Two delivery variants for the digital file:
+//   • conAdjuntos    → the PDF(s) travel attached to this same email (dLocal flow)
+//   • downloadButtons → one "Descargá tu tablero" button per digital item
+//                       (100%-coupon flow; nothing heavy runs during checkout)
+export interface ConfirmadoOpts {
+  conAdjuntos?:     boolean;
+  downloadButtons?: { label: string; href: string }[];
+}
 export function buildPedidoConfirmado(
   { nombreCliente, pedidoId, items, total, logoUrl }: CartArgs,
-  conAdjuntos = false,
+  opts: ConfirmadoOpts = {},
 ): BuiltEmail {
+  const { conAdjuntos = false, downloadButtons = [] } = opts;
+  const hayBotones     = downloadButtons.length > 0;
   const todosDigitales = items.length > 0 && items.every((it) => it.tipoEntrega === "digital");
   const hayDigitales   = items.some((it) => it.tipoEntrega === "digital");
 
-  let progreso: string;
-  if (todosDigitales) {
-    progreso = conAdjuntos
-      ? infoBox("Tu archivo está listo 📎", "Adjuntamos tu tablero en este correo, listo para imprimir en casa o donde prefieras.")
-      : infoBox("Próximo paso", "Estamos preparando tu archivo. Te lo enviamos por email apenas esté listo.");
-  } else {
-    // Mixed cart: show the physical timeline; note the digital file is attached.
-    progreso = (conAdjuntos && hayDigitales
-      ? infoBox("Tu archivo digital 📎", "Adjuntamos en este correo el tablero de la versión digital. Los impresos siguen el proceso de abajo.")
-      : "") + timeline(1);
-  }
+  const botonesHtml = hayBotones
+    ? infoBox("Tu tablero está listo 🎉", "Descargá tu archivo desde el botón de abajo, listo para imprimir en casa o donde prefieras.")
+      + downloadButtons.map((b) => emailButton(b.href, b.label) + `<div style="height:8px;"></div>`).join("")
+    : "";
 
-  const intro = `${saludo(nombreCliente)} recibimos tu pago de ${fmtPyg(total)}. ${
-    todosDigitales
+  // Block describing the digital deliverable (buttons / attachment / "preparando").
+  const digitalBox = hayBotones
+    ? botonesHtml
+    : conAdjuntos
+      ? infoBox(
+          todosDigitales ? "Tu archivo está listo 📎" : "Tu archivo digital 📎",
+          todosDigitales
+            ? "Adjuntamos tu tablero en este correo, listo para imprimir en casa o donde prefieras."
+            : "Adjuntamos en este correo el tablero de la versión digital. Los impresos siguen el proceso de abajo.",
+        )
+      : todosDigitales
+        ? infoBox("Próximo paso", "Estamos preparando tu archivo. Te lo enviamos por email apenas esté listo.")
+        : "";
+
+  // All-digital orders have no physical timeline; mixed/físico orders do.
+  const progreso = todosDigitales ? digitalBox : (hayDigitales ? digitalBox : "") + timeline(1);
+
+  const accion = hayBotones
+    ? "Descargá tu tablero desde el botón de abajo."
+    : todosDigitales
       ? (conAdjuntos ? "Adjuntamos tu archivo en este correo." : "Ya estamos preparando tu archivo.")
-      : "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso."
-  }`;
+      : "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso.";
+  const intro = `${saludo(nombreCliente)} ${total > 0 ? `recibimos tu pago de ${fmtPyg(total)}.` : "confirmamos tu pedido."} ${accion}`;
 
   const html = renderEmailShell({
     logoUrl,
-    preheader: conAdjuntos ? "Tu archivo está listo — lo adjuntamos en este correo." : "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
+    preheader: hayBotones
+      ? "Tu tablero está listo para descargar."
+      : conAdjuntos
+        ? "Tu archivo está listo — lo adjuntamos en este correo."
+        : "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
     heading:   "Tu pedido está confirmado ✅",
     intro,
     contentHtml: progreso + summaryCard(items, total) + whatsappButton(pedidoId, WHATSAPP) + pedidoNumero(pedidoId),
@@ -184,11 +207,17 @@ export async function enviarRecordatorioPago(args: CartArgs & { to: string }) {
   const { subject, html } = buildRecordatorioPago({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }
-export async function enviarPedidoConfirmado(args: CartArgs & { to: string; attachments?: EmailAttachment[] }) {
+export async function enviarPedidoConfirmado(
+  args: CartArgs & {
+    to: string;
+    attachments?:    EmailAttachment[];
+    downloadButtons?: { label: string; href: string }[];
+  },
+) {
   const attachments = args.attachments ?? [];
   const { subject, html } = buildPedidoConfirmado(
     { ...args, logoUrl: await getLogoUrl() },
-    attachments.length > 0,
+    { conAdjuntos: attachments.length > 0, downloadButtons: args.downloadButtons },
   );
   return sendEmail({ to: args.to, subject, html, attachments });
 }
