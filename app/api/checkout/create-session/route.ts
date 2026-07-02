@@ -18,6 +18,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { notificarPagoTelegram } from "@/lib/telegram";
 
 interface Body {
   pedidoId:     string;
@@ -95,17 +96,32 @@ export async function POST(req: NextRequest) {
           .update({ usos: (cuRow?.usos ?? 0) + 1 }).eq("id", cuponAplicado.id);
       }
 
+      const { data: itemRows } = await supabaseAdmin
+        .from("pedido_items")
+        .select("id, producto, nombre_nino, tipo_entrega, precio_pyg")
+        .eq("pedido_id", pedidoId)
+        .order("orden", { ascending: true });
+      const rows = itemRows ?? [];
+
+      // Team Telegram ping — fire-and-forget, independent of customer email.
+      notificarPagoTelegram({
+        pedidoId,
+        items: rows.map((it) => ({
+          producto:    productoLabel(it.producto),
+          nombreNino:  it.nombre_nino,
+          tipoEntrega: it.tipo_entrega,
+          precioPyg:   Number(it.precio_pyg) || 0,
+        })),
+        totalPyg: 0,
+        metodo:   `Cupón 100% (${cuponAplicado?.codigo ?? "?"})`,
+        contacto: email ?? null,
+      }).catch(() => {});
+
       // Confirmation email. Unlike the dLocal flow (which attaches the PDF),
       // the 100%-coupon path sends a download BUTTON per digital item so no
       // heavy PDF generation runs inside this request. We AWAIT the send so it
       // can't be cut off when the serverless function returns.
       if (email?.includes("@")) {
-        const { data: itemRows } = await supabaseAdmin
-          .from("pedido_items")
-          .select("id, producto, nombre_nino, tipo_entrega, precio_pyg")
-          .eq("pedido_id", pedidoId)
-          .order("orden", { ascending: true });
-        const rows = itemRows ?? [];
         const emailItems = rows.map((it) => ({
           productoLabel: productoLabel(it.producto),
           nombreNino:    it.nombre_nino,
