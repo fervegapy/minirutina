@@ -8,6 +8,7 @@ import StepIndicator from "@/components/customizer/StepIndicator";
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
 import { track } from "@/lib/tracking";
 import { useCarrito } from "@/lib/carrito";
+import { useWizardPersist } from "@/lib/useWizardPersist";
 
 // react-pdf needs DOM APIs at module load — client-only.
 const PdfPagesPreview = dynamic(
@@ -59,6 +60,19 @@ export default function PersonalizarRecompensas() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const generatedRef = useRef(false);
+
+  // Survive browser back / refresh: restore the draft when the page remounts.
+  const persist = useWizardPersist(
+    "wizard:recompensas",
+    { step, nombre, genero, cantidad, sticker },
+    (s) => {
+      if (typeof s.nombre === "string") setNombre(s.nombre);
+      if (s.genero === "nino" || s.genero === "nina") setGenero(s.genero);
+      if (s.cantidad === 10 || s.cantidad === 20) setCantidad(s.cantidad);
+      if (s.sticker && STICKERS.some((st) => st.id === s.sticker)) setSticker(s.sticker);
+      if (typeof s.step === "number") setStep(Math.min(Math.max(s.step, 0), PASOS.length - 1));
+    },
+  );
 
   // Scroll to top when step changes
   useEffect(() => {
@@ -138,6 +152,8 @@ export default function PersonalizarRecompensas() {
       producto: "recompensas",
       data:     { cart_item_id: item.id, formato: item.formato, cantidad },
     });
+    // The tablero is in the cart now — next visit starts a fresh wizard.
+    persist.clear();
     router.push("/checkout");
   };
 

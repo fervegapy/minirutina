@@ -13,6 +13,7 @@ import IconPicker, {
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
 import { track } from "@/lib/tracking";
 import { useCarrito } from "@/lib/carrito";
+import { useWizardPersist } from "@/lib/useWizardPersist";
 
 // react-pdf depends on browser DOM APIs (DOMMatrix, etc.) — load it client-only
 // to avoid breaking the static prerender.
@@ -65,6 +66,21 @@ export default function PersonalizarRutinas() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const generatedRef = useRef(false);
+
+  // Survive browser back / refresh: restore the draft when the page remounts.
+  // (The PDF preview regenerates itself via the step effect below.)
+  const persist = useWizardPersist(
+    "wizard:rutinas",
+    { step, nombre, genero, color, manana, noche },
+    (s) => {
+      if (typeof s.nombre === "string") setNombre(s.nombre);
+      if (s.genero === "nino" || s.genero === "nina") setGenero(s.genero);
+      if (typeof s.color === "string") setColor(s.color);
+      if (Array.isArray(s.manana)) setManana(s.manana);
+      if (Array.isArray(s.noche)) setNoche(s.noche);
+      if (typeof s.step === "number") setStep(Math.min(Math.max(s.step, 0), PASOS.length - 1));
+    },
+  );
 
   // Clear inline error when the user fixes the count
   useEffect(() => {
@@ -169,6 +185,8 @@ export default function PersonalizarRutinas() {
       producto: "rutinas",
       data:     { cart_item_id: item.id, formato: item.formato },
     });
+    // The tablero is in the cart now — next visit starts a fresh wizard.
+    persist.clear();
     router.push("/checkout");
   };
 
