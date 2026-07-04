@@ -18,7 +18,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
 import { captureServerEvent } from "@/lib/posthog-server";
-import { notificarPagoTelegram } from "@/lib/telegram";
+import { notificarPagoTelegram, telegramConfigurado } from "@/lib/telegram";
 
 interface Body {
   pedidoId:     string;
@@ -103,8 +103,10 @@ export async function POST(req: NextRequest) {
         .order("orden", { ascending: true });
       const rows = itemRows ?? [];
 
-      // Team Telegram ping — fire-and-forget, independent of customer email.
-      notificarPagoTelegram({
+      // Team Telegram ping — awaited (serverless can freeze right after the
+      // response, killing in-flight fetches) and flagged to PostHog on failure
+      // so a silent miss is queryable.
+      const tgOk = await notificarPagoTelegram({
         pedidoId,
         items: rows.map((it) => ({
           producto:    productoLabel(it.producto),
@@ -115,7 +117,14 @@ export async function POST(req: NextRequest) {
         totalPyg: 0,
         metodo:   `Cupón 100% (${cuponAplicado?.codigo ?? "?"})`,
         contacto: email ?? null,
-      }).catch(() => {});
+      }).catch(() => false);
+      if (telegramConfigurado() && !tgOk) {
+        captureServerEvent({
+          distinctId: email ?? pedidoId,
+          event:      "telegram_notificacion_fallida",
+          properties: { pedido_id: pedidoId, origen: "cupon_100" },
+        }).catch(() => {});
+      }
 
       // Confirmation email. Unlike the dLocal flow (which attaches the PDF),
       // the 100%-coupon path sends a download BUTTON per digital item so no

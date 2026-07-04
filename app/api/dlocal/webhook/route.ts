@@ -12,7 +12,7 @@ import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-email
 import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import { extraerNombre } from "@/lib/contacto";
 import { captureServerEvent } from "@/lib/posthog-server";
-import { notificarPagoTelegram } from "@/lib/telegram";
+import { notificarPagoTelegram, telegramConfigurado } from "@/lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -131,8 +131,10 @@ export async function POST(req: NextRequest) {
          </ul>`
       : "";
 
-    // Team Telegram ping — fire-and-forget, never blocks the webhook.
-    notificarPagoTelegram({
+    // Team Telegram ping — awaited (serverless can freeze right after the
+    // response, killing in-flight fetches) and flagged to PostHog on failure
+    // so a silent miss is queryable. Never throws, so it can't block the 200.
+    const tgOk = await notificarPagoTelegram({
       pedidoId,
       items: items.length > 0
         ? items.map((it) => ({
@@ -150,7 +152,14 @@ export async function POST(req: NextRequest) {
       totalPyg: montoPyg,
       metodo:   "dLocal",
       contacto: pedido.contacto,
-    }).catch(() => {});
+    }).catch(() => false);
+    if (telegramConfigurado() && !tgOk) {
+      captureServerEvent({
+        distinctId: customerEmail ?? pedidoId,
+        event:      "telegram_notificacion_fallida",
+        properties: { pedido_id: pedidoId, origen: "dlocal_webhook" },
+      }).catch(() => {});
+    }
 
     // Server-side analytics — confirmed payment.
     captureServerEvent({

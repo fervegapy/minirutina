@@ -11,6 +11,12 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const CHAT_ID   = process.env.TELEGRAM_CHAT_ID ?? "";
 
+/** True when both env vars are set — callers use this to tell a real send
+ *  failure apart from the intentional unconfigured no-op. */
+export function telegramConfigurado(): boolean {
+  return Boolean(BOT_TOKEN && CHAT_ID);
+}
+
 /** Sends an HTML-formatted message to the team chat. Resolves to false on any failure. */
 export async function sendTelegram(html: string): Promise<boolean> {
   if (!BOT_TOKEN || !CHAT_ID) return false;
