@@ -145,15 +145,22 @@ export function infoBox(title: string, bodyHtml: string, tint: "blue" | "plain" 
   </table>`;
 }
 
-/** WhatsApp contact button pre-filled with the order number. */
+// Hosted WhatsApp glyph (green circle) — used as a small inline icon in the
+// subtle contact link. Absolute URL so it renders in every email client.
+const WHATSAPP_ICON = "https://minirutina.com/email/whatsapp.png";
+
+/** Subtle WhatsApp contact link (icon + text), pre-filled with the order
+ *  number. Intentionally low-emphasis — it signals the support channel
+ *  without competing with the email's primary CTA. */
 export function whatsappButton(pedidoId: string, waNumber: string): string {
   if (!waNumber) return "";
   const nro  = pedidoId.slice(0, 8).toUpperCase();
   const text = encodeURIComponent(`Hola Mini Rutina, les escribo en relación al pedido ${nro}`);
-  return `<table cellpadding="0" cellspacing="0" style="margin:8px 0 16px;"><tr><td
-    style="background:#25D366;border-radius:10px;">
-    <a href="https://wa.me/${waNumber}?text=${text}" style="display:inline-block;padding:13px 26px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;">💬 Escribinos por WhatsApp</a>
-  </td></tr></table>`;
+  return `<p style="margin:4px 0 16px;font-size:14px;line-height:1;">
+    <a href="https://wa.me/${waNumber}?text=${text}" style="color:${MUTED};text-decoration:none;font-weight:600;">
+      <img src="${WHATSAPP_ICON}" width="18" height="18" alt="" style="vertical-align:-4px;margin-right:6px;border:0;" />¿Dudas? Escribinos por WhatsApp
+    </a>
+  </p>`;
 }
 
 /** Order number chip. */
