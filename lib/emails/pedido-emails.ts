@@ -178,8 +178,13 @@ export function buildEnCamino({ nombreCliente, pedidoId, nombreNino, logoUrl }: 
 // ─── 4. Feedback ───────────────────────────────────────────────────────────
 export function buildFeedback({ nombreCliente, pedidoId, nombreNino, logoUrl }: ShipArgs): BuiltEmail {
   // Primary CTA always present. Points to the feedback form when configured,
-  // otherwise to the site contact page as a safe interim destination.
-  const destino = FEEDBACK_URL || `${SITE}/contacto`;
+  // otherwise to the site contact page as a safe interim destination. When it's
+  // the Tally form, append the short order number so it lands in the form's
+  // hidden "pedido" field and each response ties back to its order.
+  const nro = pedidoId.slice(0, 8).toUpperCase();
+  const destino = FEEDBACK_URL
+    ? `${FEEDBACK_URL}${FEEDBACK_URL.includes("?") ? "&" : "?"}pedido=${nro}`
+    : `${SITE}/contacto`;
 
   const content =
     timeline(3) +
