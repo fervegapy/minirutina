@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Genero } from "@/lib/iconAssets";
 import { generateBuffer, type PdfMode } from "@/lib/pdf/render";
 import type {
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
   if (pedidoId === "test") {
     pedido = TEST_PEDIDO;
   } else if (pedidoItemId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("pedido_items")
       .select("*")
       .eq("id", pedidoItemId)
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       tipo_entrega:   data.tipo_entrega,
     } as typeof TEST_PEDIDO;
   } else if (pedidoId) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("pedidos")
       .select("*")
       .eq("id", pedidoId)
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
   // Upload to Supabase Storage — per-item filenames keep multi-item
   // pedidos from clobbering each other.
   const fileName = `${storageId}.pdf`;
-  const { error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabaseAdmin.storage
     .from("pdfs")
     .upload(fileName, buffer, {
       contentType: "application/pdf",
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Signed URL valid for 48h
-  const { data: signed, error: signError } = await supabase.storage
+  const { data: signed, error: signError } = await supabaseAdmin.storage
     .from("pdfs")
     .createSignedUrl(fileName, 60 * 60 * 48);
 
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
   // have an archivo_url column today, and the cliente PDF download path
   // is only used by the legacy single-item /confirmacion page).
   if (pedidoId && pedidoId !== "test") {
-    await supabase
+    await supabaseAdmin
       .from("pedidos")
       .update({ archivo_url: signed.signedUrl })
       .eq("id", pedidoId);

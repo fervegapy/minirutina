@@ -79,6 +79,10 @@ export default function PedidoDetail({
   const [imprentaUrl, setImprentaUrl] = useState<string | null>(null);
   const [imprentaLoading, setImprentaLoading] = useState(false);
 
+  // Per-item download loading state — keyed by `${itemId}:${mode}` so it
+  // scales to any number of cart items (2, 8, whatever) without special-casing.
+  const [itemDownloading, setItemDownloading] = useState<Record<string, boolean>>({});
+
   const email      = useMemo(() => extraerEmail(pedido.contacto), [pedido.contacto]);
   const whatsapp   = useMemo(() => extraerWhatsapp(pedido.contacto), [pedido.contacto]);
   const proximo    = useMemo(() => siguienteEstado(pedido.estado), [pedido.estado]);
@@ -189,10 +193,14 @@ Pedido ID: ${pedido.id.slice(0, 8)}
   };
 
   // Per-item PDF download — uses the multi-item /api/generate-pdf path.
+  // Works for any number of cart items; each button generates + downloads
+  // only its own item's file (server reads pedido_items by id).
   const descargarItem = async (
     item: import("@/types/pedido").PedidoItem,
     mode: "cliente" | "imprenta",
   ) => {
+    const key = `${item.id}:${mode}`;
+    setItemDownloading((s) => ({ ...s, [key]: true }));
     try {
       const res = await fetch("/api/generate-pdf", {
         method:  "POST",
@@ -219,6 +227,8 @@ Pedido ID: ${pedido.id.slice(0, 8)}
     } catch (e) {
       console.error(e);
       alert("No se pudo descargar el PDF.");
+    } finally {
+      setItemDownloading((s) => ({ ...s, [key]: false }));
     }
   };
 
@@ -285,8 +295,10 @@ Pedido ID: ${pedido.id.slice(0, 8)}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Columna izquierda: data del pedido */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Items del pedido (carrito multi-item). Para pedidos legacy
-              que solo tienen 1 item el detalle se ve igual de prolijo. */}
+          {/* Items del pedido (carrito multi-item). Cada item genera su propio
+              PDF de forma independiente — esta sección es la única fuente de
+              verdad para descargar archivos cuando el pedido tiene 2+ productos
+              (ver nota junto a la sección "Personalización" más abajo). */}
           {items.length > 0 && (
             <Card className="bg-white">
               <CardHeader>
@@ -294,11 +306,11 @@ Pedido ID: ${pedido.id.slice(0, 8)}
                   Items del pedido · {items.length}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 {items.map((it, i) => (
                   <div
                     key={it.id}
-                    className={`${i > 0 ? "pt-3 border-t border-zinc-100" : ""}`}
+                    className={`${i > 0 ? "pt-4 border-t border-zinc-100" : ""}`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="flex-1 min-w-0">
@@ -317,23 +329,27 @@ Pedido ID: ${pedido.id.slice(0, 8)}
                         Gs. {it.precio_pyg.toLocaleString("es-PY")}
                       </span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      <button
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      <Button
                         type="button"
+                        variant="outline"
+                        disabled={itemDownloading[`${it.id}:cliente`]}
                         onClick={() => descargarItem(it, "cliente")}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded transition-colors"
+                        className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50"
                       >
-                        <FileDown className="w-3 h-3" />
-                        PDF cliente
-                      </button>
-                      <button
+                        <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                        {itemDownloading[`${it.id}:cliente`] ? "Generando…" : "PDF cliente"}
+                      </Button>
+                      <Button
                         type="button"
+                        variant="outline"
+                        disabled={itemDownloading[`${it.id}:imprenta`]}
                         onClick={() => descargarItem(it, "imprenta")}
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded transition-colors"
+                        className="h-8 text-xs border-zinc-200 text-zinc-700 hover:bg-zinc-50"
                       >
-                        <FileDown className="w-3 h-3" />
-                        PDF imprenta
-                      </button>
+                        <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                        {itemDownloading[`${it.id}:imprenta`] ? "Generando…" : "PDF imprenta"}
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -485,100 +501,108 @@ Pedido ID: ${pedido.id.slice(0, 8)}
             </Card>
           )}
 
-          {/* Personalización */}
-          <Card className="bg-white">
-            <CardHeader>
-              <CardTitle className="text-base">Personalización</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <pre className="text-xs bg-zinc-50 border border-zinc-200 rounded-md p-3 overflow-auto text-zinc-700">
-                {JSON.stringify(pedido.personalizacion, null, 2)}
-              </pre>
-            </CardContent>
-          </Card>
+          {/* Personalización + PDF legacy (pedido de 1 solo producto, sin
+              filas en pedido_items). Para pedidos multi-item la sección
+              "Items del pedido" de arriba es la única fuente — estas cards
+              solo reflejan el PRIMER item (columnas legacy de `pedidos`) y
+              mostrarlas ahí sería confuso/engañoso. */}
+          {items.length === 0 && (
+            <>
+              <Card className="bg-white">
+                <CardHeader>
+                  <CardTitle className="text-base">Personalización</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <pre className="text-xs bg-zinc-50 border border-zinc-200 rounded-md p-3 overflow-auto text-zinc-700">
+                    {JSON.stringify(pedido.personalizacion, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
 
-          {/* Preview PDF cliente */}
-          <Card className="bg-white">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">PDF para el cliente</CardTitle>
-                {!pdfUrl && !pdfLoading && (
-                  <Button
-                    variant="outline"
-                    onClick={cargarPdfCliente}
-                    className="text-xs h-8 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-                  >
-                    <FileDown className="w-3.5 h-3.5 mr-1.5" />
-                    Generar preview
-                  </Button>
-                )}
-                {pdfUrl && (
-                  <Button
-                    onClick={descargarCliente}
-                    className="text-xs h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
-                  >
-                    <FileDown className="w-3.5 h-3.5 mr-1.5" />
-                    Descargar PDF
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {pdfLoading ? (
-                <SpinnerSmall label="Generando PDF..." />
-              ) : pdfUrl ? (
-                <PdfPagesPreview url={pdfUrl} />
-              ) : (
-                <p className="text-sm text-zinc-500 text-center py-8">
-                  Click en &quot;Generar preview&quot; para ver el archivo del cliente.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              {/* Preview PDF cliente */}
+              <Card className="bg-white">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">PDF para el cliente</CardTitle>
+                    {!pdfUrl && !pdfLoading && (
+                      <Button
+                        variant="outline"
+                        onClick={cargarPdfCliente}
+                        className="text-xs h-8 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                      >
+                        <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                        Generar preview
+                      </Button>
+                    )}
+                    {pdfUrl && (
+                      <Button
+                        onClick={descargarCliente}
+                        className="text-xs h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
+                      >
+                        <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                        Descargar PDF
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {pdfLoading ? (
+                    <SpinnerSmall label="Generando PDF..." />
+                  ) : pdfUrl ? (
+                    <PdfPagesPreview url={pdfUrl} />
+                  ) : (
+                    <p className="text-sm text-zinc-500 text-center py-8">
+                      Click en &quot;Generar preview&quot; para ver el archivo del cliente.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* Preview PDF imprenta */}
-          <Card className="bg-white">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">PDF para imprenta</CardTitle>
-                {!imprentaUrl && !imprentaLoading && (
-                  <Button
-                    variant="outline"
-                    onClick={cargarPdfImprenta}
-                    className="text-xs h-8 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-                  >
-                    <FileDown className="w-3.5 h-3.5 mr-1.5" />
-                    Generar
-                  </Button>
-                )}
-                {imprentaUrl && (
-                  <Button
-                    onClick={descargarImprenta}
-                    className="text-xs h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
-                  >
-                    <FileDown className="w-3.5 h-3.5 mr-1.5" />
-                    Descargar PDF
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {imprentaLoading ? (
-                <SpinnerSmall label="Generando PDF de imprenta..." />
-              ) : imprentaUrl ? (
-                <>
-                  <PdfPagesPreview url={imprentaUrl} />
-                  <p className="text-[11px] text-zinc-500 mt-2">
-                    Incluye tableros + hojas de fichas para recortar.
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-zinc-500 text-center py-8">
-                  Es el archivo que va a Raff Imprenta: tableros + fichas.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              {/* Preview PDF imprenta */}
+              <Card className="bg-white">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">PDF para imprenta</CardTitle>
+                    {!imprentaUrl && !imprentaLoading && (
+                      <Button
+                        variant="outline"
+                        onClick={cargarPdfImprenta}
+                        className="text-xs h-8 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                      >
+                        <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                        Generar
+                      </Button>
+                    )}
+                    {imprentaUrl && (
+                      <Button
+                        onClick={descargarImprenta}
+                        className="text-xs h-8 bg-zinc-900 hover:bg-zinc-800 text-white"
+                      >
+                        <FileDown className="w-3.5 h-3.5 mr-1.5" />
+                        Descargar PDF
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {imprentaLoading ? (
+                    <SpinnerSmall label="Generando PDF de imprenta..." />
+                  ) : imprentaUrl ? (
+                    <>
+                      <PdfPagesPreview url={imprentaUrl} />
+                      <p className="text-[11px] text-zinc-500 mt-2">
+                        Incluye tableros + hojas de fichas para recortar.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-zinc-500 text-center py-8">
+                      Es el archivo que va a Raff Imprenta: tableros + fichas.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* Columna derecha: acciones */}
