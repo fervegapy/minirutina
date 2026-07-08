@@ -24,7 +24,6 @@ const TAB_PAGE_H_MM   = 210;
 const TAB_N_CARDS     = 7;
 const TAB_LOWER_Y_MM  = 140.5;
 const TAB_LOWER_H_MM  = 69.5;
-const TAB_BORDER_COL  = "#DEDEDF";
 
 export interface ImprentaRutinasPDFProps {
   nombreNino: string;
@@ -74,8 +73,6 @@ function FranjaPageBlanco({ checkSrc }: { checkSrc?: string | null }) {
             key={i}
             style={{
               flex:            1,
-              borderLeftWidth: i === 0 ? 0 : 0.8,
-              borderLeftColor: TAB_BORDER_COL,
               alignItems:      "center",
               justifyContent:  "center",
             }}
