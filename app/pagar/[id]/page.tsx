@@ -2,6 +2,7 @@
 // existing pending pedido by id and lets the customer complete its payment
 // WITHOUT creating a new order (reuses the same pedidoId via create-session).
 import Link from "next/link";
+import Image from "next/image";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { productoLabel } from "@/lib/emails/pedido-emails";
 import { extraerEmail, extraerNombre } from "@/lib/contacto";
@@ -10,6 +11,23 @@ import ResumePayButton from "./ResumePayButton";
 export const dynamic = "force-dynamic";
 
 const fmt = (n: number) => "Gs. " + Math.round(n).toLocaleString("es-PY");
+
+// Same summary shown in the checkout cart — activity counts for rutinas,
+// step count for recompensas.
+function resumenPersonalizacion(producto: string, personalizacion: unknown): string {
+  const p = personalizacion as Record<string, unknown> | null;
+  if (!p) return "";
+  if (producto === "rutinas") {
+    const m = Array.isArray((p as { manana?: unknown }).manana) ? (p as { manana: unknown[] }).manana.length : 0;
+    const n = Array.isArray((p as { noche?: unknown }).noche)   ? (p as { noche: unknown[] }).noche.length   : 0;
+    return `${m} de mañana · ${n} de noche`;
+  }
+  if (producto === "recompensas") {
+    const cantidad = (p as { cantidad?: number }).cantidad ?? 10;
+    return `${cantidad} pasos`;
+  }
+  return "";
+}
 
 export default async function PagarPedidoPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -22,7 +40,7 @@ export default async function PagarPedidoPage({ params }: { params: { id: string
 
   const { data: itemRows } = await supabaseAdmin
     .from("pedido_items")
-    .select("producto, nombre_nino, tipo_entrega, precio_pyg, orden")
+    .select("producto, nombre_nino, tipo_entrega, precio_pyg, orden, color_acento, personalizacion")
     .eq("pedido_id", id)
     .order("orden", { ascending: true });
 
@@ -66,14 +84,29 @@ export default async function PagarPedidoPage({ params }: { params: { id: string
 
       <div className="bg-[#faf6e7] border border-[#e5e7eb] rounded-2xl p-5 mb-5 space-y-3">
         {items.map((it, i) => (
-          <div key={i} className={`flex items-start justify-between gap-3 ${i > 0 ? "pt-3 border-t border-[#e5e7eb]" : ""}`}>
-            <div className="min-w-0">
-              <p className="font-semibold text-[#22244e] text-sm">{productoLabel(it.producto)}</p>
-              <p className="text-xs text-[#22244e]/55">
-                Para {it.nombre_nino} · {it.tipo_entrega === "digital" ? "Digital" : "Impreso"}
-              </p>
+          <div key={i} className={`flex gap-3 ${i > 0 ? "pt-3 border-t border-[#e5e7eb]" : ""}`}>
+            <div
+              className="w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-[#e5e7eb] relative"
+              style={{ backgroundColor: (it.color_acento ?? "#a8c5a0") + "22" }}
+            >
+              <Image
+                src={`/productos/${it.producto}.png`}
+                alt={productoLabel(it.producto)}
+                fill
+                sizes="56px"
+                className="object-cover"
+              />
             </div>
-            <span className="shrink-0 text-sm font-bold text-[#22244e] tabular-nums">{fmt(Number(it.precio_pyg) || 0)}</span>
+            <div className="flex-1 min-w-0 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-[#22244e] text-sm">{productoLabel(it.producto)}</p>
+                <p className="text-xs text-[#22244e]/55">
+                  Para {it.nombre_nino} · {resumenPersonalizacion(it.producto, it.personalizacion)}
+                  {" · "}{it.tipo_entrega === "digital" ? "Digital" : "Impreso"}
+                </p>
+              </div>
+              <span className="shrink-0 text-sm font-bold text-[#22244e] tabular-nums">{fmt(Number(it.precio_pyg) || 0)}</span>
+            </div>
           </div>
         ))}
 
