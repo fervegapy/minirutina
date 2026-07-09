@@ -135,6 +135,11 @@ function CheckoutInner() {
 
   // Loading / error
   const [loading, setLoading] = useState(false);
+  // True only during the final hop to the external payment gateway — the
+  // browser is fetching an off-site page, which can take several seconds on
+  // a slow connection while THIS page just sits there. A distinct message +
+  // spinner here keeps that stretch from reading as a frozen/broken screen.
+  const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
 
   // Add-another panel toggle
@@ -263,6 +268,19 @@ function CheckoutInner() {
     items.length > 0 &&
     !!nombre.trim() && !!apellido.trim() && emailValido && whatsappValido &&
     datosEntregaOk && facturaOk && !loadingPrecios;
+
+  // Navigates to an external URL (the payment gateway) after giving React a
+  // chance to paint the "Redirigiendo..." button state. Without the rAF
+  // hop, `setRedirecting(true)` and `window.location.href = url` land in the
+  // same tick and the browser never paints the update before unloading the
+  // page — on a slow connection the screen just sits there looking frozen
+  // for however long the off-site page takes to start loading.
+  const redirectToGateway = (url: string) => {
+    setRedirecting(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.location.href = url;
+    }));
+  };
 
   // ─── Submit ─────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
@@ -421,7 +439,7 @@ function CheckoutInner() {
         }
         if (json.ok && json.status === "PENDING" && json.redirectUrl) {
           clear();
-          window.location.href = json.redirectUrl;
+          redirectToGateway(json.redirectUrl);
           return;
         }
         throw new Error(json.error ?? "No se pudo procesar el pago.");
@@ -447,13 +465,14 @@ function CheckoutInner() {
       const json = await res.json();
       if (json.ok && json.url) {
         clear();
-        window.location.href = json.url;
+        redirectToGateway(json.url);
         return;
       }
       throw new Error(json.error ?? "No se pudo iniciar el pago.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "No se pudo procesar el pago. Intentá de nuevo.";
       setError(msg);
+      setRedirecting(false);
       track({
         evento:   "pago_fallido_cliente",
         pedidoId: pedidoData.id,
@@ -465,7 +484,12 @@ function CheckoutInner() {
   };
 
   // ─── Render: empty state ────────────────────────────────────────────────
-  if (items.length === 0) {
+  // Skipped while redirecting to the gateway: clear() empties the cart right
+  // before the hop, and without this guard the whole form (including the
+  // "Redirigiendo..." button) got replaced by "Tu carrito está vacío" for
+  // however long the external page took to start loading — exactly the
+  // confusing-looking freeze this fix is meant to get rid of.
+  if (items.length === 0 && !redirecting) {
     return (
       <main className="min-h-screen bg-[#faf6e7] px-4 py-20 flex items-center">
         <div className="max-w-md mx-auto text-center">
@@ -486,6 +510,27 @@ function CheckoutInner() {
               </Button>
             </Link>
           </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ─── Render: redirecting to the payment gateway ────────────────────────
+  // Own screen (not just a state on the submit button): clear() already
+  // emptied the cart, so the form below would show a stale "0 tableros"
+  // summary while we wait for the external page to start loading — this
+  // covers that instead of leaving it half-visible.
+  if (redirecting) {
+    return (
+      <main className="min-h-screen bg-[#faf6e7] px-4 py-20 flex items-center">
+        <div className="max-w-md mx-auto text-center">
+          <span className="inline-block w-10 h-10 border-[3px] border-[#336aea]/25 border-t-[#336aea] rounded-full animate-spin mb-6" />
+          <h1 className="text-xl font-bold text-[#22244e] mb-2">
+            Redirigiendo a la pasarela de pago...
+          </h1>
+          <p className="text-sm text-[#22244e]/60">
+            Puede tardar unos segundos según tu conexión. No cierres ni recargues la página.
+          </p>
         </div>
       </main>
     );
@@ -752,8 +797,11 @@ function CheckoutInner() {
               <Button
                 type="submit"
                 disabled={loading || !formValido}
-                className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3 h-12 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl text-base shadow-none border-0 mt-3 h-12 disabled:opacity-90 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
+                {loading && (
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin shrink-0" />
+                )}
                 {loading
                   ? "Procesando..."
                   : checkoutMode === "embedded"
