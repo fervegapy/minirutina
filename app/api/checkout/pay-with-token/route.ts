@@ -6,7 +6,7 @@
 //   { ok: true, status: "PENDING", redirectUrl } → 3DS required, send browser there
 //   { ok: false, error }                        → rejected / failed, stay on checkout
 import { NextRequest, NextResponse } from "next/server";
-import { createPaymentWithToken } from "@/lib/dlocal";
+import { createPaymentWithToken, buildOrderId } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
       amount:           totalPyg,
       currency:         "PYG",
       country:          "PY",
-      order_id:         pedidoId,
+      order_id:         buildOrderId(pedidoId),  // unique per attempt (retry-safe)
       description:      descripcion,
       token,
       notification_url: `${origin}/api/dlocal/webhook`,

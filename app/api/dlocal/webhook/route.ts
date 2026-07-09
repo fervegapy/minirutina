@@ -5,7 +5,7 @@
 // its status, and if PAID we mark the pedido as 'pagado' + fire the
 // customer / admin notification emails (same as the old Stripe webhook).
 import { NextRequest, NextResponse } from "next/server";
-import { getPayment, verifyWebhookSignature } from "@/lib/dlocal";
+import { getPayment, verifyWebhookSignature, pedidoIdFromOrderId } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmail } from "@/lib/email";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
@@ -54,7 +54,9 @@ export async function POST(req: NextRequest) {
   try {
     // Always fetch the authoritative status from dLocal.
     const payment = await getPayment(paymentId);
-    const pedidoId = payment.order_id;
+    // order_id is `<pedidoUuid>-r<token>` (unique per attempt) — parse the
+    // pedido UUID back out. Legacy order_ids that ARE the raw UUID still work.
+    const pedidoId = pedidoIdFromOrderId(payment.order_id);
     if (!pedidoId) {
       console.warn("[dlocal/webhook] payment", paymentId, "has no order_id");
       return NextResponse.json({ received: true });

@@ -13,7 +13,7 @@
 //   4. dLocal POSTs to /api/dlocal/webhook on status change → we mark the
 //      pedido as 'pagado'.
 import { NextRequest, NextResponse } from "next/server";
-import { createPayment } from "@/lib/dlocal";
+import { createPayment, buildOrderId } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
@@ -188,7 +188,7 @@ export async function POST(req: NextRequest) {
       amount:           totalPyg,        // PYG, integer — no decimals
       currency:         "PYG",
       country:          "PY",
-      order_id:         pedidoId,
+      order_id:         buildOrderId(pedidoId),  // unique per attempt (retry-safe)
       description:      descripcion,
       success_url:      `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`,
       back_url:         `${origin}/checkout?cancelado=1`,

@@ -13,6 +13,24 @@ function authHeader(cfg: ResolvedDlocalConfig): string {
   return `Bearer ${cfg.api_key}:${cfg.secret_key}`;
 }
 
+// dLocal rejects a payment whose order_id was already used. A pedido can be
+// paid on more than one attempt (e.g. the customer bails at checkout, then
+// comes back via the "recordatorio de pago" email), so we can't send the raw
+// pedido UUID as order_id twice. We embed the pedido UUID + a short unique
+// attempt token; the webhook parses the UUID back out (see pedidoIdFromOrderId).
+export function buildOrderId(pedidoId: string): string {
+  return `${pedidoId}-r${Date.now().toString(36)}`;
+}
+
+// Extracts the pedido UUID from a dLocal order_id. Works for both the new
+// format (`<uuid>-r<token>`) and legacy order_ids that are exactly the UUID.
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+export function pedidoIdFromOrderId(orderId: string | null | undefined): string | null {
+  if (!orderId) return null;
+  const m = orderId.match(UUID_RE);
+  return m ? m[0] : orderId;
+}
+
 export interface CreatePaymentParams {
   amount:           number;
   currency:         string;

@@ -14,6 +14,22 @@ const PRODUCTO_LABEL: Record<string, string> = {
   recompensas: "Tablero de Recompensas",
 };
 
+// Delivery / Retiro / Digital, derived from the pedido. `direccion` is the
+// authoritative signal ("Pickup — …" / "Delivery — …"); costo_envio and
+// tipo_entrega are fallbacks for older / digital orders.
+function resumenEntrega(p: Pedido): { label: string; cls: string } {
+  const dir = p.direccion ?? "";
+  if (dir.startsWith("Delivery") || (p.costo_envio ?? 0) > 0)
+    return { label: "Delivery", cls: "bg-blue-50 text-blue-700 border border-blue-200" };
+  if (dir.startsWith("Pickup"))
+    return { label: "Retiro", cls: "bg-zinc-100 text-zinc-700 border border-zinc-200" };
+  if (p.tipo_entrega === "digital")
+    return { label: "Digital", cls: "bg-sky-50 text-sky-700 border border-sky-200" };
+  if (p.tipo_entrega === "fisico")
+    return { label: "Retiro", cls: "bg-zinc-100 text-zinc-700 border border-zinc-200" };
+  return { label: "—", cls: "text-zinc-400" };
+}
+
 // Tailwind classes per state — kept here so the badge stays in B&W-ish
 // neutral tones with just enough color to scan quickly.
 const BADGE_CLS: Record<EstadoPedido, string> = {
@@ -54,6 +70,11 @@ export default function PedidosList({ pedidos }: { pedidos: Pedido[] }) {
       return true;
     });
   }, [pedidos, busqueda, estadoF, productoF, tipoF]);
+
+  // Split into paid vs unpaid so real orders (to fulfill) don't get mixed
+  // with pendientes that never completed payment.
+  const pagados     = useMemo(() => filtrados.filter((p) => p.estado !== "pendiente"), [filtrados]);
+  const pendientes  = useMemo(() => filtrados.filter((p) => p.estado === "pendiente"), [filtrados]);
 
   return (
     <div className="space-y-4">
@@ -103,26 +124,71 @@ export default function PedidosList({ pedidos }: { pedidos: Pedido[] }) {
         </CardContent>
       </Card>
 
-      {/* Tabla */}
-      <Card className="bg-white overflow-hidden">
-        {filtrados.length === 0 ? (
+      {/* Dos grupos: pagados (a producir/enviar) y pendientes de pago. */}
+      {filtrados.length === 0 ? (
+        <Card className="bg-white overflow-hidden">
           <div className="text-center py-16 text-zinc-400 text-sm">
             No hay pedidos que coincidan con los filtros.
           </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 border-b border-zinc-200">
-              <tr className="text-left text-zinc-500 text-xs uppercase tracking-wider">
-                <th className="px-4 py-3 font-medium">Fecha</th>
-                <th className="px-4 py-3 font-medium">Niño/a</th>
-                <th className="px-4 py-3 font-medium">Producto</th>
-                <th className="px-4 py-3 font-medium">Entrega</th>
-                <th className="px-4 py-3 font-medium">Estado</th>
-                <th className="px-4 py-3 font-medium w-12"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtrados.map((p) => (
+        </Card>
+      ) : (
+        <>
+          <GrupoPedidos
+            titulo="Pagados"
+            subtitulo="Listos para producir y enviar"
+            pedidos={pagados}
+            dotCls="bg-emerald-500"
+          />
+          <GrupoPedidos
+            titulo="Pendientes de pago"
+            subtitulo="Todavía no completaron el pago"
+            pedidos={pendientes}
+            dotCls="bg-amber-500"
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+// A titled section with its own table. Hidden entirely when it has no rows
+// so the screen stays clean when a filter empties one group.
+function GrupoPedidos({
+  titulo,
+  subtitulo,
+  pedidos,
+  dotCls,
+}: {
+  titulo: string;
+  subtitulo: string;
+  pedidos: Pedido[];
+  dotCls: string;
+}) {
+  if (pedidos.length === 0) return null;
+  return (
+    <section>
+      <div className="flex items-center gap-2 mb-2 mt-2">
+        <span className={`w-2 h-2 rounded-full ${dotCls}`} />
+        <h2 className="text-sm font-semibold text-zinc-900">{titulo}</h2>
+        <span className="text-xs text-zinc-400">· {pedidos.length}</span>
+        <span className="text-xs text-zinc-400 hidden sm:inline">— {subtitulo}</span>
+      </div>
+      <Card className="bg-white overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-zinc-50 border-b border-zinc-200">
+            <tr className="text-left text-zinc-500 text-xs uppercase tracking-wider">
+              <th className="px-4 py-3 font-medium">Fecha</th>
+              <th className="px-4 py-3 font-medium">Niño/a</th>
+              <th className="px-4 py-3 font-medium">Producto</th>
+              <th className="px-4 py-3 font-medium">Entrega</th>
+              <th className="px-4 py-3 font-medium">Estado</th>
+              <th className="px-4 py-3 font-medium w-12"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {pedidos.map((p) => {
+              const entrega = resumenEntrega(p);
+              return (
                 <tr
                   key={p.id}
                   className="border-b border-zinc-100 last:border-b-0 hover:bg-zinc-50 transition-colors"
@@ -136,8 +202,8 @@ export default function PedidosList({ pedidos }: { pedidos: Pedido[] }) {
                   <td className="px-4 py-3 text-zinc-600">
                     {PRODUCTO_LABEL[p.producto] ?? p.producto}
                   </td>
-                  <td className="px-4 py-3 text-zinc-600 capitalize">
-                    {p.tipo_entrega}
+                  <td className="px-4 py-3">
+                    <Badge className={entrega.cls}>{entrega.label}</Badge>
                   </td>
                   <td className="px-4 py-3">
                     <Badge className={BADGE_CLS[p.estado]}>
@@ -153,12 +219,12 @@ export default function PedidosList({ pedidos }: { pedidos: Pedido[] }) {
                     </Link>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              );
+            })}
+          </tbody>
+        </table>
       </Card>
-    </div>
+    </section>
   );
 }
 
