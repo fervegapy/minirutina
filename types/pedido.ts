@@ -49,6 +49,10 @@ export interface Pedido {
   // Datos de facturación (opcionales)
   ruc?:                      string | null;
   razon_social?:             string | null;
+  // Factura subida por el admin (path en Supabase Storage, no URL — las
+  // signed URLs expiran, así que se regeneran al vuelo cuando hacen falta).
+  factura_path?:             string | null;
+  factura_enviada_at?:       string | null;
 }
 
 export interface PersonalizacionRutinas {

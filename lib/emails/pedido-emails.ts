@@ -8,6 +8,7 @@
 //   2. pedido confirmado      — auto, dLocal webhook on PAID
 //   3. en camino              — auto, admin marks estado = enviado
 //   4. feedback               — auto, admin marks estado = entregado
+//   5. factura                — manual, from admin, on demand (not tied to estado)
 import { sendEmail, type EmailAttachment } from "@/lib/email";
 import { getSiteConfig } from "@/lib/site-config";
 import {
@@ -207,6 +208,30 @@ export function buildFeedback({ nombreCliente, pedidoId, nombreNino, logoUrl }: 
   return { subject: "¿Cómo te fue con tu tablero de Minirutina?", html };
 }
 
+// ─── 5. Factura ─────────────────────────────────────────────────────────────
+// Manual, from admin — sent whenever the team uploads the invoice for a
+// pedido that requested facturación. `facturaUrl` is a signed Storage URL
+// generated fresh at send time (see actions.ts) so it's always valid for
+// however long the link stays live.
+interface FacturaArgs extends BaseArgs { facturaUrl: string }
+export function buildFactura({ nombreCliente, pedidoId, facturaUrl, logoUrl }: FacturaArgs): BuiltEmail {
+  const content =
+    infoBox("Tu factura está lista 🧾", "Adjuntamos el link para que la descargues cuando quieras.") +
+    emailButton(facturaUrl, "Ver factura") +
+    `<div style="height:8px;"></div>` +
+    whatsappButton(pedidoId, WHATSAPP) +
+    pedidoNumero(pedidoId);
+
+  const html = renderEmailShell({
+    logoUrl,
+    preheader:   "Tu factura ya está disponible.",
+    heading:     "Tu factura está lista 🧾",
+    intro:       `${saludo(nombreCliente)} te dejamos la factura de tu pedido en Minirutina.`,
+    contentHtml: content,
+  });
+  return { subject: `Tu factura — Minirutina #${pedidoId.slice(0, 8).toUpperCase()}`, html };
+}
+
 // ─── Senders (fetch logo, then dispatch) ─────────────────────────────────────
 export async function enviarRecordatorioPago(args: CartArgs & { to: string }) {
   const { subject, html } = buildRecordatorioPago({ ...args, logoUrl: await getLogoUrl() });
@@ -232,5 +257,9 @@ export async function enviarEnCamino(args: ShipArgs & { to: string }) {
 }
 export async function enviarFeedback(args: ShipArgs & { to: string }) {
   const { subject, html } = buildFeedback({ ...args, logoUrl: await getLogoUrl() });
+  return sendEmail({ to: args.to, subject, html });
+}
+export async function enviarFactura(args: FacturaArgs & { to: string }) {
+  const { subject, html } = buildFactura({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }

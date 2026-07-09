@@ -17,6 +17,7 @@ import {
   ExternalLink,
   FileText,
   Send,
+  Receipt,
 } from "lucide-react";
 import type { Pedido, EstadoPedido } from "@/types/pedido";
 import {
@@ -31,7 +32,13 @@ import {
 } from "@/lib/contacto";
 import { plantillaWhatsappCliente } from "@/lib/wa-templates";
 import { COURIERS, courierPorId, type CourierId } from "@/lib/courier";
-import { cambiarEstadoPedido, enviarRecordatorioPagoManual, reenviarConfirmacionPago } from "@/app/admin/(dashboard)/pedidos/[id]/actions";
+import {
+  cambiarEstadoPedido,
+  enviarRecordatorioPagoManual,
+  reenviarConfirmacionPago,
+  obtenerUrlFacturaActual,
+} from "@/app/admin/(dashboard)/pedidos/[id]/actions";
+import FacturaModal from "@/components/admin/FacturaModal";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +85,8 @@ export default function PedidoDetail({
   const [pdfLoading, setPdfLoading] = useState(false);
   const [imprentaUrl, setImprentaUrl] = useState<string | null>(null);
   const [imprentaLoading, setImprentaLoading] = useState(false);
+  const [facturaModalOpen, setFacturaModalOpen] = useState(false);
+  const [verFacturaMsg, setVerFacturaMsg] = useState<string | null>(null);
 
   // Per-item download loading state — keyed by `${itemId}:${mode}` so it
   // scales to any number of cart items (2, 8, whatever) without special-casing.
@@ -270,6 +279,18 @@ Pedido ID: ${pedido.id.slice(0, 8)}
     }
   };
 
+  // "Ver factura actual" — generates a fresh short-lived signed URL and
+  // opens it, rather than storing a URL that could've expired.
+  const verFacturaActual = async () => {
+    setVerFacturaMsg(null);
+    const r = await obtenerUrlFacturaActual(pedido.id);
+    if (r.ok && r.url) {
+      window.open(r.url, "_blank", "noopener,noreferrer");
+    } else {
+      setVerFacturaMsg(r.error ?? "No se pudo abrir la factura.");
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -436,8 +457,43 @@ Pedido ID: ${pedido.id.slice(0, 8)}
                     value={pedido.razon_social}
                   />
                 )}
+
+                <div className="pt-2 border-t border-zinc-100 space-y-1.5">
+                  <Button
+                    variant="outline"
+                    onClick={() => setFacturaModalOpen(true)}
+                    className="w-full text-sm h-9 justify-start font-medium border-zinc-200 text-zinc-900 hover:bg-zinc-50"
+                  >
+                    <Receipt className="w-4 h-4 mr-2 text-zinc-700" />
+                    {pedido.factura_path ? "Reenviar factura" : "Enviar factura"}
+                  </Button>
+                  {pedido.factura_enviada_at && (
+                    <button
+                      type="button"
+                      onClick={verFacturaActual}
+                      className="text-[11px] text-zinc-500 hover:text-zinc-900 underline underline-offset-2"
+                    >
+                      Enviada el {formatoFecha(pedido.factura_enviada_at)} · Ver factura actual
+                    </button>
+                  )}
+                  {verFacturaMsg && (
+                    <p className="text-[11px] text-red-600">{verFacturaMsg}</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
+          )}
+
+          {facturaModalOpen && (
+            <FacturaModal
+              pedidoId={pedido.id}
+              email={email}
+              onClose={() => setFacturaModalOpen(false)}
+              onSent={() => {
+                setFacturaModalOpen(false);
+                router.refresh();
+              }}
+            />
           )}
 
           {/* Pago — dLocal o Stripe (legacy) */}

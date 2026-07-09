@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { extraerEmail, extraerNombre } from "@/lib/contacto";
 import {
   enviarEnCamino,
+  enviarFactura,
   enviarFeedback,
   enviarPedidoConfirmado,
   enviarRecordatorioPago,
@@ -13,6 +15,19 @@ import {
 } from "@/lib/emails/pedido-emails";
 import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import type { EstadoPedido } from "@/types/pedido";
+
+// Bucket + signed-url durations for facturas. Stored as a PATH (not a URL)
+// since signed URLs expire — the email link gets a long-lived one at send
+// time, the admin's "Ver factura actual" preview gets a short one on demand.
+const FACTURA_BUCKET = "pdfs";
+const FACTURA_LINK_EXPIRY_SECONDS  = 60 * 60 * 24 * 400; // ~400 días, para el link del mail
+const FACTURA_VIEW_EXPIRY_SECONDS  = 60 * 60;            // 1h, solo para previsualizar en el admin
+
+const FACTURA_MIME_EXT: Record<string, string> = {
+  "application/pdf": "pdf",
+  "image/png":        "png",
+  "image/jpeg":        "jpg",
+};
 
 // Re-check admin status server-side. The middleware already protects /admin
 // but server actions can be called from anywhere — defense in depth.
@@ -156,6 +171,89 @@ export async function reenviarConfirmacionPago(
     });
     if (!res.ok) return { ok: false, error: res.error ?? "No se pudo enviar el email." };
     return { ok: true, sinAdjuntos: adjuntos.length === 0 };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+// Uploads a factura file (PDF/JPG/PNG) for a pedido, stores its Storage path,
+// and emails the customer a link to it. Uses supabaseAdmin (service role) for
+// the storage write — the admin's session client is subject to bucket RLS we
+// don't want to have to configure separately for this one-off upload.
+export async function enviarFacturaPedido(
+  pedidoId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = await asegurarAdmin(); // auth check only — writes go via supabaseAdmin below
+
+    const file = formData.get("factura");
+    if (!(file instanceof File) || file.size === 0) {
+      return { ok: false, error: "No se recibió ningún archivo." };
+    }
+    const ext = FACTURA_MIME_EXT[file.type];
+    if (!ext) {
+      return { ok: false, error: "Formato no soportado. Subí un PDF, JPG o PNG." };
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return { ok: false, error: "El archivo pesa más de 10MB." };
+    }
+
+    const r = await resumenPedido(supabase, pedidoId);
+    if (!r) return { ok: false, error: "No se encontró el pedido." };
+    if (!r.email) return { ok: false, error: "Este pedido no tiene email registrado." };
+
+    const path = `facturas/${pedidoId}.${ext}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from(FACTURA_BUCKET)
+      .upload(path, buffer, { contentType: file.type, upsert: true });
+    if (uploadError) return { ok: false, error: `No se pudo subir el archivo: ${uploadError.message}` };
+
+    const { data: signed, error: signError } = await supabaseAdmin.storage
+      .from(FACTURA_BUCKET)
+      .createSignedUrl(path, FACTURA_LINK_EXPIRY_SECONDS);
+    if (signError || !signed) return { ok: false, error: "No se pudo generar el link de la factura." };
+
+    const res = await enviarFactura({
+      to:            r.email,
+      nombreCliente: r.nombreCliente,
+      pedidoId,
+      facturaUrl:    signed.signedUrl,
+    });
+    if (!res.ok) return { ok: false, error: res.error ?? "No se pudo enviar el email." };
+
+    await supabaseAdmin
+      .from("pedidos")
+      .update({ factura_path: path, factura_enviada_at: new Date().toISOString() })
+      .eq("id", pedidoId);
+
+    revalidatePath(`/admin/pedidos/${pedidoId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+// Fresh short-lived signed URL for the admin to preview whatever factura is
+// currently on file (if any) — generated on demand, never persisted.
+export async function obtenerUrlFacturaActual(
+  pedidoId: string,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  try {
+    await asegurarAdmin();
+    const { data: pedido } = await supabaseAdmin
+      .from("pedidos")
+      .select("factura_path")
+      .eq("id", pedidoId)
+      .maybeSingle();
+    if (!pedido?.factura_path) return { ok: false, error: "Todavía no se subió ninguna factura." };
+
+    const { data: signed, error } = await supabaseAdmin.storage
+      .from(FACTURA_BUCKET)
+      .createSignedUrl(pedido.factura_path, FACTURA_VIEW_EXPIRY_SECONDS);
+    if (error || !signed) return { ok: false, error: "No se pudo generar el link." };
+    return { ok: true, url: signed.signedUrl };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error" };
   }
