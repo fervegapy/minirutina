@@ -18,12 +18,6 @@ export const GENDERED_ICONS = new Set<string>([
   "peinarse",
   "vestirse",
   "zapatos",
-  "tiempo_mama",
-  "tiempo_papa",
-  "tiempo_papa_mama",
-  "juego_libre",
-  "juego_aire_libre",
-  "iglesia",
 ]);
 
 /** Returns just the filename (without the leading folder). */
