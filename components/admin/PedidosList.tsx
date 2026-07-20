@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight, Search } from "lucide-react";
 import type { Pedido, EstadoPedido } from "@/types/pedido";
 import { ESTADOS, labelDeEstado } from "@/lib/estado-pedido";
+import { extraerNombre } from "@/lib/contacto";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -178,7 +179,9 @@ function GrupoPedidos({
           <thead className="bg-zinc-50 border-b border-zinc-200">
             <tr className="text-left text-zinc-500 text-xs uppercase tracking-wider">
               <th className="px-4 py-3 font-medium">Fecha</th>
+              <th className="px-4 py-3 font-medium">N° pedido</th>
               <th className="px-4 py-3 font-medium">Niño/a</th>
+              <th className="px-4 py-3 font-medium">Padre/Madre</th>
               <th className="px-4 py-3 font-medium">Producto</th>
               <th className="px-4 py-3 font-medium">Entrega</th>
               <th className="px-4 py-3 font-medium">Estado</th>
@@ -196,8 +199,14 @@ function GrupoPedidos({
                   <td className="px-4 py-3 text-zinc-600 whitespace-nowrap">
                     {formatoFecha(p.created_at)}
                   </td>
+                  <td className="px-4 py-3 text-zinc-500 font-mono text-xs whitespace-nowrap">
+                    #{p.id.slice(0, 8).toUpperCase()}
+                  </td>
                   <td className="px-4 py-3 font-medium text-zinc-900">
                     {p.nombre_nino ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-600">
+                    {extraerNombre(p.contacto) ?? "—"}
                   </td>
                   <td className="px-4 py-3 text-zinc-600">
                     {PRODUCTO_LABEL[p.producto] ?? p.producto}
