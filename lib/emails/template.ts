@@ -176,9 +176,12 @@ export function pedidoNumero(pedidoId: string): string {
 // `active` is the 1-based index of the CURRENT step; earlier steps render as
 // completed (✓ filled), later steps as pending (gray).
 const TIMELINE_STEPS = ["En producción", "Camino a la entrega", "Entregado"];
+// Pickup orders don't "travel" anywhere — swap step 2's label so it doesn't
+// imply a delivery in transit.
+export const TIMELINE_STEPS_RETIRO = ["En producción", "Listo para retirar", "Entregado"];
 
-export function timeline(active: 1 | 2 | 3): string {
-  const cells = TIMELINE_STEPS.map((label, i) => {
+export function timeline(active: 1 | 2 | 3, steps: string[] = TIMELINE_STEPS): string {
+  const cells = steps.map((label, i) => {
     const step = i + 1;
     const done    = step < active;
     const current = step === active;

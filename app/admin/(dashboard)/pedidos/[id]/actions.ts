@@ -47,7 +47,7 @@ type SupabaseAdminClient = Awaited<ReturnType<typeof asegurarAdmin>>;
 async function resumenPedido(supabase: SupabaseAdminClient, pedidoId: string) {
   const { data: pedido } = await supabase
     .from("pedidos")
-    .select("nombre_nino, producto, contacto, costo_envio, cupon_descuento")
+    .select("nombre_nino, producto, contacto, costo_envio, cupon_descuento, direccion")
     .eq("id", pedidoId)
     .single();
   if (!pedido) return null;
@@ -73,6 +73,9 @@ async function resumenPedido(supabase: SupabaseAdminClient, pedidoId: string) {
     email:         extraerEmail(pedido.contacto),
     nombreCliente: extraerNombre(pedido.contacto),
     nombreNino:    pedido.nombre_nino as string,
+    // Same signal PedidosList uses for the Entrega badge — "Pickup — ..." vs
+    // "Delivery — ...". Never expose the actual address in customer emails.
+    esRetiro:      (pedido.direccion ?? "").startsWith("Pickup"),
     items,
     total,
   };
@@ -98,7 +101,7 @@ export async function cambiarEstadoPedido(
         const r = await resumenPedido(supabase, pedidoId);
         if (r?.email) {
           if (nuevoEstado === "enviado") {
-            await enviarEnCamino({ to: r.email, nombreCliente: r.nombreCliente, pedidoId, nombreNino: r.nombreNino });
+            await enviarEnCamino({ to: r.email, nombreCliente: r.nombreCliente, pedidoId, nombreNino: r.nombreNino, esRetiro: r.esRetiro });
           } else {
             await enviarFeedback({ to: r.email, nombreCliente: r.nombreCliente, pedidoId, nombreNino: r.nombreNino });
           }

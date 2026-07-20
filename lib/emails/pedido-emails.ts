@@ -18,6 +18,7 @@ import {
   emailButton,
   whatsappButton,
   timeline,
+  TIMELINE_STEPS_RETIRO,
   pedidoNumero,
   fmtPyg,
   type EmailItemSummary,
@@ -75,6 +76,10 @@ interface BaseArgs {
 }
 interface CartArgs extends BaseArgs { items: EmailItemSummary[]; total: number }
 interface ShipArgs extends BaseArgs { nombreNino?: string | null }
+// `esRetiro` = customer chose pickup, not delivery. We never mention the
+// pickup address in email — it's the team's home base — so pickup orders
+// get contacted over WhatsApp for the exact spot instead.
+interface EnCaminoArgs extends ShipArgs { esRetiro?: boolean }
 
 // ─── 1. Recordatorio de pago ───────────────────────────────────────────────
 export function buildRecordatorioPago({ nombreCliente, pedidoId, items, total, logoUrl }: CartArgs): BuiltEmail {
@@ -156,7 +161,29 @@ export function buildPedidoConfirmado(
 }
 
 // ─── 3. En camino ──────────────────────────────────────────────────────────
-export function buildEnCamino({ nombreCliente, pedidoId, nombreNino, logoUrl }: ShipArgs): BuiltEmail {
+export function buildEnCamino({ nombreCliente, pedidoId, nombreNino, logoUrl, esRetiro }: EnCaminoArgs): BuiltEmail {
+  const quien = nombreNino ? `el tablero de ${nombreNino}` : "tu pedido";
+
+  if (esRetiro) {
+    const content =
+      timeline(2, TIMELINE_STEPS_RETIRO) +
+      infoBox(
+        "Coordinamos el retiro",
+        "Te contactamos por WhatsApp para coordinar el día y la ubicación exacta.",
+      ) +
+      whatsappButton(pedidoId, WHATSAPP) +
+      pedidoNumero(pedidoId);
+
+    const html = renderEmailShell({
+      logoUrl,
+      preheader:   "Tu tablero está listo para retirar.",
+      heading:     "Tu tablero está listo para retirar 📦",
+      intro:       `${saludo(nombreCliente)} ${quien} ya está listo. Te escribimos por WhatsApp para coordinar el retiro.`,
+      contentHtml: content,
+    });
+    return { subject: "Tu pedido de Minirutina está listo para retirar 📦", html };
+  }
+
   const content =
     timeline(2) +
     infoBox(
@@ -170,7 +197,7 @@ export function buildEnCamino({ nombreCliente, pedidoId, nombreNino, logoUrl }: 
     logoUrl,
     preheader:   "Tu pedido va en camino.",
     heading:     "Tu pedido va en camino 🚚",
-    intro:       `${saludo(nombreCliente)} ${nombreNino ? `el tablero de ${nombreNino}` : "tu pedido"} ya está en camino a tu dirección.`,
+    intro:       `${saludo(nombreCliente)} ${quien} ya está en camino a tu dirección.`,
     contentHtml: content,
   });
   return { subject: "Tu pedido de Minirutina va en camino 🚚", html };
@@ -251,7 +278,7 @@ export async function enviarPedidoConfirmado(
   );
   return sendEmail({ to: args.to, subject, html, attachments });
 }
-export async function enviarEnCamino(args: ShipArgs & { to: string }) {
+export async function enviarEnCamino(args: EnCaminoArgs & { to: string }) {
   const { subject, html } = buildEnCamino({ ...args, logoUrl: await getLogoUrl() });
   return sendEmail({ to: args.to, subject, html });
 }
