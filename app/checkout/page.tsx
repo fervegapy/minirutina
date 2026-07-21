@@ -313,7 +313,7 @@ function CheckoutInner() {
     let direccion: string | null = null;
     if (anyFisico) {
       if (modalidad === "pickup") {
-        direccion = "Pickup — Villamorra, Asunción";
+        direccion = "Pickup — Asunción";
       } else {
         const { departamento, ciudad, barrio } = location;
         const partes = [
@@ -634,7 +634,7 @@ function CheckoutInner() {
                   <div className="font-bold text-sm text-[#22244e]">Pickup</div>
                   <div className="text-xs font-bold text-[#a8c5a0] mt-0.5">Gs. 0</div>
                   <div className="text-xs text-[#22244e]/50 mt-1 leading-relaxed">
-                    Retirás en Villamorra, Asunción.
+                    Retirás en Asunción — te pasamos la ubicación exacta por WhatsApp.
                   </div>
                 </button>
                 <button

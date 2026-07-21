@@ -25,8 +25,8 @@ export default function EnviosPage() {
       <h2>Modalidades de entrega</h2>
       <h3>Retiro en pickup (gratis)</h3>
       <p>
-        Podés retirar gratis en nuestra base en <strong>Villamorra,
-        Asunción</strong>. Una vez listo el tablero te escribimos por
+        Podés retirar gratis en nuestra base en <strong>Asunción</strong>.
+        Una vez listo el tablero te escribimos por
         WhatsApp para coordinar día y horario. Horario habitual de retiro:
         lunes a viernes de 9 a 18 hs.
       </p>

@@ -81,7 +81,7 @@ export function renderEmailShell({
           <tr>
             <td style="background:#f9fafb;border:1px solid ${BORDER};border-top:none;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#22244e66;line-height:1.6;">
-                Minirutina · Villamorra, Asunción, Paraguay<br />
+                Minirutina · Asunción, Paraguay<br />
                 <a href="https://minirutina.com" style="color:${DARK};text-decoration:none;">minirutina.com</a>
               </p>
             </td>

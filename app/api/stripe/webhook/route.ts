@@ -97,7 +97,7 @@ function emailClienteHtml({
         </table>
       </td></tr>
       <tr><td style="background:#f9fafb;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
-        <p style="margin:0;font-size:12px;color:#22244e66;line-height:1.6;">Minirutina · Villamorra, Asunción · <a href="https://minirutina.com" style="color:#22244e;text-decoration:none;">minirutina.com</a></p>
+        <p style="margin:0;font-size:12px;color:#22244e66;line-height:1.6;">Minirutina · Asunción · <a href="https://minirutina.com" style="color:#22244e;text-decoration:none;">minirutina.com</a></p>
       </td></tr>
     </table></td></tr>
   </table>

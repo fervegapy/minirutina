@@ -23,7 +23,7 @@ export default function TerminosPage() {
       <p>
         Minirutina es una marca paraguaya dedicada a la producción de
         tableros visuales personalizados para niños (rutinas y recompensas).
-        Nuestra base de operaciones se encuentra en Villamorra, Asunción,
+        Nuestra base de operaciones se encuentra en Asunción,
         República del Paraguay. Para consultas comerciales o de soporte
         podés escribirnos a
         <a href="mailto:soporte@minirutina.com"> soporte@minirutina.com</a>.
