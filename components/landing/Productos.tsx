@@ -3,6 +3,8 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { productos as productosData } from "@/lib/productos";
 import { supabase } from "@/lib/supabase";
+import { getRegion } from "@/lib/region";
+import { precioUsd, fmtUsd, type PrecioRow } from "@/lib/precios";
 
 interface CardData {
   slug:        string;
@@ -10,7 +12,7 @@ interface CardData {
   desc:        string;
   href:        string;
   accent:      string;
-  precio:      string;
+  precio:      string | null; // null = no se ofrece en esta región todavía
 }
 
 const COPY: Record<string, Pick<CardData, "desc">> = {
@@ -22,39 +24,49 @@ const COPY: Record<string, Pick<CardData, "desc">> = {
   },
 };
 
-async function getCards(): Promise<CardData[]> {
+async function getCards(region: "py" | "intl"): Promise<CardData[]> {
   const slugs = ["rutinas", "recompensas"] as const;
   const { data: precios } = await supabase
     .from("precios")
-    .select("producto, precio_impreso, precio_digital, precio_impreso_20, precio_digital_20");
+    .select("producto, precio_impreso, precio_digital, precio_impreso_20, precio_digital_20, precio_digital_usd, precio_digital_20_usd");
   const preciosBySlug = new Map(
-    (precios ?? []).map((p) => [p.producto as string, p]),
+    ((precios ?? []) as PrecioRow[]).map((p) => [p.producto as string, p]),
   );
 
-  const fmt = (n: number) => "Gs. " + n.toLocaleString("es-PY");
+  const fmtPyg = (n: number) => "Gs. " + n.toLocaleString("es-PY");
 
   return slugs.map((slug) => {
     const base = productosData[slug];
     const row  = preciosBySlug.get(slug);
-    // Card shows the printed (impreso) base price — for recompensas that's
-    // the 10-sticker version (precio_impreso, not precio_impreso_20).
-    const cur =
-      typeof row?.precio_impreso === "number" && row.precio_impreso > 0
-        ? row.precio_impreso
-        : null;
+
+    let precio: string | null;
+    if (region === "intl") {
+      const usd = precioUsd(row, false);
+      precio = usd !== null ? fmtUsd(usd) : null;
+    } else {
+      // Card shows the printed (impreso) base price — for recompensas
+      // that's the 10-sticker version (precio_impreso, not precio_impreso_20).
+      const cur =
+        typeof row?.precio_impreso === "number" && row.precio_impreso > 0
+          ? row.precio_impreso
+          : null;
+      precio = cur !== null ? fmtPyg(cur) : base.precioDesde;
+    }
+
     return {
       slug,
       nombre: base.nombre,
       href:   `/productos/${slug}`,
       accent: base.accentColor,
-      precio: cur !== null ? fmt(cur) : base.precioDesde,
+      precio,
       ...COPY[slug],
     };
-  });
+  }).filter((c) => c.precio !== null); // no se muestra lo que no se vende en esta región
 }
 
 export default async function Productos() {
-  const productos = await getCards();
+  const region = await getRegion();
+  const productos = await getCards(region);
 
   return (
     <section id="productos" className="bg-[#faf6e7] px-6 py-20 md:py-24">

@@ -1,4 +1,6 @@
-const razones = [
+import type { Region } from "@/lib/region";
+
+const razonesBase = [
   {
     icon: "🧠",
     titulo: "Las rutinas les dan seguridad",
@@ -9,19 +11,28 @@ const razones = [
     titulo: "Diseñado para que quieran usarlo",
     desc: "Colores suaves, íconos claros, el nombre de tu hijo. No es un tablero genérico — es el suyo.",
   },
-  {
-    icon: "📦",
-    titulo: "Nosotros nos encargamos de todo",
-    desc: "Lo diseñás en 5 minutos. Nosotros lo imprimimos, lo embalamos y lo enviamos. Vos solo colgás.",
-  },
-  {
-    icon: "🎁",
-    titulo: "El regalo perfecto",
-    desc: "Ideal para baby showers, cumpleaños o para regalarle a una familia con hijos. Original, útil y personalizado.",
-  },
 ];
 
-export default function ParaQuienEs() {
+const razonPy = {
+  icon: "📦",
+  titulo: "Nosotros nos encargamos de todo",
+  desc: "Lo diseñás en 5 minutos. Nosotros lo imprimimos, lo embalamos y lo enviamos. Vos solo colgás.",
+};
+
+const razonIntl = {
+  icon: "📧",
+  titulo: "Lo tenés al instante",
+  desc: "Lo diseñás en 5 minutos y te llega por email apenas confirmás el pago, listo para imprimir donde quieras.",
+};
+
+const razonRegalo = {
+  icon: "🎁",
+  titulo: "El regalo perfecto",
+  desc: "Ideal para baby showers, cumpleaños o para regalarle a una familia con hijos. Original, útil y personalizado.",
+};
+
+export default function ParaQuienEs({ region }: { region: Region }) {
+  const razones = [...razonesBase, region === "intl" ? razonIntl : razonPy, razonRegalo];
   return (
     <section className="bg-[#22244e] px-6 py-20 md:py-24">
       <div className="max-w-5xl mx-auto">

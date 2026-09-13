@@ -6,17 +6,19 @@ import ParaQuienEs from "@/components/landing/ParaQuienEs";
 import FAQ from "@/components/landing/FAQ";
 import Footer from "@/components/landing/Footer";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
+import { getRegion } from "@/lib/region";
 
-export default function Home() {
+export default async function Home() {
+  const region = await getRegion();
   return (
     <div className="min-h-screen bg-[#faf6e7]">
       <Header />
       <main>
-        <Hero />
+        <Hero region={region} />
         <Productos />
-        <ComoFunciona />
-        <ParaQuienEs />
-        <FAQ />
+        <ComoFunciona region={region} />
+        <ParaQuienEs region={region} />
+        <FAQ region={region} />
       </main>
       <Footer />
       {/* FAB solo en la home: en el resto del flujo (customizers, checkout)

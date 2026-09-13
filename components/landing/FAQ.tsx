@@ -5,8 +5,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import type { Region } from "@/lib/region";
 
-const faqs = [
+const faqsPy = [
   {
     q: "¿Qué recibo exactamente?",
     a: "Un tablero impreso en papel de 300g, plastificado mate, listo para colgar. Viene con los datos de tu hijo, los íconos que elegiste y el color que personalizaste.",
@@ -25,7 +26,27 @@ const faqs = [
   },
 ];
 
-export default function FAQ() {
+const faqsIntl = [
+  {
+    q: "¿Qué recibo exactamente?",
+    a: "Un archivo PDF en alta resolución con los datos de tu hijo, los íconos que elegiste y el color que personalizaste. Lo imprimís donde quieras: en tu casa o en cualquier imprenta.",
+  },
+  {
+    q: "¿Cuánto tarda en llegar?",
+    a: "Te llega por email apenas confirmamos el pago, normalmente en minutos.",
+  },
+  {
+    q: "¿En qué tamaño lo imprimo?",
+    a: "El PDF viene en A4. Al imprimir podés escalarlo a Letter o al tamaño que uses en tu impresora.",
+  },
+  {
+    q: "¿Cómo pago?",
+    a: "Con cualquier tarjeta de crédito o débito internacional. El cobro se procesa en dólares.",
+  },
+];
+
+export default function FAQ({ region }: { region: Region }) {
+  const faqs = region === "intl" ? faqsIntl : faqsPy;
   return (
     <section id="faq" className="bg-[#faf6e7] px-6 py-20 md:py-24">
       <div className="max-w-2xl mx-auto">

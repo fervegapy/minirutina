@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import type { Region } from "@/lib/region";
 
-export default function Hero() {
+export default function Hero({ region }: { region: Region }) {
+  const esIntl = region === "intl";
   return (
     <section className="bg-[#faf6e7] overflow-hidden">
       {/* Two-column edge-to-edge layout. Image is the dominant half on the
@@ -13,7 +15,7 @@ export default function Hero() {
         <div className="flex items-center px-6 py-14 md:py-20 md:px-12 lg:px-16 order-2 md:order-1">
           <div className="max-w-md">
             <span className="inline-block bg-[#336aea]/20 text-[#22244e] text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-6">
-              Personalizá y te enviamos en 48hs
+              {esIntl ? "Personalizá y recibilo por email al instante" : "Personalizá y te enviamos en 48hs"}
             </span>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#22244e] leading-[1.05] mb-6">
               Hacé que las actividades del día a día{" "}
@@ -39,11 +41,11 @@ export default function Hero() {
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-10 text-sm text-[#22244e]/50">
               <div className="flex items-center gap-1.5">
                 <span>✓</span>
-                <span>Envío a todo el país</span>
+                <span>{esIntl ? "Entrega digital instantánea" : "Envío a todo el país"}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span>✓</span>
-                <span>Impresión premium</span>
+                <span>{esIntl ? "Listo para imprimir donde quieras" : "Impresión premium"}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span>✓</span>
@@ -77,7 +79,9 @@ export default function Hero() {
           {/* Floating delivery pill — top-right. Warm golden accent so
               it contrasts with the blue CTAs/text without competing. */}
           <div className="hidden md:block absolute top-8 right-8 bg-[#ecbc5d] rounded-2xl px-4 py-2.5 shadow-sm">
-            <p className="text-xs font-bold text-[#22244e]">Te llega en 48 hs</p>
+            <p className="text-xs font-bold text-[#22244e]">
+              {esIntl ? "Te llega por email al instante" : "Te llega en 48 hs"}
+            </p>
           </div>
         </div>
       </div>

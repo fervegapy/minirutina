@@ -1,4 +1,6 @@
-const pasos = [
+import type { Region } from "@/lib/region";
+
+const pasosPy = [
   {
     num: "01",
     icon: "✏️",
@@ -19,7 +21,29 @@ const pasos = [
   },
 ];
 
-export default function ComoFunciona() {
+const pasosIntl = [
+  {
+    num: "01",
+    icon: "✏️",
+    titulo: "Personalizás",
+    desc: "Elegís el tipo de tablero, el nombre de tu hijo y los colores. Todo online, en menos de 5 minutos.",
+  },
+  {
+    num: "02",
+    icon: "📄",
+    titulo: "Preparamos tu PDF",
+    desc: "Generamos tu tablero en alta resolución, listo para imprimir en cualquier lado.",
+  },
+  {
+    num: "03",
+    icon: "📧",
+    titulo: "Lo recibís por email",
+    desc: "Te llega al instante apenas confirmamos el pago. Lo imprimís en tu casa o en la imprenta que prefieras.",
+  },
+];
+
+export default function ComoFunciona({ region }: { region: Region }) {
+  const pasos = region === "intl" ? pasosIntl : pasosPy;
   return (
     <section id="como-funciona" className="bg-white px-6 py-20 md:py-24">
       <div className="max-w-5xl mx-auto">
