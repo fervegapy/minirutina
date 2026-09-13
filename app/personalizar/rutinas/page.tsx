@@ -14,6 +14,7 @@ import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker"
 import { track } from "@/lib/tracking";
 import { useCarrito } from "@/lib/carrito";
 import { useWizardPersist } from "@/lib/useWizardPersist";
+import { getRegionClient } from "@/lib/region";
 
 // react-pdf depends on browser DOM APIs (DOMMatrix, etc.) — load it client-only
 // to avoid breaking the static prerender.
@@ -173,12 +174,15 @@ export default function PersonalizarRutinas() {
   const continuar = () => {
     // Add the personalised tablero to the cart. Format defaults to
     // 'fisico'; the customer can flip to digital per-item in /checkout.
+    // En el exterior el tablero es siempre digital — no se ofrece impreso.
+    const formato = getRegionClient() === "intl" ? "digital" : undefined;
     const item = addItem({
       producto:        "rutinas",
       nombre_nino:     nombre,
       color_acento:    color,
       genero,
       personalizacion: { manana, noche, genero },
+      formato,
     });
     track({
       evento:   "checkout_started",

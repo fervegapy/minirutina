@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker"
 import { track } from "@/lib/tracking";
 import { useCarrito } from "@/lib/carrito";
 import { useWizardPersist } from "@/lib/useWizardPersist";
+import { getRegionClient } from "@/lib/region";
 
 // react-pdf needs DOM APIs at module load — client-only.
 const PdfPagesPreview = dynamic(
@@ -16,28 +17,32 @@ const PdfPagesPreview = dynamic(
   { ssr: false },
 );
 
-const PASOS = ["Nombre", "Cantidad", "Sticker", "Vista previa"];
+type PasoKind = "nombre" | "cantidad" | "sticker" | "preview";
 const OPCIONES: (10 | 20)[] = [10, 20];
 
 // Per-step action title + subhead. Same pattern as the Rutinas wizard.
-const STEPS_META: { title: string; sub: (nombre: string) => string }[] = [
-  {
+const STEPS_META: Record<PasoKind, { label: string; title: string; sub: (nombre: string) => string }> = {
+  nombre: {
+    label: "Nombre",
     title: "Contanos el nombre",
     sub:   () => "Y si es niño o niña, para personalizar los íconos",
   },
-  {
+  cantidad: {
+    label: "Cantidad",
     title: "¿Cuántos pasos va a tener?",
     sub:   () => "Es la cantidad de stickers que junta hasta llegar a la recompensa",
   },
-  {
+  sticker: {
+    label: "Sticker",
     title: "Elegí el sticker",
     sub:   () => "Es el que se pega cada vez que cumple un paso",
   },
-  {
+  preview: {
+    label: "Vista previa",
     title: "Mirá tu tablero",
     sub:   (n: string) => `Así va a quedar el de ${n || "tu niño"} · si te gusta, seguís al pago`,
   },
-];
+};
 
 type StickerId = "estrella" | "check" | "corazon" | "brillante";
 const STICKERS: { id: StickerId; emoji: string; label: string }[] = [
@@ -47,19 +52,32 @@ const STICKERS: { id: StickerId; emoji: string; label: string }[] = [
   { id: "brillante", emoji: "🌟", label: "Estrella con carita" },
 ];
 
-export default function PersonalizarRecompensas() {
+function PersonalizarRecompensasInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { addItem } = useCarrito();
+
+  // Si llegamos desde el detalle del producto con ?cantidad=10|20 ya elegida,
+  // nos saltamos el paso "Cantidad" del wizard.
+  const cantidadQuery = searchParams.get("cantidad");
+  const cantidadFija: 10 | 20 | null =
+    cantidadQuery === "10" ? 10 : cantidadQuery === "20" ? 20 : null;
+  const PASOS: PasoKind[] = cantidadFija
+    ? ["nombre", "sticker", "preview"]
+    : ["nombre", "cantidad", "sticker", "preview"];
+
   const [step, setStep] = useState(0);
   const [nombre, setNombre] = useState("");
   const [genero, setGenero] = useState<Genero | null>(null);
-  const [cantidad, setCantidad] = useState<10 | 20>(10);
+  const [cantidad, setCantidad] = useState<10 | 20>(cantidadFija ?? 10);
   const [sticker, setSticker] = useState<StickerId>("estrella");
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const generatedRef = useRef(false);
+
+  const kind = PASOS[step]!;
 
   // Survive browser back / refresh: restore the draft when the page remounts.
   const persist = useWizardPersist(
@@ -68,7 +86,7 @@ export default function PersonalizarRecompensas() {
     (s) => {
       if (typeof s.nombre === "string") setNombre(s.nombre);
       if (s.genero === "nino" || s.genero === "nina") setGenero(s.genero);
-      if (s.cantidad === 10 || s.cantidad === 20) setCantidad(s.cantidad);
+      if (!cantidadFija && (s.cantidad === 10 || s.cantidad === 20)) setCantidad(s.cantidad);
       if (s.sticker && STICKERS.some((st) => st.id === s.sticker)) setSticker(s.sticker);
       if (typeof s.step === "number") setStep(Math.min(Math.max(s.step, 0), PASOS.length - 1));
     },
@@ -97,7 +115,7 @@ export default function PersonalizarRecompensas() {
     track({
       evento:   "step_completed",
       producto: "recompensas",
-      paso:     PASOS[step],
+      paso:     STEPS_META[kind].label,
     });
     setStep((s) => Math.min(s + 1, PASOS.length - 1));
   };
@@ -140,12 +158,15 @@ export default function PersonalizarRecompensas() {
   const continuar = () => {
     // Color de acento se decide por género — guardamos el del género para compat.
     const colorAcento = genero === "nina" ? "#B86F60" : "#3D5C7E";
+    // En el exterior el tablero es siempre digital — no se ofrece impreso.
+    const formato = getRegionClient() === "intl" ? "digital" : undefined;
     const item = addItem({
       producto:        "recompensas",
       nombre_nino:     nombre,
       color_acento:    colorAcento,
       genero,
       personalizacion: { cantidad, genero, sticker },
+      formato,
     });
     track({
       evento:   "checkout_started",
@@ -165,22 +186,22 @@ export default function PersonalizarRecompensas() {
           <p className="text-base font-medium text-[#22244e]/70 mb-3">
             Tablero de Recompensas de {nombre || "tu niño"}
           </p>
-          <StepIndicator steps={PASOS} current={step} />
+          <StepIndicator steps={PASOS.map((k) => STEPS_META[k].label)} current={step} />
         </div>
 
         <div className="bg-white border border-[#e5e7eb] rounded-2xl p-4 md:p-6 mb-6">
           {/* Título del paso — bold, dentro del card */}
           <div className="mb-5">
             <h2 className="text-xl md:text-2xl font-bold text-[#22244e] mb-1">
-              {STEPS_META[step]!.title}
+              {STEPS_META[kind].title}
             </h2>
             <p className="text-xs text-[#22244e]/50">
-              {STEPS_META[step]!.sub(nombre)}
+              {STEPS_META[kind].sub(nombre)}
             </p>
           </div>
 
-          {/* Paso 0: Nombre + género */}
-          {step === 0 && (
+          {/* Nombre + género */}
+          {kind === "nombre" && (
             <div>
               <Input
                 placeholder="Nombre del niño/a"
@@ -196,8 +217,8 @@ export default function PersonalizarRecompensas() {
             </div>
           )}
 
-          {/* Paso 1: Cantidad de círculos */}
-          {step === 1 && (
+          {/* Cantidad de círculos — solo si no vino ya fijada por el detalle del producto */}
+          {kind === "cantidad" && (
             <div>
               <div className="grid grid-cols-2 gap-3">
                 {OPCIONES.map((n) => (
@@ -220,7 +241,7 @@ export default function PersonalizarRecompensas() {
           )}
 
           {/* Paso 2: Sticker */}
-          {step === 2 && (
+          {kind === "sticker" && (
             <div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {STICKERS.map((s) => (
@@ -245,7 +266,7 @@ export default function PersonalizarRecompensas() {
           )}
 
           {/* Paso 3: Vista previa */}
-          {step === 3 && (
+          {kind === "preview" && (
             <div>
 
               {pdfLoading && (
@@ -340,5 +361,13 @@ function StickerImage({ id, emoji }: { id: string; emoji: string }) {
       className="w-16 h-16 object-contain"
       onError={() => setFailed(true)}
     />
+  );
+}
+
+export default function PersonalizarRecompensas() {
+  return (
+    <Suspense>
+      <PersonalizarRecompensasInner />
+    </Suspense>
   );
 }

@@ -34,7 +34,9 @@ export function pedidoIdFromOrderId(orderId: string | null | undefined): string 
 export interface CreatePaymentParams {
   amount:           number;
   currency:         string;
-  country:          string;
+  // Opcional: si no se manda, el checkout hospedado de dLocal le pide el
+  // país al pagador (así funciona el cobro internacional en USD).
+  country?:         string;
   order_id:         string;
   description:      string;
   success_url:      string;

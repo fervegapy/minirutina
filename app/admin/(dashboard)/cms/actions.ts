@@ -26,6 +26,8 @@ export async function actualizarPrecios(
   precio_digital:    number,
   precio_impreso_20: number | null = null,
   precio_digital_20: number | null = null,
+  precio_digital_usd:    number | null = null,
+  precio_digital_20_usd: number | null = null,
 ) {
   try {
     const supabase = await asegurarAdmin();
@@ -35,11 +37,13 @@ export async function actualizarPrecios(
       producto,
       precio_impreso,
       precio_digital,
+      precio_digital_usd: precio_digital_usd || null,
       updated_at: new Date().toISOString(),
     };
     if (producto === "recompensas") {
       payload.precio_impreso_20 = precio_impreso_20;
       payload.precio_digital_20 = precio_digital_20;
+      payload.precio_digital_20_usd = precio_digital_20_usd || null;
     }
     const { error } = await supabase.from("precios").upsert(payload);
     if (error) return { ok: false, error: error.message };
@@ -101,7 +105,12 @@ export async function actualizarLabelsProducto(
 
 // ─── FAQs ────────────────────────────────────────────────────────────────────
 
-export async function crearFaq(producto: string, pregunta: string, respuesta: string) {
+export async function crearFaq(
+  producto: string,
+  pregunta: string,
+  respuesta: string,
+  region: "py" | "intl" | "ambas" = "ambas",
+) {
   try {
     const supabase = await asegurarAdmin();
     const { data: maxRow } = await supabase
@@ -114,7 +123,7 @@ export async function crearFaq(producto: string, pregunta: string, respuesta: st
     const orden = (maxRow?.orden ?? 0) + 1;
     const { error } = await supabase
       .from("faqs")
-      .insert({ producto, pregunta, respuesta, orden });
+      .insert({ producto, pregunta, respuesta, orden, region });
     if (error) return { ok: false, error: error.message };
     revalidatePath("/admin/cms");
     revalidarPublicas();
@@ -124,12 +133,17 @@ export async function crearFaq(producto: string, pregunta: string, respuesta: st
   }
 }
 
-export async function actualizarFaq(id: string, pregunta: string, respuesta: string) {
+export async function actualizarFaq(
+  id: string,
+  pregunta: string,
+  respuesta: string,
+  region: "py" | "intl" | "ambas" = "ambas",
+) {
   try {
     const supabase = await asegurarAdmin();
     const { error } = await supabase
       .from("faqs")
-      .update({ pregunta, respuesta })
+      .update({ pregunta, respuesta, region })
       .eq("id", id);
     if (error) return { ok: false, error: error.message };
     revalidatePath("/admin/cms");

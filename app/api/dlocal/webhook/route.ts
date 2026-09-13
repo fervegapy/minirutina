@@ -26,6 +26,14 @@ function fmtPyg(n: number) {
   return "Gs. " + Math.round(n).toLocaleString("es-PY");
 }
 
+// El exterior paga en USD — el admin/telegram/email interno del equipo
+// necesitan mostrar el monto real, no "Gs." sobre un número en dólares.
+function fmtMonto(n: number, currency: string) {
+  return currency === "USD"
+    ? "USD " + n.toLocaleString("en-US", { maximumFractionDigits: 2 })
+    : fmtPyg(n);
+}
+
 function extractEmail(contacto?: string | null): string | null {
   if (!contacto) return null;
   const m = contacto.match(/Email:\s*([^\s|]+)/i);
@@ -105,7 +113,9 @@ export async function POST(req: NextRequest) {
     }
 
     const pedido = updated[0] as { id: string; nombre_nino: string; producto: string; contacto?: string | null };
-    const montoPyg = Number(payment.amount) || 0;
+    const monedaPago = payment.currency ?? "PYG";
+    const montoPyg = Number(payment.amount) || 0; // sigue en Gs. para pedidos PY (nombre histórico)
+    const monto = montoPyg; // el monto real, en la moneda de `monedaPago`
 
     // Customer email
     const customerEmail = extractEmail(pedido.contacto);
@@ -113,12 +123,16 @@ export async function POST(req: NextRequest) {
     // Fetch items so emails + analytics reflect the full cart.
     const { data: itemsRows } = await supabaseAdmin
       .from("pedido_items")
-      .select("producto, nombre_nino, tipo_entrega, precio_pyg, orden")
+      .select("producto, nombre_nino, tipo_entrega, precio_pyg, precio_usd, orden")
       .eq("pedido_id", pedidoId)
       .order("orden", { ascending: true });
     const items = (itemsRows ?? []) as Array<{
-      producto: string; nombre_nino: string; tipo_entrega: string; precio_pyg: number;
+      producto: string; nombre_nino: string; tipo_entrega: string; precio_pyg: number; precio_usd: number | null;
     }>;
+    // Precio del ítem en la moneda real del pago (exterior guarda precio_usd,
+    // Paraguay guarda precio_pyg).
+    const precioItem = (it: { precio_pyg: number; precio_usd: number | null }) =>
+      monedaPago === "USD" ? (it.precio_usd ?? 0) : it.precio_pyg;
 
     // Subject / headline reflect single vs multi-item.
     const subjectName = items.length > 1
@@ -128,7 +142,7 @@ export async function POST(req: NextRequest) {
       ? `<ul style="margin:0 0 12px;padding-left:18px;font-size:14px;color:#22244ecc;">
            ${items.map((it) =>
              `<li>${NOMBRE_PRODUCTO[it.producto] ?? it.producto} — <strong>${it.nombre_nino}</strong>
-              <span style="color:#22244e88;">· ${it.tipo_entrega === "digital" ? "Digital" : "Impreso"} · ${fmtPyg(it.precio_pyg)}</span></li>`
+              <span style="color:#22244e88;">· ${it.tipo_entrega === "digital" ? "Digital" : "Impreso"} · ${fmtMonto(precioItem(it), monedaPago)}</span></li>`
            ).join("")}
          </ul>`
       : "";
@@ -143,7 +157,7 @@ export async function POST(req: NextRequest) {
             producto:    productoLabel(it.producto),
             nombreNino:  it.nombre_nino,
             tipoEntrega: it.tipo_entrega,
-            precioPyg:   it.precio_pyg,
+            precioPyg:   precioItem(it),
           }))
         : [{
             producto:    productoLabel(pedido.producto),
@@ -186,7 +200,7 @@ export async function POST(req: NextRequest) {
             productoLabel: productoLabel(it.producto),
             nombreNino:    it.nombre_nino,
             tipoEntrega:   it.tipo_entrega === "digital" ? ("digital" as const) : ("fisico" as const),
-            precioPyg:     it.precio_pyg,
+            precioPyg:     precioItem(it),
           }))
         : [{
             productoLabel: productoLabel(pedido.producto),
@@ -248,7 +262,7 @@ export async function POST(req: NextRequest) {
           <p>Pedido <strong>#${pedidoId.slice(0,8).toUpperCase()}</strong> ·
           ${items.length > 1 ? `<strong>${items.length} items</strong>` : `<strong>${pedido.nombre_nino}</strong> — ${productoLabel(pedido.producto)}`}.</p>
           ${itemsListHtml}
-          <p style="font-size:18px;"><strong>${fmtPyg(montoPyg)}</strong></p>
+          <p style="font-size:18px;"><strong>${fmtMonto(monto, monedaPago)}</strong></p>
           ${pedido.contacto ? `<p style="font-size:13px;color:#22244e88;">Contacto: ${pedido.contacto}</p>` : ""}
           <p><a href="https://www.minirutina.com/admin/pedidos/${pedidoId}" style="background:#22244e;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Ver en /admin/pedidos</a></p>
         </body></html>`,

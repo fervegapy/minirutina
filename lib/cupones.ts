@@ -52,9 +52,15 @@ export function evaluarCupon(
   cupon:     Cupon,
   montoBase: number,
   now:       Date = new Date(),
+  region:    "py" | "intl" = "py",
 ): EvaluacionCupon {
   if (!cupon.activo) {
     return { ok: false, error: "Este cupón no está activo.", descuento: 0 };
+  }
+  // Los cupones de monto fijo están expresados en Gs. — no tienen sentido
+  // contra un total en USD. En el exterior solo funcionan los de porcentaje.
+  if (region === "intl" && cupon.tipo === "monto") {
+    return { ok: false, error: "Este cupón no es válido para pedidos del exterior.", descuento: 0 };
   }
   if (cupon.vigencia_desde && now < new Date(cupon.vigencia_desde)) {
     return { ok: false, error: "Este cupón todavía no está vigente.", descuento: 0 };
@@ -65,7 +71,8 @@ export function evaluarCupon(
   if (cupon.max_usos !== null && cupon.usos >= cupon.max_usos) {
     return { ok: false, error: "Este cupón alcanzó su límite de usos.", descuento: 0 };
   }
-  if (cupon.monto_minimo && montoBase < cupon.monto_minimo) {
+  // monto_minimo está expresado en Gs. — no aplica a un total en USD.
+  if (region === "py" && cupon.monto_minimo && montoBase < cupon.monto_minimo) {
     return {
       ok: false,
       error: `Este cupón requiere una compra mínima de Gs. ${cupon.monto_minimo.toLocaleString("es-PY")}.`,
@@ -89,8 +96,9 @@ export function evaluarCupon(
 export async function validarCupon(
   codigo:    string,
   montoBase: number,
+  region:    "py" | "intl" = "py",
 ): Promise<EvaluacionCupon> {
   const cupon = await fetchCupon(codigo);
   if (!cupon) return { ok: false, error: "Cupón inexistente.", descuento: 0 };
-  return evaluarCupon(cupon, montoBase);
+  return evaluarCupon(cupon, montoBase, new Date(), region);
 }

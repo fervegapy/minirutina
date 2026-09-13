@@ -87,7 +87,10 @@ export function useCarrito() {
   useEffect(() => { emit(); }, []);
 
   const addItem = useCallback((item: Omit<CartItem, "id" | "formato"> & { formato?: Formato }): CartItem => {
-    const newItem: CartItem = { id: genId(), formato: item.formato ?? "fisico", ...item };
+    // El spread de `item` va PRIMERO — si viene con `formato: undefined`
+    // explícito (como hacen los customizers al no forzar región), no debe
+    // pisar el default "fisico" calculado después.
+    const newItem: CartItem = { ...item, id: genId(), formato: item.formato ?? "fisico" };
     const next = [...read(), newItem];
     write(next);
     emit();

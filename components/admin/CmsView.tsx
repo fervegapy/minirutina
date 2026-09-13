@@ -26,6 +26,9 @@ export interface PrecioRow {
   /** Only used for Recompensas — 20-stickers variant. Null for Rutinas. */
   precio_impreso_20: number | null;
   precio_digital_20: number | null;
+  /** Exterior — fijados a mano en USD, sin conversión. Null = no ofrecido afuera. */
+  precio_digital_usd:    number | null;
+  precio_digital_20_usd: number | null;
 }
 export interface ProductoConfigRow {
   producto: string;
@@ -39,6 +42,7 @@ export interface Faq {
   pregunta:  string;
   respuesta: string;
   orden:     number;
+  region:    "py" | "intl" | "ambas";
 }
 export interface Testimonio {
   id:     string;
@@ -110,6 +114,8 @@ function PreciosSection({
               precioDigital={precio?.precio_digital ?? 0}
               precioImpreso20={precio?.precio_impreso_20 ?? 0}
               precioDigital20={precio?.precio_digital_20 ?? 0}
+              precioDigitalUsd={precio?.precio_digital_usd ?? 0}
+              precioDigital20Usd={precio?.precio_digital_20_usd ?? 0}
               activo={cfg?.activo ?? true}
               nombre={cfg?.nombre ?? null}
               tagline={cfg?.tagline ?? null}
@@ -127,6 +133,8 @@ function ProductoRow({
   precioDigital,
   precioImpreso20,
   precioDigital20,
+  precioDigitalUsd,
+  precioDigital20Usd,
   activo,
   nombre,
   tagline,
@@ -136,6 +144,8 @@ function ProductoRow({
   precioDigital: number;
   precioImpreso20: number;
   precioDigital20: number;
+  precioDigitalUsd: number;
+  precioDigital20Usd: number;
   activo: boolean;
   nombre: string | null;
   tagline: string | null;
@@ -150,12 +160,16 @@ function ProductoRow({
   const [digital,   setDigital]   = useState(precioDigital);
   const [impreso20, setImpreso20] = useState(precioImpreso20);
   const [digital20, setDigital20] = useState(precioDigital20);
+  const [digitalUsd,   setDigitalUsd]   = useState(precioDigitalUsd);
+  const [digital20Usd, setDigital20Usd] = useState(precioDigital20Usd);
   const preciosDirty =
     impreso   !== precioImpreso   ||
     digital   !== precioDigital   ||
+    digitalUsd !== precioDigitalUsd ||
     (esRecompensas && (
       impreso20 !== precioImpreso20 ||
-      digital20 !== precioDigital20
+      digital20 !== precioDigital20 ||
+      digital20Usd !== precioDigital20Usd
     ));
 
   // Labels — empty input → vuelve al fallback hardcoded
@@ -183,6 +197,8 @@ function ProductoRow({
         digital,
         esRecompensas ? (impreso20 || null) : null,
         esRecompensas ? (digital20 || null) : null,
+        digitalUsd || null,
+        esRecompensas ? (digital20Usd || null) : null,
       );
       if (r.ok) router.refresh();
       else alert(r.error ?? "Error");
@@ -300,6 +316,16 @@ function ProductoRow({
               <PriceField label="Impreso (Gs.)" value={impreso20} onChange={setImpreso20} />
               <PriceField label="Digital (Gs.)" value={digital20} onChange={setDigital20} />
             </div>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium mt-3">
+              Exterior — digital en USD (fijado a mano, sin conversión)
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <PriceField label="Digital 10 (USD)" value={digitalUsd}   onChange={setDigitalUsd} />
+              <PriceField label="Digital 20 (USD)" value={digital20Usd} onChange={setDigital20Usd} />
+            </div>
+            <p className="text-[10px] text-zinc-400">
+              Vacío o 0 = este producto no se ofrece en el exterior todavía.
+            </p>
           </>
         ) : (
           <>
@@ -310,6 +336,13 @@ function ProductoRow({
               <PriceField label="Impreso (Gs.)" value={impreso} onChange={setImpreso} />
               <PriceField label="Digital (Gs.)" value={digital} onChange={setDigital} />
             </div>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium mt-3">
+              Exterior — digital en USD (fijado a mano, sin conversión)
+            </p>
+            <PriceField label="Digital (USD)" value={digitalUsd} onChange={setDigitalUsd} />
+            <p className="text-[10px] text-zinc-400">
+              Vacío o 0 = este producto no se ofrece en el exterior todavía.
+            </p>
           </>
         )}
         {preciosDirty && (
@@ -384,16 +417,43 @@ function FaqsSection({ faqs }: { faqs: Faq[] }) {
   );
 }
 
+const REGION_FAQ_LABEL: Record<Faq["region"], string> = {
+  py:    "🇵🇾 Solo Paraguay",
+  intl:  "🌎 Solo exterior",
+  ambas: "Ambas regiones",
+};
+
+function RegionFaqSelect({
+  value,
+  onChange,
+}: {
+  value: Faq["region"];
+  onChange: (v: Faq["region"]) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value as Faq["region"])}
+      className="text-xs rounded-md border border-zinc-200 bg-white text-zinc-700 h-7 px-2"
+    >
+      {(Object.keys(REGION_FAQ_LABEL) as Faq["region"][]).map((r) => (
+        <option key={r} value={r}>{REGION_FAQ_LABEL[r]}</option>
+      ))}
+    </select>
+  );
+}
+
 function FaqEditor({ faq }: { faq: Faq }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [pregunta, setPregunta] = useState(faq.pregunta);
   const [respuesta, setRespuesta] = useState(faq.respuesta);
-  const dirty = pregunta !== faq.pregunta || respuesta !== faq.respuesta;
+  const [region, setRegion] = useState<Faq["region"]>(faq.region ?? "ambas");
+  const dirty = pregunta !== faq.pregunta || respuesta !== faq.respuesta || region !== faq.region;
 
   const guardar = () => {
     startTransition(async () => {
-      const r = await actualizarFaq(faq.id, pregunta, respuesta);
+      const r = await actualizarFaq(faq.id, pregunta, respuesta, region);
       if (r.ok) router.refresh();
       else alert(r.error ?? "Error");
     });
@@ -422,25 +482,28 @@ function FaqEditor({ faq }: { faq: Faq }) {
         rows={2}
         className="w-full text-sm px-3 py-2 rounded-md border border-zinc-200 bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400/50 focus:border-zinc-400 resize-y"
       />
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2">
         <button
           onClick={borrar}
           disabled={pending}
-          className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+          className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1 shrink-0"
         >
           <Trash2 className="w-3.5 h-3.5" />
           Eliminar
         </button>
-        {dirty && (
-          <Button
-            onClick={guardar}
-            disabled={pending}
-            className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-7 rounded-md"
-          >
-            <Save className="w-3 h-3 mr-1" />
-            Guardar
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <RegionFaqSelect value={region} onChange={setRegion} />
+          {dirty && (
+            <Button
+              onClick={guardar}
+              disabled={pending}
+              className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs h-7 rounded-md"
+            >
+              <Save className="w-3 h-3 mr-1" />
+              Guardar
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -451,11 +514,12 @@ function NuevaFaq({ producto }: { producto: string }) {
   const [pending, startTransition] = useTransition();
   const [pregunta, setPregunta] = useState("");
   const [respuesta, setRespuesta] = useState("");
+  const [region, setRegion] = useState<Faq["region"]>("ambas");
 
   const agregar = () => {
     if (!pregunta.trim() || !respuesta.trim()) return;
     startTransition(async () => {
-      const r = await crearFaq(producto, pregunta.trim(), respuesta.trim());
+      const r = await crearFaq(producto, pregunta.trim(), respuesta.trim(), region);
       if (r.ok) {
         setPregunta("");
         setRespuesta("");
@@ -479,15 +543,18 @@ function NuevaFaq({ producto }: { producto: string }) {
         rows={2}
         className="w-full text-sm px-3 py-2 rounded-md border border-zinc-200 bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-400/50 focus:border-zinc-400 resize-y"
       />
-      <Button
-        onClick={agregar}
-        disabled={pending || !pregunta.trim() || !respuesta.trim()}
-        variant="outline"
-        className="text-xs h-7 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-      >
-        <Plus className="w-3 h-3 mr-1" />
-        Agregar FAQ
-      </Button>
+      <div className="flex items-center gap-2">
+        <RegionFaqSelect value={region} onChange={setRegion} />
+        <Button
+          onClick={agregar}
+          disabled={pending || !pregunta.trim() || !respuesta.trim()}
+          variant="outline"
+          className="text-xs h-7 border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+        >
+          <Plus className="w-3 h-3 mr-1" />
+          Agregar FAQ
+        </Button>
+      </div>
     </div>
   );
 }

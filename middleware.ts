@@ -4,10 +4,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAdminEmail } from "@/lib/admin-emails";
+import { REGION_COOKIE, REGION_COOKIE_MAX_AGE, isRegion, regionFromCountryCode } from "@/lib/region";
 
 export async function middleware(req: NextRequest) {
   // Build a response we can attach cookies to as the session refreshes.
   let res = NextResponse.next({ request: req });
+
+  // ─── Región (Paraguay vs. exterior) ───────────────────────────────────────
+  // `?region=py|intl` fuerza la región y la persiste — sirve para probar el
+  // exterior en local, donde no hay header de geolocalización de Vercel.
+  const forcedRegion = req.nextUrl.searchParams.get("region");
+  const existingRegion = req.cookies.get(REGION_COOKIE)?.value;
+  if (isRegion(forcedRegion)) {
+    res.cookies.set(REGION_COOKIE, forcedRegion, { maxAge: REGION_COOKIE_MAX_AGE, path: "/" });
+  } else if (!isRegion(existingRegion)) {
+    const country = req.headers.get("x-vercel-ip-country");
+    res.cookies.set(REGION_COOKIE, regionFromCountryCode(country), {
+      maxAge: REGION_COOKIE_MAX_AGE,
+      path:   "/",
+    });
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

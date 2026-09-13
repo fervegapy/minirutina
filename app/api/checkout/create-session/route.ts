@@ -32,6 +32,10 @@ interface Body {
   producto:     string;
   tipoEntrega:  "fisico" | "digital";
   modalidad?:   "pickup" | "delivery" | null;
+  // Exterior: cobro en USD, sin envío ni país fijo (dLocal deja elegir país
+  // en el checkout hospedado cuando no se lo mandamos).
+  region?:      "py" | "intl";
+  totalUsd?:    number;
 }
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
@@ -44,6 +48,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as Body;
     const { pedidoId, email, nombreNino, producto, tipoEntrega, modalidad } = body;
+
+    // ─── Exterior — cobro en USD ────────────────────────────────────────────
+    // Sin envío (no enviamos impreso fuera de Paraguay) y sin país fijo: el
+    // checkout hospedado de dLocal le pide el país al pagador.
+    if (body.region === "intl") {
+      return handleIntl(body, req);
+    }
 
     const productoPyg = Number.isFinite(body.productoPyg)
       ? body.productoPyg
@@ -239,6 +250,155 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, url: payment.redirect_url });
   } catch (e) {
     console.error("[dlocal/create-session]", e);
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Error interno" },
+      { status: 500 },
+    );
+  }
+}
+
+// ─── Exterior — USD, sin envío, sin país fijo ────────────────────────────────
+async function handleIntl(body: Body, req: NextRequest) {
+  try {
+    const { pedidoId, email, nombreNino, producto } = body;
+    const productoUsd = Number.isFinite(body.totalUsd) ? Number(body.totalUsd) : 0;
+
+    let descuento = 0;
+    let cuponAplicado: { id: string; codigo: string } | null = null;
+    if (body.cuponCodigo) {
+      const cupon = await fetchCupon(body.cuponCodigo);
+      if (cupon) {
+        const ev = evaluarCupon(cupon, productoUsd, new Date(), "intl");
+        if (ev.ok) { descuento = ev.descuento; cuponAplicado = { id: cupon.id, codigo: cupon.codigo }; }
+      }
+    }
+
+    const totalUsd = Math.round(Math.max(0, productoUsd - descuento) * 100) / 100;
+
+    if (!pedidoId || (totalUsd <= 0 && descuento === 0)) {
+      return NextResponse.json({ ok: false, error: "Datos del pedido incompletos." }, { status: 400 });
+    }
+
+    const origin = req.headers.get("origin") ?? "https://www.minirutina.com";
+
+    // Cupón 100% — igual que en el flujo de Gs., bypass total de dLocal.
+    if (totalUsd === 0) {
+      await supabaseAdmin.from("pedidos").update({
+        estado:          "pagado",
+        metodo_pago:     "cupon_100",
+        moneda_pago:     "USD",
+        cupon_codigo:    cuponAplicado?.codigo ?? null,
+        cupon_descuento: descuento > 0 ? descuento : null,
+      }).eq("id", pedidoId);
+
+      if (cuponAplicado && descuento > 0) {
+        await supabaseAdmin.from("cupon_usos").insert({
+          cupon_id:        cuponAplicado.id,
+          codigo:          cuponAplicado.codigo,
+          pedido_id:       pedidoId,
+          email:           email ?? null,
+          monto_original:  productoUsd,
+          monto_descuento: descuento,
+          monto_final:     0,
+        });
+        const { data: cuRow } = await supabaseAdmin
+          .from("cupones").select("usos").eq("id", cuponAplicado.id).maybeSingle();
+        await supabaseAdmin.from("cupones")
+          .update({ usos: (cuRow?.usos ?? 0) + 1 }).eq("id", cuponAplicado.id);
+      }
+
+      const { data: itemRows } = await supabaseAdmin
+        .from("pedido_items")
+        .select("id, producto, nombre_nino, tipo_entrega, precio_usd")
+        .eq("pedido_id", pedidoId)
+        .order("orden", { ascending: true });
+      const rows = itemRows ?? [];
+
+      if (email?.includes("@")) {
+        const emailItems = rows.map((it) => ({
+          productoLabel: productoLabel(it.producto),
+          nombreNino:    it.nombre_nino,
+          tipoEntrega:   "digital" as const,
+          precioPyg:     0,
+        }));
+        const downloadButtons = rows.map((it) => ({
+          label: `Descargar tablero de ${it.nombre_nino}`,
+          href:  `${origin}/api/pdf/${it.id}`,
+        }));
+        const envio = await enviarPedidoConfirmado({
+          to:            email,
+          nombreCliente: body.nombreComprador ?? null,
+          pedidoId,
+          items:         emailItems,
+          total:         0,
+          downloadButtons,
+        }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
+        if (!envio.ok) {
+          console.error("[create-session/intl] cupón-100 email NO se envió para", pedidoId, ":", envio.error);
+        }
+      }
+
+      const confirmUrl = `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`;
+      return NextResponse.json({ ok: true, url: confirmUrl });
+    }
+
+    const nombreProducto = NOMBRE_PRODUCTO[producto] ?? "Tablero personalizado";
+    const nroPedido = pedidoId.slice(0, 8).toUpperCase();
+    const descripcion =
+      `Pedido #${nroPedido} · ${nombreProducto} — ${nombreNino} · Digital (PDF)`.slice(0, 100);
+
+    const payment = await createPayment({
+      amount:           totalUsd,
+      currency:         "USD",
+      // Sin country: dLocal muestra el selector de país en su checkout.
+      order_id:         buildOrderId(pedidoId),
+      description:      descripcion,
+      success_url:      `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`,
+      back_url:         `${origin}/checkout?cancelado=1`,
+      notification_url: `${origin}/api/dlocal/webhook`,
+      payer: {
+        name:  body.nombreComprador?.trim() || (nombreNino ? `Pedido ${nombreNino}` : undefined),
+        email: email && email.includes("@") ? email : undefined,
+      },
+    });
+
+    if (!payment.redirect_url) {
+      return NextResponse.json(
+        { ok: false, error: "dLocal no devolvió URL de pago." },
+        { status: 502 },
+      );
+    }
+
+    await supabaseAdmin
+      .from("pedidos")
+      .update({
+        dlocal_payment_id: payment.id,
+        metodo_pago:       "dlocal",
+        moneda_pago:       "USD",
+        cupon_codigo:      cuponAplicado?.codigo ?? null,
+        cupon_descuento:   descuento > 0 ? descuento : null,
+      })
+      .eq("id", pedidoId);
+
+    if (cuponAplicado && descuento > 0) {
+      await supabaseAdmin.from("cupon_usos").insert({
+        cupon_id:        cuponAplicado.id,
+        codigo:          cuponAplicado.codigo,
+        pedido_id:       pedidoId,
+        email:           email ?? null,
+        monto_original:  productoUsd,
+        monto_descuento: descuento,
+        monto_final:     totalUsd,
+      });
+      const { data: cuRow } = await supabaseAdmin
+        .from("cupones").select("usos").eq("id", cuponAplicado.id).maybeSingle();
+      await supabaseAdmin.from("cupones")
+        .update({ usos: (cuRow?.usos ?? 0) + 1 }).eq("id", cuponAplicado.id);
+    }
+
+    return NextResponse.json({ ok: true, url: payment.redirect_url });
+  } catch (e) {
+    console.error("[dlocal/create-session/intl]", e);
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "Error interno" },
       { status: 500 },

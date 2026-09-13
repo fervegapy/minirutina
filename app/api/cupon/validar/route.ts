@@ -7,12 +7,14 @@ import { validarCupon } from "@/lib/cupones";
 
 export async function POST(req: NextRequest) {
   try {
-    const { codigo, montoBase } = (await req.json()) as { codigo?: string; montoBase?: number };
+    const { codigo, montoBase, region } = (await req.json()) as {
+      codigo?: string; montoBase?: number; region?: "py" | "intl";
+    };
     if (!codigo || !montoBase || montoBase <= 0) {
       return NextResponse.json({ ok: false, error: "Datos incompletos." }, { status: 400 });
     }
 
-    const r = await validarCupon(codigo, montoBase);
+    const r = await validarCupon(codigo, montoBase, region === "intl" ? "intl" : "py");
     if (!r.ok) {
       return NextResponse.json({ ok: false, error: r.error });
     }

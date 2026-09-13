@@ -10,17 +10,33 @@ import type { Pedido } from "@/types/pedido";
 export const PRECIO_DELIVERY = 35_000;
 
 export interface PrecioRow {
-  producto:        string;
-  precio_impreso:  number;
-  precio_digital:  number;
+  producto?:             string;
+  precio_impreso:        number;
+  precio_digital:        number;
+  // Exterior — fijados a mano por el admin en USD, sin conversión desde Gs.
+  // null = todavía no configurado → el producto no se ofrece en el exterior.
+  precio_digital_usd?:    number | null;
+  precio_digital_20_usd?: number | null;
 }
 
 export type PreciosMap = Record<string, PrecioRow>;
 
+/** Formatea en dólares — "USD 12" (nunca "$", nunca decimales de más). */
+export function fmtUsd(n: number): string {
+  return "USD " + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
+/** Precio USD del digital para un producto (10 pasos, o 20 si se pide). null = no configurado aún. */
+export function precioUsd(row: PrecioRow | undefined, cantidad20 = false): number | null {
+  if (!row) return null;
+  const v = cantidad20 ? row.precio_digital_20_usd : row.precio_digital_usd;
+  return typeof v === "number" && v > 0 ? v : null;
+}
+
 /** Indexes precios rows by producto for O(1) lookup. */
 export function indexPrecios(rows: PrecioRow[] | null | undefined): PreciosMap {
   const m: PreciosMap = {};
-  for (const r of rows ?? []) m[r.producto] = r;
+  for (const r of rows ?? []) { if (r.producto) m[r.producto] = r; }
   return m;
 }
 

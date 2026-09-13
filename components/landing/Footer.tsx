@@ -1,10 +1,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getSiteConfig } from "@/lib/site-config";
+import { getRegion } from "@/lib/region";
 import { waMeUrl } from "@/lib/contacto";
+import RegionSwitcher from "@/components/region/RegionSwitcher";
 
 export default async function Footer() {
   const cfg = await getSiteConfig();
+  const region = await getRegion();
   // WhatsApp lives here in the footer for the rest of the flow — the floating
   // button is only on the home so it doesn't block conversion CTAs.
   const waUrl = waMeUrl(
@@ -91,13 +94,16 @@ export default async function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
+        <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-3">
           <p className="text-white/30 text-xs">
             © {new Date().getFullYear()} Minirutina. Todos los derechos reservados.
           </p>
-          <p className="text-white/20 text-xs">
-            Hecho con ❤️ para familias paraguayas
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-white/20 text-xs">
+              {region === "py" ? "Hecho con ❤️ para familias paraguayas" : "Envíos digitales a todo el mundo"}
+            </p>
+            <RegionSwitcher region={region} variant="dark" />
+          </div>
         </div>
       </div>
     </footer>

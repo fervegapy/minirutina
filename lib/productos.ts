@@ -142,3 +142,89 @@ export const productos: Record<string, Producto> = {
     customizerHref: "/personalizar/recompensas",
   },
 };
+
+// ─── Copy para el exterior ───────────────────────────────────────────────────
+// Fuera de Paraguay el tablero es solo digital (no enviamos impreso todavía),
+// así que el texto no puede prometer papel, plastificado ni 48 horas. Estos
+// campos pisan los de `productos` cuando la región es "intl" — ver
+// getProductoCopy() más abajo. Lo que no se pisa (nombre, tagline base,
+// emoji, accentColor, customizerHref) se mantiene igual en las dos regiones.
+type ProductoIntl = Pick<
+  Producto,
+  "tagline" | "descripcion" | "incluye" | "faqs"
+>;
+
+export const productosIntl: Record<string, ProductoIntl> = {
+  rutinas: {
+    tagline: "Dos tableros digitales: uno para la mañana y otro para la noche.",
+    descripcion:
+      "Son dos tableros en un mismo PDF: uno para la rutina al despertarse (vestirse, lavarse los dientes, desayunar, mochila) y otro para la de la noche (baño, pijama, cuento, luz apagada). Van con el nombre de tu hijo y los íconos que elijas, para que sepa qué sigue sin que tengas que repetírselo. Lo recibís por email apenas confirmás el pago, listo para imprimir en tu casa o en cualquier imprenta.",
+    incluye: [
+      "2 tableros digitales en PDF de alta resolución (mañana + noche)",
+      "Nombre de tu niño",
+      "Hasta 7 actividades por tablero",
+      "Color a elección",
+      "Tamaño A4, se ajusta a Letter u otros formatos al imprimir",
+      "Lo recibís por email en minutos",
+    ],
+    faqs: [
+      {
+        q: "¿Cómo lo recibo?",
+        a: "Por email, en PDF, apenas confirmamos el pago.",
+      },
+      {
+        q: "¿Puedo imprimirlo?",
+        a: "Sí, en tu propia impresora o en cualquier imprenta cercana. Con cartulina o papel más grueso queda mejor y dura más.",
+      },
+      {
+        q: "¿Qué tamaño tiene?",
+        a: "A4 por defecto. Al imprimir podés escalarlo a Letter o al tamaño que uses.",
+      },
+      {
+        q: "¿Hacen envíos impresos fuera de Paraguay?",
+        a: "Todavía no. Por ahora, fuera de Paraguay el tablero es digital. Estamos evaluando la impresión y el envío internacional para más adelante.",
+      },
+    ],
+  },
+
+  recompensas: {
+    tagline: "Motivá a tu hijo a lograr lo que se proponga, paso a paso.",
+    descripcion:
+      "Un tablero digital con 10 o 20 pasos, vos elegís cuántos, donde tu hijo va juntando figuritas hasta llegar a la recompensa que definas. Las figuritas las elegís vos y se consiguen aparte. Funciona mejor que los castigos: los chicos se enganchan, quieren llenar el tablero y el hábito se instala solo. Lo recibís por email apenas confirmás el pago, listo para imprimir en tu casa o en cualquier imprenta.",
+    incluye: [
+      "1 tablero digital en PDF de alta resolución",
+      "Nombre de tu niño",
+      "Cantidad de pasos a elección (10 o 20)",
+      "Color a elección",
+      "Tamaño A4, se ajusta a Letter u otros formatos al imprimir",
+      "Lo recibís por email en minutos",
+    ],
+    faqs: [
+      {
+        q: "¿Cuántos pasos recomiendan?",
+        a: "Para menores de 5 años, 10 pasos. Para mayores, 20. La idea es que el premio no tarde demasiado en llegar.",
+      },
+      {
+        q: "¿Cómo marco los pasos?",
+        a: "Imprimís el tablero y pegás las figuritas que elijas vos, las que más le gusten a tu hijo.",
+      },
+      {
+        q: "¿Cómo lo recibo?",
+        a: "Por email, en PDF, apenas confirmamos el pago.",
+      },
+      {
+        q: "¿Hacen envíos impresos fuera de Paraguay?",
+        a: "Todavía no. Por ahora, fuera de Paraguay el tablero es digital. Estamos evaluando la impresión y el envío internacional para más adelante.",
+      },
+    ],
+  },
+};
+
+/** Copy final de un producto para la región dada — pisa solo lo que cambia. */
+export function getProductoCopy(slug: string, region: "py" | "intl"): Producto | null {
+  const base = productos[slug];
+  if (!base) return null;
+  if (region === "py") return base;
+  const overrides = productosIntl[slug];
+  return overrides ? { ...base, ...overrides } : base;
+}

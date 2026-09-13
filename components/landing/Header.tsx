@@ -4,10 +4,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { getSiteConfig } from "@/lib/site-config";
+import { getRegion } from "@/lib/region";
 import CartBadge from "@/components/landing/CartBadge";
+import RegionSwitcher from "@/components/region/RegionSwitcher";
 
 export default async function Header() {
   const cfg = await getSiteConfig();
+  const region = await getRegion();
 
   return (
     <header className="sticky top-0 z-50 bg-[#faf6e7]/95 backdrop-blur-sm border-b border-[#e5e7eb]">
@@ -49,6 +52,7 @@ export default async function Header() {
 
         {/* CTA + carrito */}
         <div className="flex items-center gap-2">
+          <RegionSwitcher region={region} />
           <CartBadge />
           <Link href="#productos">
             <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 text-sm px-5 h-12 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#336aea]/30 active:translate-y-0 active:scale-[0.98]">

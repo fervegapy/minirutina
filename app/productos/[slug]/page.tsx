@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { productos } from "@/lib/productos";
+import { getProductoCopy } from "@/lib/productos";
 import { supabase } from "@/lib/supabase";
+import { getRegion } from "@/lib/region";
+import { precioUsd, fmtUsd } from "@/lib/precios";
 import Header from "@/components/landing/Header";
 import Footer from "@/components/landing/Footer";
 import ProductGallery from "@/components/ProductGallery";
+import CantidadPicker from "@/components/producto/CantidadPicker";
 
 // Force per-request so admin edits to FAQs and the "pause product"
 // toggle are visible immediately (no stale SSG/ISR cache).
@@ -16,11 +19,14 @@ export default async function ProductoPage({
 }: {
   params: { slug: string };
 }) {
-  const producto = productos[params.slug];
+  const region = await getRegion();
+  const producto = getProductoCopy(params.slug, region);
   if (!producto) notFound();
 
+  const esRecompensas = params.slug === "recompensas";
+
   // CMS lookups: config (active + label overrides), faqs, precios — all in
-  // parallel.
+  // parallel. FAQs se filtran por región (o "ambas") desde el admin.
   const [
     { data: cfg },
     { data: faqRows },
@@ -33,12 +39,12 @@ export default async function ProductoPage({
       .maybeSingle(),
     supabase
       .from("faqs")
-      .select("id, pregunta, respuesta, orden")
+      .select("id, pregunta, respuesta, orden, region")
       .eq("producto", params.slug)
       .order("orden", { ascending: true }),
     supabase
       .from("precios")
-      .select("precio_impreso, precio_digital, precio_impreso_20, precio_digital_20")
+      .select("precio_impreso, precio_digital, precio_impreso_20, precio_digital_20, precio_digital_usd, precio_digital_20_usd")
       .eq("producto", params.slug)
       .maybeSingle(),
   ]);
@@ -46,26 +52,34 @@ export default async function ProductoPage({
   // Product paused → behave like it doesn't exist.
   if (cfg && cfg.activo === false) notFound();
 
-  // Use DB faqs if present, otherwise fall back to the hardcoded ones
-  // (covers the case where the CMS table hasn't been seeded yet).
+  // En el exterior solo vendemos lo que tiene precio USD cargado a mano —
+  // si no está configurado, el producto no existe para esa región.
+  const usd10 = region === "intl" ? precioUsd(precioRow ?? undefined, false) : null;
+  if (region === "intl" && usd10 === null) notFound();
+  const usd20 = region === "intl" && esRecompensas ? precioUsd(precioRow ?? undefined, true) : null;
+
   const faqs =
     faqRows && faqRows.length > 0
-      ? faqRows.map((r) => ({ q: r.pregunta, a: r.respuesta }))
+      ? faqRows
+          .filter((r) => r.region === "ambas" || r.region === region)
+          .map((r) => ({ q: r.pregunta, a: r.respuesta }))
       : producto.faqs;
-
-  // Merge CMS overrides + derived precio over the hardcoded base.
-  const precioDb = (() => {
-    // Show the printed (impreso) base price — for recompensas that's the
-    // 10-sticker version. No "desde" / no lowest-variant logic.
-    const v = precioRow?.precio_impreso;
-    return typeof v === "number" && v > 0
-      ? "Gs. " + v.toLocaleString("es-PY")
-      : null;
-  })();
+  const faqsFinal = faqs.length > 0 ? faqs : producto.faqs;
 
   const nombre  = (cfg?.nombre  && cfg.nombre.trim())  || producto.nombre;
   const tagline = (cfg?.tagline && cfg.tagline.trim()) || producto.tagline;
-  const precio  = precioDb ?? producto.precioDesde;
+
+  // Precio impreso (Gs.) — de la DB, o el fallback hardcoded si la tabla
+  // todavía no responde (p. ej. antes de correr la migración de columnas USD).
+  const precioImpresoNum =
+    typeof precioRow?.precio_impreso === "number" && precioRow.precio_impreso > 0
+      ? precioRow.precio_impreso
+      : parseInt(producto.precioDesde.replace(/\D/g, ""), 10) || 0;
+
+  // Precio mostrado: Gs. impreso en Paraguay, USD digital en el exterior.
+  const precio = region === "intl"
+    ? fmtUsd(usd10!)
+    : "Gs. " + precioImpresoNum.toLocaleString("es-PY");
 
   return (
     <div className="min-h-screen bg-[#faf6e7] pb-24 md:pb-0">
@@ -107,6 +121,11 @@ export default async function ProductoPage({
                 <span className="text-4xl font-bold text-[#22244e]">
                   {precio}
                 </span>
+                {region === "intl" && esRecompensas && usd20 !== null && (
+                  <span className="block text-sm text-[#22244e]/50 mt-1">
+                    20 pasos: {fmtUsd(usd20)}
+                  </span>
+                )}
               </div>
 
               {/* Lo que incluye (resumen) */}
@@ -122,19 +141,32 @@ export default async function ProductoPage({
                     {item}
                   </div>
                 ))}
-                <p className="text-xs text-[#22244e]/40 pt-1">
-                  + {producto.incluye.length - 4} incluidos más
-                </p>
+                {producto.incluye.length > 4 && (
+                  <p className="text-xs text-[#22244e]/40 pt-1">
+                    + {producto.incluye.length - 4} incluidos más
+                  </p>
+                )}
               </div>
 
-              {/* CTA */}
-              <Link href={producto.customizerHref}>
-                <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base h-12">
-                  Personalizar tablero
-                </Button>
-              </Link>
+              {/* Recompensas: elegí la cantidad de pasos antes de personalizar */}
+              {esRecompensas ? (
+                <CantidadPicker
+                  slug={params.slug}
+                  precio10={region === "intl" ? usd10! : precioImpresoNum}
+                  precio20={region === "intl" ? usd20 : (precioRow?.precio_impreso_20 ?? null)}
+                  moneda={region === "intl" ? "usd" : "pyg"}
+                />
+              ) : (
+                <Link href={producto.customizerHref}>
+                  <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base h-12">
+                    Personalizar tablero
+                  </Button>
+                </Link>
+              )}
               <p className="text-center text-xs text-[#22244e]/40 mt-3">
-                Listo en 5 minutos · Te llega en 48 horas
+                {region === "intl"
+                  ? "Listo en 5 minutos · Lo recibís por email al instante"
+                  : "Listo en 5 minutos · Te llega en 48 horas"}
               </p>
             </div>
           </div>
@@ -191,6 +223,23 @@ export default async function ProductoPage({
           </div>
         </section>
 
+        {/* FAQs */}
+        <section className="px-6 py-16">
+          <div className="max-w-3xl mx-auto">
+            <h2 className="text-2xl font-bold text-[#22244e] mb-6 text-center">
+              Preguntas frecuentes
+            </h2>
+            <div className="space-y-3">
+              {faqsFinal.map((f) => (
+                <div key={f.q} className="bg-white border border-[#e5e7eb] rounded-xl p-4">
+                  <p className="font-bold text-sm text-[#22244e] mb-1">{f.q}</p>
+                  <p className="text-sm text-[#22244e]/60 leading-relaxed">{f.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
       </main>
 
       {/* Sticky mobile CTA — siempre visible al fondo en mobile para no
@@ -199,7 +248,7 @@ export default async function ProductoPage({
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#e5e7eb] px-4 py-3 flex items-center gap-3 shadow-[0_-4px_24px_rgba(0,0,0,0.07)]">
         <div className="flex-1 min-w-0">
           <p className="text-[10px] uppercase tracking-widest text-[#22244e]/40 font-bold">
-            Versión impresa
+            {region === "intl" ? "Versión digital" : "Versión impresa"}
           </p>
           <p className="text-base font-bold text-[#22244e] leading-tight truncate">
             {precio}

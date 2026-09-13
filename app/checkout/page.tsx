@@ -24,6 +24,8 @@ const MapLocationPicker = dynamic(
 import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
 import DlocalCardForm, { type DlocalCardFormHandle } from "@/components/checkout/DlocalCardForm";
 import { useCarrito, type CartItem, type Formato, type Producto } from "@/lib/carrito";
+import { getRegionClient, type Region } from "@/lib/region";
+import { fmtUsd } from "@/lib/precios";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas:     "Tablero de Rutinas",
@@ -58,11 +60,13 @@ function StepTitle({ n, children }: { n: number; children: React.ReactNode }) {
 // Precios row from Supabase. We fetch once for BOTH products and resolve
 // each cart item's price client-side.
 interface PrecioRow {
-  producto:           string;
-  precio_impreso:     number;
-  precio_digital:     number;
-  precio_impreso_20:  number | null;
-  precio_digital_20:  number | null;
+  producto:              string;
+  precio_impreso:        number;
+  precio_digital:        number;
+  precio_impreso_20:     number | null;
+  precio_digital_20:     number | null;
+  precio_digital_usd:    number | null;
+  precio_digital_20_usd: number | null;
 }
 
 function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>): number {
@@ -80,10 +84,26 @@ function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>): number
   return (usar20 && row.precio_impreso_20) || row.precio_impreso;
 }
 
+/** Precio USD (exterior) — solo digital, fijado a mano en el admin. */
+function getItemPriceUsd(item: CartItem, prices: Record<string, PrecioRow>): number {
+  const row = prices[item.producto];
+  if (!row) return 0;
+  const usar20 =
+    item.producto === "recompensas" &&
+    (item.personalizacion as { cantidad?: number } | null)?.cantidad === 20;
+  const v = usar20 ? row.precio_digital_20_usd : row.precio_digital_usd;
+  return typeof v === "number" && v > 0 ? v : 0;
+}
+
 function CheckoutInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { items, removeItem, setFormato, clear } = useCarrito();
+
+  // Región — decide moneda, si se pide envío/dirección y si dLocal cobra en
+  // Gs. o en USD. Se lee de la cookie que puso el middleware (o el selector).
+  const [region] = useState<Region>(() => getRegionClient());
+  const esIntl = region === "intl";
 
   // Form state — order-level (shared by all items)
   const [modalidad, setModalidad] = useState<"pickup" | "delivery">("pickup");
@@ -114,9 +134,12 @@ function CheckoutInner() {
   const [ruc,         setRuc]         = useState("");
   const [razonSocial, setRazonSocial] = useState("");
 
-  // Checkout mode (dynamic from /api/dlocal/public-config)
+  // Checkout mode (dynamic from /api/dlocal/public-config). El exterior
+  // siempre usa redirect — el formulario embebido (DlocalCardForm) está
+  // fijado a country: "PY" y no sirve para tarjetas de otros países.
   const [checkoutMode, setCheckoutMode] = useState<CheckoutMode>(CHECKOUT_MODE_FALLBACK);
   useEffect(() => {
+    if (esIntl) return;
     fetch("/api/dlocal/public-config", { cache: "no-store" })
       .then((r) => r.json())
       .then((c: { checkout_mode?: CheckoutMode }) => {
@@ -125,7 +148,8 @@ function CheckoutInner() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [esIntl]);
+  const checkoutModeEfectivo: CheckoutMode = esIntl ? "redirect" : checkoutMode;
 
   // Cupón
   const [cuponInput,    setCuponInput]    = useState("");
@@ -152,7 +176,7 @@ function CheckoutInner() {
   useEffect(() => {
     supabase
       .from("precios")
-      .select("producto, precio_impreso, precio_digital, precio_impreso_20, precio_digital_20")
+      .select("producto, precio_impreso, precio_digital, precio_impreso_20, precio_digital_20, precio_digital_usd, precio_digital_20_usd")
       .then(({ data }) => {
         if (data) {
           const map: Record<string, PrecioRow> = {};
@@ -201,11 +225,15 @@ function CheckoutInner() {
 
   // ─── Derived ────────────────────────────────────────────────────────────
   const itemsConPrecio = useMemo(
-    () => items.map((it) => ({ ...it, precio: getItemPrice(it, pricesMap) })),
-    [items, pricesMap],
+    () => items.map((it) => ({
+      ...it,
+      precio: esIntl ? getItemPriceUsd(it, pricesMap) : getItemPrice(it, pricesMap),
+    })),
+    [items, pricesMap, esIntl],
   );
 
-  const anyFisico = items.some((it) => it.formato === "fisico");
+  // En el exterior todo es digital — no hay envío ni pickup/delivery que elegir.
+  const anyFisico = !esIntl && items.some((it) => it.formato === "fisico");
 
   const subtotal = itemsConPrecio.reduce((acc, it) => acc + it.precio, 0);
 
@@ -215,7 +243,11 @@ function CheckoutInner() {
     : 0;
 
   const descuentoCupon = cuponAplicado ? Math.min(cuponAplicado.descuento, subtotal) : 0;
-  const total = subtotal - descuentoCupon + precioEnvio;
+  const total = esIntl
+    ? Math.round((subtotal - descuentoCupon) * 100) / 100
+    : subtotal - descuentoCupon + precioEnvio;
+
+  const fmtTotal = (n: number) => (esIntl ? fmtUsd(n) : fmt(n));
 
   // ─── Coupon ─────────────────────────────────────────────────────────────
   const aplicarCupon = async () => {
@@ -227,7 +259,7 @@ function CheckoutInner() {
       const res = await fetch("/api/cupon/validar", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ codigo, montoBase: subtotal }),
+        body:    JSON.stringify({ codigo, montoBase: subtotal, region }),
       });
       const json = await res.json();
       if (json.ok) {
@@ -351,6 +383,8 @@ function CheckoutInner() {
         envio_referencia: esDelivery ? (referencia.trim() || null) : null,
         ruc:              necesitaFactura ? ruc.trim() : null,
         razon_social:     necesitaFactura ? razonSocial.trim() : null,
+        region:           region,
+        moneda_pedido:    esIntl ? "USD" : "PYG",
       })
       .select("id")
       .single();
@@ -369,7 +403,8 @@ function CheckoutInner() {
       color_acento:    it.color_acento,
       personalizacion: it.personalizacion,
       tipo_entrega:    it.formato,
-      precio_pyg:      it.precio,
+      precio_pyg:      esIntl ? 0 : it.precio,
+      precio_usd:      esIntl ? it.precio : null,
       orden:           idx,
     }));
     const { error: itemsErr } = await supabase.from("pedido_items").insert(itemsPayload);
@@ -401,7 +436,7 @@ function CheckoutInner() {
     track({
       evento:   "pago_iniciado",
       pedidoId: pedidoData.id,
-      data:     { modo: checkoutMode, total_pyg: total, items_count: items.length },
+      data:     { modo: checkoutModeEfectivo, total_pyg: total, items_count: items.length },
     });
 
     // Description for dLocal — single item: "Tablero X — Mati"; multi: "N tableros"
@@ -410,7 +445,7 @@ function CheckoutInner() {
       : `${items.length} tableros (${itemsConPrecio.map((it) => it.nombre_nino).join(", ")})`;
 
     try {
-      if (checkoutMode === "embedded") {
+      if (checkoutModeEfectivo === "embedded") {
         const token = await cardRef.current!.tokenize(titular.trim() || nombreCompleto);
         const res = await fetch("/api/checkout/pay-with-token", {
           method:  "POST",
@@ -450,7 +485,7 @@ function CheckoutInner() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           pedidoId:    pedidoData.id,
-          productoPyg: subtotal,
+          productoPyg: esIntl ? 0 : subtotal,
           envioPyg:    precioEnvio,
           cuponCodigo: cuponAplicado?.codigo ?? null,
           email:       email.trim() || null,
@@ -460,6 +495,8 @@ function CheckoutInner() {
           tipoEntrega: first.formato,
           modalidad:   anyFisico ? modalidad : undefined,
           descripcion,
+          region:      esIntl ? "intl" : "py",
+          totalUsd:    esIntl ? subtotal : undefined,
         }),
       });
       const json = await res.json();
@@ -476,7 +513,7 @@ function CheckoutInner() {
       track({
         evento:   "pago_fallido_cliente",
         pedidoId: pedidoData.id,
-        data:     { modo: checkoutMode, error: msg },
+        data:     { modo: checkoutModeEfectivo, error: msg },
       });
     } finally {
       setLoading(false);
@@ -565,6 +602,8 @@ function CheckoutInner() {
                 key={it.id}
                 item={it}
                 price={it.precio}
+                moneda={esIntl ? "usd" : "pyg"}
+                mostrarFormato={!esIntl}
                 onRemove={() => {
                   track({ evento: "checkout_filled", data: { _removed: it.producto } });
                   removeItem(it.id);
@@ -689,28 +728,34 @@ function CheckoutInner() {
               <Input placeholder="Apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} autoComplete="family-name" />
             </div>
             <Input placeholder="Email" type="email" value={email}    onChange={(e) => setEmail(e.target.value)}    autoComplete="email" />
-            <Input placeholder="WhatsApp (ej: +595 981 123456)" type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} autoComplete="tel" />
+            <Input
+              placeholder={esIntl ? "WhatsApp (con código de país)" : "WhatsApp (ej: +595 981 123456)"}
+              type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} autoComplete="tel"
+            />
             <p className="text-xs text-[#22244e]/50">
               Te contactamos por WhatsApp para confirmar y coordinar tu pedido.
             </p>
 
-            <div className="pt-3 border-t border-[#e5e7eb]">
-              <label className="flex items-center gap-2 text-sm text-[#22244e]/80 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={necesitaFactura}
-                  onChange={(e) => setNecesitaFactura(e.target.checked)}
-                  className="w-4 h-4 rounded border-[#e5e7eb] text-[#336aea] focus:ring-[#336aea]/30"
-                />
-                ¿Necesitás factura?
-              </label>
-              {necesitaFactura && (
-                <div className="grid grid-cols-1 gap-2 mt-3">
-                  <Input placeholder="RUC"          value={ruc}         onChange={(e) => setRuc(e.target.value)} />
-                  <Input placeholder="Razón social" value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} />
-                </div>
-              )}
-            </div>
+            {/* Facturación con RUC — solo aplica a Paraguay */}
+            {!esIntl && (
+              <div className="pt-3 border-t border-[#e5e7eb]">
+                <label className="flex items-center gap-2 text-sm text-[#22244e]/80 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={necesitaFactura}
+                    onChange={(e) => setNecesitaFactura(e.target.checked)}
+                    className="w-4 h-4 rounded border-[#e5e7eb] text-[#336aea] focus:ring-[#336aea]/30"
+                  />
+                  ¿Necesitás factura?
+                </label>
+                {necesitaFactura && (
+                  <div className="grid grid-cols-1 gap-2 mt-3">
+                    <Input placeholder="RUC"          value={ruc}         onChange={(e) => setRuc(e.target.value)} />
+                    <Input placeholder="Razón social" value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Cupón */}
@@ -748,7 +793,7 @@ function CheckoutInner() {
           </div>
 
           {/* Pago embebido */}
-          {checkoutMode === "embedded" && (
+          {checkoutModeEfectivo === "embedded" && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
               <StepTitle n={anyFisico ? (modalidad === "delivery" ? 4 : 3) : 2}>
                 Pagá con tu tarjeta
@@ -772,12 +817,12 @@ function CheckoutInner() {
             <div className="max-w-md mx-auto space-y-1.5">
               <div className="flex justify-between text-sm text-[#22244e]/60">
                 <span>Subtotal ({items.length} {items.length === 1 ? "item" : "items"})</span>
-                <span>{fmt(subtotal)}</span>
+                <span>{fmtTotal(subtotal)}</span>
               </div>
               {descuentoCupon > 0 && (
                 <div className="flex justify-between text-sm text-[#a8c5a0] font-semibold">
                   <span>Cupón {cuponAplicado?.codigo}</span>
-                  <span>−{fmt(descuentoCupon)}</span>
+                  <span>−{fmtTotal(descuentoCupon)}</span>
                 </div>
               )}
               {anyFisico && (
@@ -791,9 +836,14 @@ function CheckoutInner() {
                 {loadingPrecios ? (
                   <span className="w-24 h-5 bg-[#e5e7eb] rounded animate-pulse" />
                 ) : (
-                  <span className="text-lg">{fmt(total)}</span>
+                  <span className="text-lg">{fmtTotal(total)}</span>
                 )}
               </div>
+              {esIntl && (
+                <p className="text-[11px] text-[#22244e]/40 text-center">
+                  Cobro en dólares. Tu tarjeta puede mostrar un pequeño ajuste por conversión de tu banco.
+                </p>
+              )}
               <Button
                 type="submit"
                 disabled={loading || !formValido}
@@ -804,9 +854,9 @@ function CheckoutInner() {
                 )}
                 {loading
                   ? "Procesando..."
-                  : checkoutMode === "embedded"
-                  ? `Pagar ${loadingPrecios ? "" : fmt(total)}`
-                  : `Ir a pagar ${loadingPrecios ? "" : fmt(total)}`}
+                  : checkoutModeEfectivo === "embedded"
+                  ? `Pagar ${loadingPrecios ? "" : fmtTotal(total)}`
+                  : `Ir a pagar ${loadingPrecios ? "" : fmtTotal(total)}`}
               </Button>
               {!formValido && !loading && (
                 <p className="text-[11px] text-[#22244e]/40 text-center mt-1.5">
@@ -835,11 +885,15 @@ function CheckoutInner() {
 function CartItemRow({
   item,
   price,
+  moneda,
+  mostrarFormato,
   onRemove,
   onChangeFormato,
 }: {
   item:    CartItem & { producto: Producto };
   price:   number;
+  moneda:  "pyg" | "usd";
+  mostrarFormato: boolean;
   onRemove: () => void;
   onChangeFormato: (f: Formato) => void;
 }) {
@@ -896,36 +950,43 @@ function CartItemRow({
           </button>
         </div>
 
-        {/* Format toggle */}
+        {/* Format toggle — oculto en el exterior: todo es digital, sin elección */}
         <div className="flex items-center gap-2 mt-2">
-          <div className="inline-flex rounded-lg border border-[#e5e7eb] overflow-hidden text-xs">
-            <button
-              type="button"
-              onClick={() => onChangeFormato("fisico")}
-              className={`px-2 py-1 flex items-center gap-1 transition-colors ${
-                item.formato === "fisico"
-                  ? "bg-[#22244e] text-white"
-                  : "bg-white text-[#22244e]/70 hover:bg-[#22244e]/5"
-              }`}
-            >
-              <Package className="w-3 h-3" />
-              Impreso
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeFormato("digital")}
-              className={`px-2 py-1 flex items-center gap-1 transition-colors ${
-                item.formato === "digital"
-                  ? "bg-[#22244e] text-white"
-                  : "bg-white text-[#22244e]/70 hover:bg-[#22244e]/5"
-              }`}
-            >
+          {mostrarFormato ? (
+            <div className="inline-flex rounded-lg border border-[#e5e7eb] overflow-hidden text-xs">
+              <button
+                type="button"
+                onClick={() => onChangeFormato("fisico")}
+                className={`px-2 py-1 flex items-center gap-1 transition-colors ${
+                  item.formato === "fisico"
+                    ? "bg-[#22244e] text-white"
+                    : "bg-white text-[#22244e]/70 hover:bg-[#22244e]/5"
+                }`}
+              >
+                <Package className="w-3 h-3" />
+                Impreso
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeFormato("digital")}
+                className={`px-2 py-1 flex items-center gap-1 transition-colors ${
+                  item.formato === "digital"
+                    ? "bg-[#22244e] text-white"
+                    : "bg-white text-[#22244e]/70 hover:bg-[#22244e]/5"
+                }`}
+              >
+                <Smartphone className="w-3 h-3" />
+                Digital
+              </button>
+            </div>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs text-[#22244e]/50">
               <Smartphone className="w-3 h-3" />
               Digital
-            </button>
-          </div>
+            </span>
+          )}
           <span className="ml-auto text-sm font-bold text-[#22244e] tabular-nums">
-            {fmt(price)}
+            {moneda === "usd" ? fmtUsd(price) : fmt(price)}
           </span>
         </div>
       </div>
