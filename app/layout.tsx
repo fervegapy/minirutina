@@ -3,6 +3,7 @@ import { Rubik, Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteConfig } from "@/lib/site-config";
 import PostHogProvider from "@/components/PostHogProvider";
+import MetaPixel from "@/components/meta/MetaPixel";
 
 // Force dynamic rendering so generateMetadata() always reads the latest
 // site_config (logo/favicon/title change → next request, not next deploy).
@@ -61,6 +62,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${rubik.variable}`}>
       <body className="antialiased">
+        <MetaPixel />
         <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>

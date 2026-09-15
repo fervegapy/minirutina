@@ -8,6 +8,7 @@
 // customer can flip per-item from the checkout summary.
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { track } from "@/lib/tracking";
+import { metaTrack } from "@/lib/meta-pixel";
 
 const STORAGE_KEY = "mr_carrito_v1";
 
@@ -99,6 +100,13 @@ export function useCarrito() {
         formato:      newItem.formato,
         cart_count:   next.length,
       },
+    });
+    // No price here (the cart doesn't know prices until /checkout), so the
+    // event carries the product only.
+    metaTrack("AddToCart", {
+      content_name: newItem.producto,
+      content_ids:  [newItem.producto],
+      content_type: "product",
     });
     return newItem;
   }, []);

@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import type { LocationValue } from "@/components/checkout/LocationPicker";
 import type { MapLocationValue } from "@/components/checkout/MapLocationPicker";
 import { track, identify } from "@/lib/tracking";
+import { metaTrack } from "@/lib/meta-pixel";
 
 // Leaflet needs the DOM at module load — client-only, no SSR.
 const MapLocationPicker = dynamic(
@@ -216,6 +217,22 @@ function CheckoutInner() {
 
   const descuentoCupon = cuponAplicado ? Math.min(cuponAplicado.descuento, subtotal) : 0;
   const total = subtotal - descuentoCupon + precioEnvio;
+
+  // Meta InitiateCheckout — first time the user types contact info (same
+  // moment as checkout_filled; AddToCart already covers landing here). Waits
+  // for prices so the value is real.
+  const initiateFiredRef = useRef(false);
+  useEffect(() => {
+    if (initiateFiredRef.current || loadingPrecios || items.length === 0) return;
+    if (!email.trim() && !whatsapp.trim()) return;
+    initiateFiredRef.current = true;
+    metaTrack("InitiateCheckout", {
+      value:        subtotal,
+      content_ids:  Array.from(new Set(items.map((it) => it.producto))),
+      content_type: "product",
+      num_items:    items.length,
+    });
+  }, [email, whatsapp, loadingPrecios, items, subtotal]);
 
   // ─── Coupon ─────────────────────────────────────────────────────────────
   const aplicarCupon = async () => {

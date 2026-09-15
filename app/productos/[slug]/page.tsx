@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import Header from "@/components/landing/Header";
 import Footer from "@/components/landing/Footer";
 import ProductGallery from "@/components/ProductGallery";
+import MetaViewContent from "@/components/meta/MetaViewContent";
 
 // Force per-request so admin edits to FAQs and the "pause product"
 // toggle are visible immediately (no stale SSG/ISR cache).
@@ -70,6 +71,10 @@ export default async function ProductoPage({
   return (
     <div className="min-h-screen bg-[#faf6e7] pb-24 md:pb-0">
       <Header />
+      <MetaViewContent
+        producto={params.slug}
+        precio={typeof precioRow?.precio_impreso === "number" && precioRow.precio_impreso > 0 ? precioRow.precio_impreso : undefined}
+      />
       <main>
         {/* Hero del producto */}
         <section className="px-6 py-16 md:py-20">

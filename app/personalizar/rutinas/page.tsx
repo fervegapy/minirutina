@@ -12,6 +12,7 @@ import IconPicker, {
 } from "@/components/customizer/IconPicker";
 import GenderPicker, { type Genero } from "@/components/customizer/GenderPicker";
 import { track } from "@/lib/tracking";
+import { metaTrack } from "@/lib/meta-pixel";
 import { useCarrito } from "@/lib/carrito";
 import { useWizardPersist } from "@/lib/useWizardPersist";
 
@@ -122,6 +123,11 @@ export default function PersonalizarRutinas() {
       producto: "rutinas",
       paso: PASOS[step],
     });
+    // Meta: the name step is the first real commitment — remarketing
+    // audience for people who started customizing but didn't buy.
+    if (step === 0) {
+      metaTrack("CustomizeProduct", { content_name: "rutinas", content_ids: ["rutinas"], content_type: "product" });
+    }
     setStep((s) => Math.min(s + 1, PASOS.length - 1));
   };
 
