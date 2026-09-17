@@ -1,9 +1,16 @@
-// Singleton site config fetcher. Used by app/layout.tsx (metadata) and
-// the public Header/Footer so logos + meta tags update without a redeploy.
+// Singleton site config fetcher. Used by app/layout.tsx (metadata) y
+// el Header/Footer público, así logos + meta tags cambian sin redeploy.
 //
-// Uses raw fetch with `cache: "no-store"` against Supabase's REST API to
-// bypass Next's data cache entirely — admin edits MUST surface on the
-// next request, not after the next deploy.
+// El resultado se cachea bajo el tag "site-config" en vez de consultar
+// Supabase en cada request: la landing lo pedía 4 veces por render
+// (metadata, viewport, Header, Footer) y cada una era un viaje de red a
+// São Paulo antes de mandar el primer byte de HTML. Las acciones de
+// /admin/branding llaman revalidateTag("site-config") al guardar, así que
+// los cambios del admin siguen saliendo en el request siguiente.
+import { unstable_cache } from "next/cache";
+
+export const SITE_CONFIG_TAG = "site-config";
+
 export interface SiteConfig {
   site_name:          string;
   site_description:   string;
@@ -24,7 +31,7 @@ const FALLBACK: SiteConfig = {
   theme_color:       "#336aea",
 };
 
-export async function getSiteConfig(): Promise<SiteConfig> {
+async function fetchSiteConfig(): Promise<SiteConfig> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return FALLBACK;
@@ -64,3 +71,11 @@ export async function getSiteConfig(): Promise<SiteConfig> {
     return FALLBACK;
   }
 }
+
+// El `revalidate` no es para propagar cambios (de eso se encarga el tag) sino
+// de red de seguridad: si Supabase falla, fetchSiteConfig devuelve el FALLBACK
+// y sin techo de tiempo esa respuesta degradada quedaría cacheada para siempre.
+export const getSiteConfig = unstable_cache(fetchSiteConfig, ["site-config"], {
+  tags: [SITE_CONFIG_TAG],
+  revalidate: 300,
+});

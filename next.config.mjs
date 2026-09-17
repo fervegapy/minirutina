@@ -18,6 +18,35 @@ const nextConfig = {
       },
     ],
   },
+
+  // Vercel sirve todo /public con `max-age=0, must-revalidate`, así que el
+  // navegador revalida cada archivo en cada visita y no guarda nada entre
+  // sesiones. Estas reglas lo arreglan para los assets pesados.
+  async headers() {
+    return [
+      {
+        // La versión está en la ruta, así que el contenido de esta URL nunca
+        // cambia y se puede cachear para siempre. Un re-encode va a /hero/v4/.
+        source: "/hero/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        // Estos nombres no están versionados, así que no pueden ser immutable:
+        // una semana fresco, y hasta 30 días sirviendo la copia guardada
+        // mientras revalida de fondo. Si reemplazás una imagen sin cambiarle el
+        // nombre, tarda hasta una semana en propagarse.
+        source: "/:dir(icons|productos|recompensas|decorations|fonts)/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=604800, stale-while-revalidate=2592000",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

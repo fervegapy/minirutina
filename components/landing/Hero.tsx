@@ -1,8 +1,48 @@
 "use client";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function Hero() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // El video del hero no se carga hasta que la página terminó de cargar. Con
+  // `autoPlay` el navegador ignora `preload` y baja el archivo entero compitiendo
+  // con el JS y las fuentes: así el tráfico de campaña en 4G veía un recuadro
+  // vacío varios segundos y rebotaba antes de que el Pixel disparara.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const prefiereMenosMovimiento = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    const ahorroDatos = (
+      navigator as Navigator & { connection?: { saveData?: boolean } }
+    ).connection?.saveData;
+    // En ambos casos el poster se queda como imagen fija, que ya es el diseño final.
+    if (prefiereMenosMovimiento || ahorroDatos) return;
+
+    const cargar = () => {
+      video
+        .querySelectorAll<HTMLSourceElement>("source[data-src]")
+        .forEach((source) => {
+          source.src = source.dataset.src!;
+          source.removeAttribute("data-src");
+        });
+      video.load();
+      // Puede rechazar por políticas de autoplay; si pasa, queda el poster.
+      video.play().catch(() => {});
+    };
+
+    if (document.readyState === "complete") {
+      cargar();
+      return;
+    }
+    window.addEventListener("load", cargar, { once: true });
+    return () => window.removeEventListener("load", cargar);
+  }, []);
+
   return (
     <section className="bg-[#faf6e7] overflow-hidden">
       {/* Two-column edge-to-edge layout. Image is the dominant half on the
@@ -53,25 +93,28 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Right — hero video. Autoplays muted on loop so it works as an
-            ambient loop without sound. preload=metadata keeps initial
-            page weight low — the file only downloads once it's about to
-            play. */}
+        {/* Right — loop ambiental sin sonido. El poster es el frame 0 del propio
+            video, así cuando arranca no se nota el cambio. */}
         <div className="relative bg-[#efe9d6] min-h-[360px] md:min-h-0 order-1 md:order-2 overflow-hidden">
           <video
-            autoPlay
+            ref={videoRef}
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="none"
+            poster="/hero/v3/poster.webp"
             className="absolute inset-0 w-full h-full object-cover"
           >
-            {/* WebM first — better quality at smaller size, preferred by
-                Chrome/Firefox/Edge. MP4 fallback for Safari.
-                Filenames are versioned so re-encodes bust the CDN/browser
-                cache without having to wait for stale headers to expire. */}
-            <source src="/hero-v2.webm" type="video/webm" />
-            <source src="/hero-v2.mp4"  type="video/mp4"  />
+            {/* `data-src` en vez de `src`: el efecto de arriba las activa recién
+                después del load. El navegador toma la primera fuente cuyo media
+                coincida y cuyo formato soporte, así que mobile va primero y el
+                MP4 queda de fallback para Safari. La versión va en la carpeta
+                (/hero/v3/) porque se sirve con cache immutable: un re-encode
+                tiene que ir a /hero/v4/ para que el navegador lo vea. */}
+            <source data-src="/hero/v3/mobile.webm"  media="(max-width: 767px)" type="video/webm" />
+            <source data-src="/hero/v3/mobile.mp4"   media="(max-width: 767px)" type="video/mp4"  />
+            <source data-src="/hero/v3/desktop.webm" type="video/webm" />
+            <source data-src="/hero/v3/desktop.mp4"  type="video/mp4"  />
           </video>
 
           {/* Floating delivery pill — top-right. Warm golden accent so

@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { isAdminEmail } from "@/lib/admin-emails";
+import { SITE_CONFIG_TAG } from "@/lib/site-config";
 
 export type AssetKind = "logo" | "favicon" | "og" | "support";
 
@@ -28,6 +29,9 @@ async function asegurarAdmin() {
 }
 
 function revalidarPublicas() {
+  // getSiteConfig() está cacheado bajo este tag; sin esto el logo/título
+  // editado acá no saldría en el sitio público hasta que expire el cache.
+  revalidateTag(SITE_CONFIG_TAG);
   revalidatePath("/", "layout"); // refreshes metadata for entire site
   revalidatePath("/");
 }

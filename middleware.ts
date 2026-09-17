@@ -60,7 +60,9 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Apply on every page route except internal Next assets, the public API,
-  // and static files. This keeps the session cookie refreshed on navigation.
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)"],
+  // Solo las rutas con sesión. Los clientes no tienen cuenta (los pedidos se
+  // identifican por contacto), así que el único que se autentica es el admin:
+  // correr esto en la landing, los customizers y el checkout solo agregaba el
+  // arranque del cliente de Supabase al TTFB de todo el embudo, sin usarlo.
+  matcher: ["/admin/:path*", "/auth/:path*"],
 };
