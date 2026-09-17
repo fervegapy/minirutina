@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -20,7 +21,7 @@ export default function Hero() {
     const ahorroDatos = (
       navigator as Navigator & { connection?: { saveData?: boolean } }
     ).connection?.saveData;
-    // En ambos casos el poster se queda como imagen fija, que ya es el diseño final.
+    // En ambos casos queda la imagen fija, que ya es el diseño final.
     if (prefiereMenosMovimiento || ahorroDatos) return;
 
     const cargar = () => {
@@ -31,7 +32,7 @@ export default function Hero() {
           source.removeAttribute("data-src");
         });
       video.load();
-      // Puede rechazar por políticas de autoplay; si pasa, queda el poster.
+      // Puede rechazar por políticas de autoplay; si pasa, queda la imagen.
       video.play().catch(() => {});
     };
 
@@ -93,17 +94,31 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Right — loop ambiental sin sonido. El poster es el frame 0 del propio
+        {/* Right — loop ambiental sin sonido. La imagen es el frame 0 del propio
             video, así cuando arranca no se nota el cambio. */}
         <div className="relative bg-[#efe9d6] min-h-[360px] md:min-h-0 order-1 md:order-2 overflow-hidden">
+          {/* Va como imagen y no como atributo `poster` del video: Chrome mide
+              como LCP el primer frame del video e ignora el poster, así que
+              diferir el video se llevaba el LCP a 5s. Una imagen sí es candidata
+              LCP, y como el video termina del mismo tamaño renderizado su frame
+              no la reemplaza (el LCP solo se actualiza si es más grande). */}
+          <Image
+            src="/hero/v3/poster.webp"
+            alt="Un nene marcando como lista una actividad en su tablero de rutinas"
+            fill
+            sizes="(max-width: 767px) 100vw, 55vw"
+            priority
+            unoptimized
+            className="object-cover"
+          />
           <video
             ref={videoRef}
             muted
             loop
             playsInline
             preload="none"
-            poster="/hero/v3/poster.webp"
-            className="absolute inset-0 w-full h-full object-cover"
+            onCanPlay={(e) => e.currentTarget.classList.remove("opacity-0")}
+            className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"
           >
             {/* `data-src` en vez de `src`: el efecto de arriba las activa recién
                 después del load. El navegador toma la primera fuente cuyo media
