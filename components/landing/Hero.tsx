@@ -24,14 +24,18 @@ export default function Hero() {
     // En ambos casos queda la imagen fija, que ya es el diseño final.
     if (prefiereMenosMovimiento || ahorroDatos) return;
 
+    // La fuente se elige acá y se asigna una sola vez. Con <source> el
+    // navegador re-corre el algoritmo de selección en cada mutación del src y,
+    // según el timing, arranca una descarga por cada uno: PageSpeed llegó a
+    // bajar las cuatro versiones (2.824 KiB en vez de 970).
     const cargar = () => {
-      video
-        .querySelectorAll<HTMLSourceElement>("source[data-src]")
-        .forEach((source) => {
-          source.src = source.dataset.src!;
-          source.removeAttribute("data-src");
-        });
-      video.load();
+      const tamano = window.matchMedia("(max-width: 767px)").matches
+        ? "mobile"
+        : "desktop";
+      const formato = video.canPlayType('video/webm; codecs="vp9"')
+        ? "webm"
+        : "mp4";
+      video.src = `/hero/v3/${tamano}.${formato}`;
       // Puede rechazar por políticas de autoplay; si pasa, queda la imagen.
       video.play().catch(() => {});
     };
@@ -111,6 +115,10 @@ export default function Hero() {
             unoptimized
             className="object-cover"
           />
+          {/* Sin hijos <source>: el efecto de arriba arma la URL y la asigna una
+              sola vez. Los archivos viven en /hero/v3/ — la versión va en la
+              carpeta porque se sirve con cache immutable, así que un re-encode
+              tiene que ir a /hero/v4/ para que el navegador lo vea. */}
           <video
             ref={videoRef}
             muted
@@ -119,18 +127,7 @@ export default function Hero() {
             preload="none"
             onCanPlay={(e) => e.currentTarget.classList.remove("opacity-0")}
             className="absolute inset-0 w-full h-full object-cover opacity-0 transition-opacity duration-500"
-          >
-            {/* `data-src` en vez de `src`: el efecto de arriba las activa recién
-                después del load. El navegador toma la primera fuente cuyo media
-                coincida y cuyo formato soporte, así que mobile va primero y el
-                MP4 queda de fallback para Safari. La versión va en la carpeta
-                (/hero/v3/) porque se sirve con cache immutable: un re-encode
-                tiene que ir a /hero/v4/ para que el navegador lo vea. */}
-            <source data-src="/hero/v3/mobile.webm"  media="(max-width: 767px)" type="video/webm" />
-            <source data-src="/hero/v3/mobile.mp4"   media="(max-width: 767px)" type="video/mp4"  />
-            <source data-src="/hero/v3/desktop.webm" type="video/webm" />
-            <source data-src="/hero/v3/desktop.mp4"  type="video/mp4"  />
-          </video>
+          />
 
           {/* Floating delivery pill — top-right. Warm golden accent so
               it contrasts with the blue CTAs/text without competing. */}
