@@ -11,7 +11,7 @@
 
 "use client";
 
-import posthog from "posthog-js";
+import { getPostHog } from "@/lib/posthog-client";
 
 const STORAGE_KEY = "mr_session_id";
 
@@ -85,7 +85,8 @@ export function track(args: TrackArgs): void {
   // funnel/cohort UI can filter by producto, paso, etc. without diving
   // into nested data.
   try {
-    if (posthog.__loaded) {
+    const posthog = getPostHog();
+    if (posthog?.__loaded) {
       posthog.capture(args.evento, {
         producto:  args.producto ?? undefined,
         paso:      args.paso ?? undefined,
@@ -104,7 +105,8 @@ export function track(args: TrackArgs): void {
 export function identify(email: string, traits?: Record<string, unknown>): void {
   if (typeof window === "undefined" || !email) return;
   try {
-    if (posthog.__loaded) {
+    const posthog = getPostHog();
+    if (posthog?.__loaded) {
       posthog.identify(email.toLowerCase().trim(), traits ?? {});
     }
   } catch {
