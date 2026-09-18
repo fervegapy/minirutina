@@ -10,12 +10,23 @@ import { setPostHog } from "@/lib/posthog-client";
 const KEY  = process.env.NEXT_PUBLIC_POSTHOG_KEY  ?? "";
 const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
 
+// La landing no carga PostHog. Es el destino de los anuncios y el SDK cuesta
+// ~1,2 s de CPU en un dispositivo lento; ahí la atribución ya la da el Pixel de
+// Meta. Se carga al entrar al embudo (customizer, checkout, producto), que es
+// donde interesa ver dónde abandona la gente.
+// Contrapartida: los visitantes que solo ven la home no aparecen en PostHog.
+const SIN_POSTHOG = ["/"];
+
 /**
  * Initializes PostHog once on the client and tracks pageviews on every
  * client-side navigation. Wraps the whole app from layout.tsx.
  */
 export default function PostHogProvider({ children }: { children: React.ReactNode }) {
   const [ph, setPh] = useState<PostHog | null>(null);
+  const rutaActual = usePathname();
+  // Si entran por la home y después navegan al customizer, el efecto vuelve a
+  // correr con la ruta nueva y ahí sí lo carga.
+  const habilitado = !SIN_POSTHOG.includes(rutaActual ?? "");
 
   // posthog-js se importa dinámicamente y después del load. Importarlo arriba
   // lo metía en el bundle inicial (203 KB sin comprimir) y el navegador lo
@@ -25,7 +36,7 @@ export default function PostHogProvider({ children }: { children: React.ReactNod
   // la atribución de campaña no se toca porque de eso se encarga el Pixel de
   // Meta, que dispara inline en el HTML.
   useEffect(() => {
-    if (!KEY || typeof window === "undefined") return;
+    if (!KEY || !habilitado || typeof window === "undefined") return;
 
     let cancelado = false;
 
@@ -75,7 +86,7 @@ export default function PostHogProvider({ children }: { children: React.ReactNod
       cancelado = true;
       window.removeEventListener("load", iniciar);
     };
-  }, []);
+  }, [habilitado]);
 
   return (
     <>
