@@ -27,6 +27,9 @@ export default function PostHogProvider({ children }: { children: React.ReactNod
       autocapture: true,
       // Captures UTMs as person + event properties automatically.
       persistence: "localStorage+cookie",
+      // No usamos encuestas de PostHog: sin esto igual baja y parsea
+      // surveys.js (34 KB) en cada visita.
+      disable_surveys: true,
       // Performance: only load session replay when explicitly enabled.
       disable_session_recording: false,
       session_recording: {
