@@ -14,7 +14,7 @@ export default function TerminosPage() {
     >
       <p>
         Bienvenido a Minirutina. Al acceder y utilizar nuestro sitio web
-        <a href="https://minirutina.com"> minirutina.com</a> y los servicios
+        <a href="https://www.minirutina.com"> minirutina.com</a> y los servicios
         ofrecidos a través del mismo, aceptás los presentes Términos y
         Condiciones. Si no estás de acuerdo, por favor no utilices el sitio.
       </p>

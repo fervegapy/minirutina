@@ -38,7 +38,10 @@ export function productoLabel(producto: string): string {
 // degrade gracefully when not yet configured.
 const WHATSAPP     = (process.env.NEXT_PUBLIC_WHATSAPP ?? "").replace(/\D/g, "");
 const FEEDBACK_URL = process.env.FEEDBACK_FORM_URL ?? "";
-const SITE         = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://minirutina.com").replace(/\/$/, "");
+// Con www: el apex redirige 307 hacia www, y estos links los abre gente con un
+// pedido pendiente desde el celular. El redirect obliga a DNS, TCP y TLS nuevos
+// contra otro hostname — medido, ~0,8 s antes de ver nada.
+const SITE         = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.minirutina.com").replace(/\/$/, "");
 
 // Logo for the email header — same one the website navbar/footer uses.
 // Cached per process so we don't refetch site_config on every email.

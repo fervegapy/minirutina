@@ -82,7 +82,7 @@ export function renderEmailShell({
             <td style="background:#f9fafb;border:1px solid ${BORDER};border-top:none;border-radius:0 0 16px 16px;padding:20px 32px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#22244e66;line-height:1.6;">
                 Minirutina · Asunción, Paraguay<br />
-                <a href="https://minirutina.com" style="color:${DARK};text-decoration:none;">minirutina.com</a>
+                <a href="https://www.minirutina.com" style="color:${DARK};text-decoration:none;">minirutina.com</a>
               </p>
             </td>
           </tr>
@@ -147,7 +147,7 @@ export function infoBox(title: string, bodyHtml: string, tint: "blue" | "plain" 
 
 // Hosted WhatsApp glyph (green circle) — used as a small inline icon in the
 // subtle contact link. Absolute URL so it renders in every email client.
-const WHATSAPP_ICON = "https://minirutina.com/email/whatsapp.png";
+const WHATSAPP_ICON = "https://www.minirutina.com/email/whatsapp.png";
 
 /** Subtle WhatsApp contact link (icon + text), pre-filled with the order
  *  number. Intentionally low-emphasis — it signals the support channel
