@@ -7,6 +7,12 @@ import FAQ from "@/components/landing/FAQ";
 import Footer from "@/components/landing/Footer";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 
+// La landing se sirve desde el CDN en vez de armarse en cada visita. Las
+// acciones de /admin/cms ya llaman revalidatePath("/") al tocar precios o
+// textos, así que los cambios salen al instante; este techo de tiempo es solo
+// la red de seguridad por si alguna revalidación se pierde.
+export const revalidate = 300;
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#faf6e7]">

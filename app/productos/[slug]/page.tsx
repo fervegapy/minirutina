@@ -8,9 +8,10 @@ import Footer from "@/components/landing/Footer";
 import ProductGallery from "@/components/ProductGallery";
 import MetaViewContent from "@/components/meta/MetaViewContent";
 
-// Force per-request so admin edits to FAQs and the "pause product"
-// toggle are visible immediately (no stale SSG/ISR cache).
-export const dynamic = "force-dynamic";
+// Se sirve desde el CDN. Las ediciones de FAQs y el toggle de pausa siguen
+// saliendo al instante porque todas las acciones de /admin/cms revalidan esta
+// ruta al guardar; el techo de tiempo es la red de seguridad si eso falla.
+export const revalidate = 300;
 
 export default async function ProductoPage({
   params,

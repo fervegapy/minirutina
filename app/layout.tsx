@@ -5,9 +5,14 @@ import { getSiteConfig } from "@/lib/site-config";
 import PostHogProvider from "@/components/PostHogProvider";
 import MetaPixel from "@/components/meta/MetaPixel";
 
-// Force dynamic rendering so generateMetadata() always reads the latest
-// site_config (logo/favicon/title change → next request, not next deploy).
-export const dynamic = "force-dynamic";
+// Ojo: no poner `dynamic = "force-dynamic"` acá. Puesto en el layout raíz
+// aplica a TODAS las rutas, así que ninguna página se podía servir desde el
+// CDN y cada visita esperaba a que un servidor armara el HTML. Lo que se
+// quería proteger —que los cambios de logo/título del admin salgan sin
+// redeploy— ya lo cubre getSiteConfig(), que se cachea bajo un tag que las
+// acciones de /admin/branding invalidan al guardar.
+// Las rutas que sí necesitan render por request (pedido puntual, sesión de
+// admin) lo declaran ellas mismas.
 
 // Inter = body / subtítulos. Rubik = títulos (h1–h6).
 const inter = Inter({
