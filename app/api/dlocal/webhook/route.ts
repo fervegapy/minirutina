@@ -12,6 +12,7 @@ import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-email
 import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import { extraerNombre } from "@/lib/contacto";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { propiedadesDeAtribucion, type Atribucion } from "@/lib/atribucion";
 import { notificarPagoTelegram, telegramConfigurado } from "@/lib/telegram";
 
 export const runtime = "nodejs";
@@ -29,7 +30,10 @@ function fmtPyg(n: number) {
 function extractEmail(contacto?: string | null): string | null {
   if (!contacto) return null;
   const m = contacto.match(/Email:\s*([^\s|]+)/i);
-  return m?.[1] ?? null;
+  // En minúsculas: es el distinct_id de PostHog y el navegador identifica con
+  // el email en minúsculas (lib/tracking.ts). Si difieren, la venta queda en
+  // otra persona y pierde la visita que la originó.
+  return m?.[1]?.toLowerCase() ?? null;
 }
 
 export async function POST(req: NextRequest) {
@@ -110,6 +114,15 @@ export async function POST(req: NextRequest) {
     // Customer email
     const customerEmail = extractEmail(pedido.contacto);
 
+    // Origen de la venta. Consulta aparte y tolerante a errores: si la
+    // columna todavía no existe, el pago igual se confirma sin atribución.
+    const { data: atribRow } = await supabaseAdmin
+      .from("pedidos")
+      .select("atribucion")
+      .eq("id", pedidoId)
+      .maybeSingle();
+    const atribucion = (atribRow as { atribucion?: Atribucion | null } | null)?.atribucion ?? null;
+
     // Fetch items so emails + analytics reflect the full cart.
     const { data: itemsRows } = await supabaseAdmin
       .from("pedido_items")
@@ -175,6 +188,7 @@ export async function POST(req: NextRequest) {
         amount_pyg:     montoPyg,
         currency:       payment.currency ?? "PYG",
         payment_method: payment.payment_method_type ?? null,
+        ...propiedadesDeAtribucion(atribucion),
       },
     }).catch(() => {});
 

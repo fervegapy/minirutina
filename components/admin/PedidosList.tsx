@@ -6,6 +6,7 @@ import { ChevronRight, Search } from "lucide-react";
 import type { Pedido, EstadoPedido } from "@/types/pedido";
 import { ESTADOS, labelDeEstado } from "@/lib/estado-pedido";
 import { extraerNombre } from "@/lib/contacto";
+import { canalDe } from "@/lib/atribucion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -182,6 +183,7 @@ function GrupoPedidos({
               <th className="px-4 py-3 font-medium">N° pedido</th>
               <th className="px-4 py-3 font-medium">Niño/a</th>
               <th className="px-4 py-3 font-medium">Padre/Madre</th>
+              <th className="px-4 py-3 font-medium">Origen</th>
               <th className="px-4 py-3 font-medium">Producto</th>
               <th className="px-4 py-3 font-medium">Entrega</th>
               <th className="px-4 py-3 font-medium">Estado</th>
@@ -207,6 +209,9 @@ function GrupoPedidos({
                   </td>
                   <td className="px-4 py-3 text-zinc-600">
                     {extraerNombre(p.contacto) ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-zinc-600">
+                    {origenDe(p)}
                   </td>
                   <td className="px-4 py-3 text-zinc-600">
                     {PRODUCTO_LABEL[p.producto] ?? p.producto}
@@ -235,6 +240,13 @@ function GrupoPedidos({
       </Card>
     </section>
   );
+}
+
+// Pedidos anteriores a la atribución (o manuales) no tienen origen.
+function origenDe(p: Pedido): string {
+  const a = p.atribucion;
+  if (!a) return "—";
+  return canalDe(a.ultimo ?? a.primero);
 }
 
 // Native select dressed up to match the shadcn Input look — keeps the

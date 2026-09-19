@@ -12,6 +12,8 @@ import type { LocationValue } from "@/components/checkout/LocationPicker";
 import type { MapLocationValue } from "@/components/checkout/MapLocationPicker";
 import { track, identify } from "@/lib/tracking";
 import { metaTrack } from "@/lib/meta-pixel";
+import { leerAtribucion } from "@/lib/atribucion";
+import { getPostHog } from "@/lib/posthog-client";
 
 // Leaflet needs the DOM at module load — client-only, no SSR.
 const MapLocationPicker = dynamic(
@@ -350,27 +352,43 @@ function CheckoutInner() {
     //    values so admin / PDF code that still reads pedido.producto keeps
     //    working as a fallback.
     const first = itemsConPrecio[0]!;
-    const { data: pedidoData, error: dbError } = await supabase
+    const pedidoRow = {
+      producto:        first.producto,
+      nombre_nino:     first.nombre_nino,
+      color_acento:    first.color_acento,
+      personalizacion: first.personalizacion,
+      tipo_entrega:    first.formato,
+      contacto,
+      direccion,
+      estado:          "pendiente",
+      costo_envio:      esDelivery ? precioEnvio : 0,
+      envio_zona:       esDelivery ? (zonaActual?.nombre ?? null) : null,
+      envio_calle:      esDelivery ? calle.trim() : null,
+      envio_numero:     esDelivery ? numero.trim() : null,
+      envio_referencia: esDelivery ? (referencia.trim() || null) : null,
+      ruc:              necesitaFactura ? ruc.trim() : null,
+      razon_social:     necesitaFactura ? razonSocial.trim() : null,
+    };
+    // De dónde vino la persona (ver lib/atribucion.ts). El webhook la lee de
+    // acá para adjuntarla a la venta en PostHog.
+    const atribucion = {
+      ...leerAtribucion(),
+      posthog_session_id: getPostHog()?.get_session_id() ?? null,
+    };
+    let { data: pedidoData, error: dbError } = await supabase
       .from("pedidos")
-      .insert({
-        producto:        first.producto,
-        nombre_nino:     first.nombre_nino,
-        color_acento:    first.color_acento,
-        personalizacion: first.personalizacion,
-        tipo_entrega:    first.formato,
-        contacto,
-        direccion,
-        estado:          "pendiente",
-        costo_envio:      esDelivery ? precioEnvio : 0,
-        envio_zona:       esDelivery ? (zonaActual?.nombre ?? null) : null,
-        envio_calle:      esDelivery ? calle.trim() : null,
-        envio_numero:     esDelivery ? numero.trim() : null,
-        envio_referencia: esDelivery ? (referencia.trim() || null) : null,
-        ruc:              necesitaFactura ? ruc.trim() : null,
-        razon_social:     necesitaFactura ? razonSocial.trim() : null,
-      })
+      .insert({ ...pedidoRow, atribucion })
       .select("id")
       .single();
+    // PGRST204 = la columna no existe (migración pedidos_atribucion.sql sin
+    // correr). Perder el origen es preferible a perder la venta.
+    if (dbError?.code === "PGRST204") {
+      ({ data: pedidoData, error: dbError } = await supabase
+        .from("pedidos")
+        .insert(pedidoRow)
+        .select("id")
+        .single());
+    }
 
     if (dbError || !pedidoData) {
       setLoading(false);

@@ -1,3 +1,5 @@
+import type { Atribucion } from "@/lib/atribucion";
+
 export type EstadoPedido =
   | "pendiente"      // creado, esperando confirmación de pago
   | "pagado"         // pago confirmado, listo para mandar a imprenta
@@ -53,6 +55,9 @@ export interface Pedido {
   // signed URLs expiran, así que se regeneran al vuelo cuando hacen falta).
   factura_path?:             string | null;
   factura_enviada_at?:       string | null;
+  // De dónde vino quien compró: primer y último contacto (UTMs, referrer).
+  // Lo llena el checkout; null en pedidos previos o manuales. Ver lib/atribucion.ts.
+  atribucion?:               Atribucion | null;
 }
 
 export interface PersonalizacionRutinas {

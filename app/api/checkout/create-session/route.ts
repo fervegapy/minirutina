@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       }).catch(() => false);
       if (telegramConfigurado() && !tgOk) {
         captureServerEvent({
-          distinctId: email ?? pedidoId,
+          distinctId: email?.toLowerCase() ?? pedidoId,
           event:      "telegram_notificacion_fallida",
           properties: { pedido_id: pedidoId, origen: "cupon_100" },
         }).catch(() => {});
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
         if (!envio.ok) {
           console.error("[create-session] cupón-100 email NO se envió para", pedidoId, ":", envio.error);
           captureServerEvent({
-            distinctId: email,
+            distinctId: email.toLowerCase(),
             event:      "email_confirmacion_fallido",
             properties: { pedido_id: pedidoId, error: envio.error ?? "unknown", origen: "cupon_100" },
           }).catch(() => {});

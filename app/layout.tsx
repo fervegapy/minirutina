@@ -4,6 +4,7 @@ import "./globals.css";
 import { getSiteConfig } from "@/lib/site-config";
 import PostHogProvider from "@/components/PostHogProvider";
 import MetaPixel from "@/components/meta/MetaPixel";
+import AtribucionScript from "@/components/AtribucionScript";
 
 // Ojo: no poner `dynamic = "force-dynamic"` acá. Puesto en el layout raíz
 // aplica a TODAS las rutas, así que ninguna página se podía servir desde el
@@ -67,6 +68,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${rubik.variable}`}>
       <body className="antialiased">
+        <AtribucionScript />
         <MetaPixel />
         <PostHogProvider>{children}</PostHogProvider>
       </body>
