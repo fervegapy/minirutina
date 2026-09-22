@@ -22,7 +22,7 @@ export default async function AdminDashboardLayout({
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 flex">
       <AdminSidebar email={user.email ?? ""} />
-      <main className="flex-1 min-w-0 px-6 py-8 md:px-10 md:py-10">
+      <main className="flex-1 min-w-0 px-4 pt-20 pb-8 md:px-10 md:py-10 md:pt-10">
         {children}
       </main>
     </div>

@@ -175,7 +175,52 @@ function GrupoPedidos({
         <span className="text-xs text-zinc-400">· {pedidos.length}</span>
         <span className="text-xs text-zinc-400 hidden sm:inline">— {subtitulo}</span>
       </div>
-      <Card className="bg-white overflow-hidden">
+      {/* Mobile: una card por pedido */}
+      <div className="space-y-2 sm:hidden">
+        {pedidos.map((p) => {
+          const entrega = resumenEntrega(p);
+          return (
+            <Link
+              key={p.id}
+              href={`/admin/pedidos/${p.id}`}
+              className="block"
+            >
+              <Card className="bg-white active:bg-zinc-50 transition-colors">
+                <CardContent className="px-4 py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-zinc-900 truncate">
+                        {p.nombre_nino ?? "—"}
+                      </p>
+                      <p className="text-xs text-zinc-500 truncate">
+                        {extraerNombre(p.contacto) ?? "—"}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
+                  </div>
+                  <div className="flex items-center flex-wrap gap-1.5 mt-2">
+                    <Badge className={BADGE_CLS[p.estado]}>
+                      {labelDeEstado(p.estado)}
+                    </Badge>
+                    <Badge className={entrega.cls}>{entrega.label}</Badge>
+                    <span className="text-xs text-zinc-500 ml-auto">
+                      {formatoFecha(p.created_at)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1.5">
+                    {PRODUCTO_LABEL[p.producto] ?? p.producto}
+                    {" · "}
+                    <span className="font-mono">#{p.id.slice(0, 8).toUpperCase()}</span>
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Desktop / tablet: tabla */}
+      <Card className="bg-white overflow-hidden hidden sm:block">
         <table className="w-full text-sm">
           <thead className="bg-zinc-50 border-b border-zinc-200">
             <tr className="text-left text-zinc-500 text-xs uppercase tracking-wider">
