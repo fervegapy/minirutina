@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import Logo from "@/components/landing/Logo";
 import { getSiteConfig } from "@/lib/site-config";
 import { waMeUrl } from "@/lib/contacto";
 
@@ -18,23 +18,7 @@ export default async function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              {cfg.logo_url ? (
-                <Image
-                  src={cfg.logo_url}
-                  alt={cfg.site_name}
-                  width={160}
-                  height={40}
-                  unoptimized
-                  className="h-8 w-auto object-contain brightness-0 invert"
-                />
-              ) : (
-                <>
-                  <span className="text-2xl">🌿</span>
-                  <span className="font-bold text-xl text-white">
-                    {cfg.site_name.toLowerCase()}
-                  </span>
-                </>
-              )}
+              <Logo invert />
             </div>
             <p className="text-white/50 text-sm max-w-xs leading-relaxed">
               {cfg.site_description}

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { productos } from "@/lib/productos";
 import { supabase } from "@/lib/supabase";
-import Header from "@/components/landing/Header";
+import SiteHeader from "@/components/landing/SiteHeader";
 import Footer from "@/components/landing/Footer";
 import ProductGallery from "@/components/ProductGallery";
 import MetaViewContent from "@/components/meta/MetaViewContent";
@@ -71,7 +71,7 @@ export default async function ProductoPage({
 
   return (
     <div className="min-h-screen bg-[#faf6e7] pb-24 md:pb-0">
-      <Header />
+      <SiteHeader ancho="5xl" />
       <MetaViewContent
         producto={params.slug}
         precio={typeof precioRow?.precio_impreso === "number" && precioRow.precio_impreso > 0 ? precioRow.precio_impreso : undefined}

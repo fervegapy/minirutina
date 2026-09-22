@@ -1,4 +1,4 @@
-import Header from "@/components/landing/Header";
+import SiteHeader from "@/components/landing/SiteHeader";
 import Footer from "@/components/landing/Footer";
 
 /**
@@ -18,7 +18,7 @@ export default function LegalLayout({
 }) {
   return (
     <div className="min-h-screen bg-[#faf6e7]">
-      <Header />
+      <SiteHeader />
       <main className="px-6 py-16 md:py-24">
         <div className="max-w-2xl mx-auto">
           <header className="mb-10">

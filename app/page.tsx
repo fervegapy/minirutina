@@ -16,7 +16,7 @@
 //   - El FAQ compartido queda al final para lo logístico (pago, envío,
 //     versión digital), que es lo que no cubre el bloque de objeciones.
 import Link from "next/link";
-import HeaderSimple from "@/components/landing/simple/HeaderSimple";
+import SiteHeader from "@/components/landing/SiteHeader";
 import ProductosDestacados from "@/components/landing/simple/ProductosDestacados";
 import PorQueFunciona from "@/components/landing/simple/PorQueFunciona";
 import FAQ from "@/components/landing/FAQ";
@@ -44,7 +44,7 @@ const PASOS = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-[#faf6e7]">
-      <HeaderSimple />
+      <SiteHeader />
       <main>
         {/* Hero compacto: una promesa, una bajada y nada más. El CTA real son
             las tarjetas de producto, que arrancan apenas abajo. */}
