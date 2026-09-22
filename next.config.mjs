@@ -19,6 +19,14 @@ const nextConfig = {
     ],
   },
 
+  // /lp fue la ruta donde se probó la landing simplificada antes de que pasara
+  // a ser la home. Temporal y no permanente a propósito: si algún día se hace
+  // un A/B con dos landings, /lp vuelve a ser una página y no queremos que el
+  // navegador tenga cacheado un 308 hacia /.
+  async redirects() {
+    return [{ source: "/lp", destination: "/", permanent: false }];
+  },
+
   // Vercel sirve todo /public con `max-age=0, must-revalidate`, así que el
   // navegador revalida cada archivo en cada visita y no guarda nada entre
   // sesiones. Estas reglas lo arreglan para los assets pesados.
