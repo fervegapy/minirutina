@@ -86,7 +86,7 @@ export const productos: Record<string, Producto> = {
     accentColor: "#f5d78e",
     precioDesde:          "Gs. 149.000",
     descripcion:
-      "Un tablero visual con 10 o 20 pasos (vos elegís cuántos), donde tu hijo va juntando figuritas hasta llegar a la recompensa que vos definís. Las figuritas las elegís a gusto y se compran aparte. Funciona mucho mejor que los castigos — los chicos se enganchan, quieren llenar el tablero y los hábitos se instalan solos.",
+      "Un tablero visual con 10 o 20 pasos (vos elegís cuántos), donde tu hijo va juntando figuritas hasta llegar a la recompensa que vos definís. Las figuritas vienen incluidas y elegís la ilustración al personalizar. Funciona mucho mejor que los castigos — los chicos se enganchan, quieren llenar el tablero y los hábitos se instalan solos.",
     paraQuien:
       "Para niños de 3 a 9 años. Ideal para instalar un hábito nuevo, atravesar un momento difícil (destete, mudanza, hermano nuevo) o simplemente como sistema de motivación cotidiano.",
     incluye: [
@@ -128,7 +128,7 @@ export const productos: Record<string, Producto> = {
       },
       {
         q: "¿Cómo marcan los pasos?",
-        a: "El tablero viene con espacios para pegar las figuritas que vos elegís y comprás aparte. Las figuritas doradas o de personajes son las que más enganchan.",
+        a: "El tablero viene con los espacios y con las figuritas para pegar. La ilustración la elegís vos en el paso de personalización, así que son las que a tu hijo le gustan.",
       },
       {
         q: "¿Se puede usar para más de un hábito?",
