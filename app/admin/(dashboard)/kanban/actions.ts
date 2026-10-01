@@ -14,13 +14,16 @@ async function asegurarAdmin() {
 
 export type Cambios = Partial<Omit<Pieza, "id" | "orden">>;
 
-export async function crearTarjeta(estado: string) {
+export type NuevaPieza = Pick<Pieza, "titulo" | "estado" | "formato" | "fecha" | "caption" | "inspo" | "contenido">;
+
+export async function crearTarjeta(input: NuevaPieza) {
   try {
     const supabase = await asegurarAdmin();
+    if (!input.titulo.trim()) return { ok: false, error: "Falta el título." };
     // Las nuevas van arriba de la columna (orden más chico).
     const { error } = await supabase
       .from("contenido_kanban")
-      .insert({ titulo: "Sin título", estado, orden: -Date.now() });
+      .insert({ ...input, titulo: input.titulo.trim(), orden: -Date.now() });
     if (error) return { ok: false, error: error.message };
     revalidatePath("/admin/kanban");
     return { ok: true };

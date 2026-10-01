@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import {
   crearTarjeta, actualizarTarjeta, eliminarTarjeta, type Cambios,
 } from "@/app/admin/(dashboard)/kanban/actions";
@@ -26,6 +26,7 @@ export default function KanbanView({ piezas }: { piezas: Pieza[] }) {
   const [arrastrando, setArrastrando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nueva, setNueva] = useState<string | null>(null); // estado inicial del modal
   // Estado optimista mientras la server action está en vuelo.
   const [override, setOverride] = useState<Record<string, string>>({});
 
@@ -54,6 +55,12 @@ export default function KanbanView({ piezas }: { piezas: Pieza[] }) {
   return (
     <div>
       {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+      <div className="mb-4">
+        <Button className="h-10" onClick={() => setNueva("ideas")}>
+          <Plus className="w-4 h-4 mr-1" /> Nueva pieza
+        </Button>
+      </div>
+      {nueva && <ModalNueva estadoInicial={nueva} onClose={() => setNueva(null)} />}
       <div className="flex gap-4 overflow-x-auto pb-4 items-start">
         {ESTADOS.map((col) => {
           const items = piezas
@@ -92,7 +99,13 @@ export default function KanbanView({ piezas }: { piezas: Pieza[] }) {
               {items.length === 0 && (
                 <p className="text-xs text-zinc-400 text-center py-2">Vacío</p>
               )}
-              <NuevaTarjeta estado={col.id} />
+              <Button
+                variant="ghost"
+                className="h-10 w-full justify-start text-zinc-500"
+                onClick={() => setNueva(col.id)}
+              >
+                <Plus className="w-4 h-4 mr-1" /> Agregar
+              </Button>
             </section>
           );
         })}
@@ -260,17 +273,100 @@ function TarjetaCard({
   );
 }
 
-function NuevaTarjeta({ estado }: { estado: string }) {
+function ModalNueva({ estadoInicial, onClose }: { estadoInicial: string; onClose: () => void }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [f, setF] = useState({
+    titulo: "", estado: estadoInicial, formato: "", fecha: "",
+    contenido: "", caption: "", inspo: "",
+  });
+
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", esc);
+    return () => document.removeEventListener("keydown", esc);
+  }, [onClose]);
+
+  const crear = () => {
+    if (!f.titulo.trim()) { setError("Poné un título."); return; }
+    startTransition(async () => {
+      const r = await crearTarjeta({
+        ...f, formato: f.formato || null, fecha: f.fecha || null,
+      });
+      if (!r.ok) { setError(r.error ?? "No se pudo crear."); return; }
+      router.refresh();
+      onClose();
+    });
+  };
+
   return (
-    <Button
-      variant="ghost"
-      className="h-10 w-full justify-start text-zinc-500"
-      disabled={pending}
-      onClick={() => startTransition(async () => { await crearTarjeta(estado); router.refresh(); })}
+    <div
+      className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={onClose}
     >
-      <Plus className="w-4 h-4 mr-1" /> Agregar
-    </Button>
+      <div
+        role="dialog" aria-modal="true" aria-label="Nueva pieza"
+        className="bg-white w-full sm:max-w-lg max-h-[92vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-zinc-200 p-4 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-zinc-900">Nueva pieza</h2>
+          <Button variant="ghost" className="h-10 w-10 p-0" aria-label="Cerrar" onClick={onClose}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+        <Input
+          autoFocus value={f.titulo} placeholder="Título de la pieza"
+          onChange={(e) => setF({ ...f, titulo: e.target.value })}
+          onKeyDown={(e) => { if (e.key === "Enter") crear(); }}
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <label>
+            <span className={labelCls}>Estado</span>
+            <select className={selectCls} value={f.estado} onChange={(e) => setF({ ...f, estado: e.target.value })}>
+              {ESTADOS.map((e) => <option key={e.id} value={e.id}>{e.label}</option>)}
+            </select>
+          </label>
+          <label>
+            <span className={labelCls}>Formato</span>
+            <select className={selectCls} value={f.formato} onChange={(e) => setF({ ...f, formato: e.target.value })}>
+              <option value="">—</option>
+              {FORMATOS.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="block">
+          <span className={labelCls}>Publicación proyectada</span>
+          <Input type="date" value={f.fecha} onChange={(e) => setF({ ...f, fecha: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className={labelCls}>Contenido</span>
+          <textarea rows={4} className={areaCls} value={f.contenido}
+            placeholder="Gancho, desarrollo, CTA…"
+            onChange={(e) => setF({ ...f, contenido: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className={`${labelCls} flex justify-between`}>
+            Caption
+            <span className={f.caption.length > LIMITE_IG ? "text-red-600" : ""}>
+              {f.caption.length} / {LIMITE_IG}
+            </span>
+          </span>
+          <textarea rows={3} className={areaCls} value={f.caption}
+            placeholder="Caption del posteo"
+            onChange={(e) => setF({ ...f, caption: e.target.value })} />
+        </label>
+        <label className="block">
+          <span className={labelCls}>Inspo (link)</span>
+          <Input value={f.inspo} placeholder="https://…" onChange={(e) => setF({ ...f, inspo: e.target.value })} />
+        </label>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="flex gap-2 pt-1">
+          <Button className="h-10 flex-1" disabled={pending} onClick={crear}>Crear</Button>
+          <Button variant="outline" className="h-10" onClick={onClose}>Cancelar</Button>
+        </div>
+      </div>
+    </div>
   );
 }
