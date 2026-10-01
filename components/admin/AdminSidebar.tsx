@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Package, BarChart3, Search, FileText, ImageIcon, TrendingUp, Truck, Mail, Ticket, CreditCard, LogOut, Menu, X } from "lucide-react";
+import { Package, BarChart3, Search, FileText, ImageIcon, TrendingUp, Truck, Mail, Ticket, CreditCard, LogOut, Menu, X, Kanban } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 const NAV = [
@@ -13,6 +13,7 @@ const NAV = [
   { href: "/admin/mensajes",    label: "Mensajes",    Icon: Mail },
   { href: "/admin/cupones",      label: "Cupones",        Icon: Ticket },
   { href: "/admin/pagos",        label: "Pagos · dLocal", Icon: CreditCard },
+  { href: "/admin/kanban",       label: "Kanban",         Icon: Kanban },
   { href: "/admin/cms",          label: "Contenido",      Icon: FileText },
   { href: "/admin/tipo-cambio",  label: "Tipo de cambio", Icon: TrendingUp },
   { href: "/admin/delivery",     label: "Delivery",       Icon: Truck },
