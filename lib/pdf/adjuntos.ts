@@ -2,7 +2,7 @@
 // can be attached to the confirmation email. Físico items are skipped — those
 // go through the producción/envío flow instead.
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { generateBuffer, type PdfData } from "@/lib/pdf/render";
+import { generateDigitalBuffer, generateInstructivoBuffer, type PdfData } from "@/lib/pdf/render";
 import type { EmailAttachment } from "@/lib/email";
 import type { Genero } from "@/lib/iconAssets";
 import type {
@@ -21,8 +21,8 @@ function slug(s: string): string {
 }
 
 /**
- * Builds one print-ready PDF (imprenta version, front + back, no watermark)
- * per digital item of the pedido.
+ * Builds one print-ready PDF (imprenta version, front + back, cut line, no
+ * watermark) per digital item of the pedido, plus the assembly guide.
  * Returns an empty array when there are no digital items. Never throws — on a
  * per-item render failure it logs and skips that item.
  */
@@ -54,13 +54,21 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
         sticker:     p.sticker,
       };
 
-      // Versión imprenta, no la "cliente": trae el frente y el dorso de cada
-      // tablero (las fichas "Listo"), así quien lo imprime en casa o en una
-      // imprenta tiene las dos caras, igual que el impreso que armamos acá.
-      const buffer = await generateBuffer(it.producto, data, false, "imprenta");
+      // Versión imprenta (frente y dorso, como el impreso que armamos acá)
+      // con línea de corte para recortar en casa. Ver generateDigitalBuffer.
+      const buffer = await generateDigitalBuffer(it.producto, data);
       attachments.push({ filename: `${it.producto}-${slug(it.nombre_nino)}.pdf`, content: buffer });
     } catch (e) {
       console.error("[adjuntos] no se pudo generar PDF para item de", pedidoId, e);
+    }
+  }
+
+  // Una sola vez por email, aunque el pedido traiga varios tableros.
+  if (attachments.length > 0) {
+    try {
+      attachments.push({ filename: "como-armar-tu-tablero.pdf", content: await generateInstructivoBuffer() });
+    } catch (e) {
+      console.error("[adjuntos] no se pudo generar el instructivo para", pedidoId, e);
     }
   }
 

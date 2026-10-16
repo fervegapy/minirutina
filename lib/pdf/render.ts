@@ -14,6 +14,8 @@ import TableroPDF from "@/components/pdf/TableroPDF";
 import RecompensaPDF from "@/components/pdf/RecompensaPDF";
 import ImprentaRutinasPDF from "@/components/pdf/ImprentaRutinasPDF";
 import ImprentaRecompensasPDF from "@/components/pdf/ImprentaRecompensasPDF";
+import InstructivoPDF from "@/components/pdf/InstructivoPDF";
+import { agregarLineaDeCorte } from "@/lib/pdf/corte";
 
 const fontsDir = path.join(process.cwd(), "public", "fonts");
 
@@ -157,4 +159,27 @@ export async function generateBuffer(
     watermark,
     data.genero ?? null,
   );
+}
+
+// ─── Lo que recibe quien compra el digital ───────────────────────────────────
+
+/**
+ * PDF para el cliente que imprime en casa o en una imprenta: la versión
+ * imprenta (frente y dorso) con línea de corte redondeada alrededor de cada
+ * tablero. En recompensas solo el tablero lleva contorno: la hoja de fichas
+ * ya trae su propia línea de corte en cada círculo.
+ */
+export async function generateDigitalBuffer(producto: string, data: PdfData): Promise<Buffer> {
+  const imprenta = await generateBuffer(producto, data, false, "imprenta");
+  return agregarLineaDeCorte(imprenta, producto === "recompensas" ? [0] : undefined);
+}
+
+/** Instructivo de armado (una hoja A4), igual para todos los productos. */
+export async function generateInstructivoBuffer(): Promise<Buffer> {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const element = React.createElement(InstructivoPDF, {
+    logoSrc: fs.existsSync(logoPath) ? logoPath : null,
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return renderToBuffer(element as any);
 }

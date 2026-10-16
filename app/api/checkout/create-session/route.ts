@@ -144,6 +144,10 @@ export async function POST(req: NextRequest) {
             label: `Descargar tablero de ${it.nombre_nino}`,
             href:  `${origin}/api/pdf/${it.id}`,
           }));
+        // Instructivo de armado: uno por email, como en el flujo con adjuntos.
+        if (downloadButtons.length > 0) {
+          downloadButtons.push({ label: "Cómo armar tu tablero", href: `${origin}/api/pdf/instructivo` });
+        }
         // Await + inspect the result. sendEmail RESOLVES with { ok:false } on
         // a Resend error (it doesn't throw), so a plain .catch would miss it.
         // Awaiting also matters on serverless, where the function can freeze

@@ -4,7 +4,7 @@
 // the checkout request itself.
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { generateBuffer, type PdfData } from "@/lib/pdf/render";
+import { generateDigitalBuffer, type PdfData } from "@/lib/pdf/render";
 import type { Genero } from "@/lib/iconAssets";
 import type {
   PersonalizacionRutinas,
@@ -50,10 +50,9 @@ export async function GET(
     sticker:     p.sticker,
   };
 
-  // Versión imprenta, no la "cliente": trae el frente y el dorso de cada
-  // tablero (las fichas "Listo"), así quien lo imprime en casa o en una
-  // imprenta tiene las dos caras, igual que el impreso que armamos acá.
-  const buffer = await generateBuffer(item.producto, data, false, "imprenta");
+  // Versión imprenta (frente y dorso) con línea de corte, igual que el
+  // adjunto del email. Ver generateDigitalBuffer.
+  const buffer = await generateDigitalBuffer(item.producto, data);
 
   return new NextResponse(buffer, {
     headers: {
