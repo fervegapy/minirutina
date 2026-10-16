@@ -4,6 +4,7 @@
 //
 // Everything here is plain string HTML with inline styles + table layout —
 // the only thing email clients (Gmail, Outlook, Apple Mail) render reliably.
+import { formatPrecio, type Moneda } from "@/lib/mercado";
 
 const BG      = "#faf6e7";
 const DARK    = "#22244e";
@@ -20,6 +21,11 @@ export interface EmailItemSummary {
 
 export function fmtPyg(n: number): string {
   return "Gs. " + Math.round(n).toLocaleString("es-PY");
+}
+
+/** Monto en la moneda del pedido (Gs. por defecto; ARS/BRL/USD para afuera). */
+export function fmtMonto(n: number, moneda: Moneda = "PYG"): string {
+  return formatPrecio(n, moneda);
 }
 
 /** Header logo: real logo image (site_config.logo_url) on a cream bar — same
@@ -104,14 +110,14 @@ export function emailButton(href: string, label: string): string {
 }
 
 /** Order summary card: lists each item + total. */
-export function summaryCard(items: EmailItemSummary[], total: number): string {
+export function summaryCard(items: EmailItemSummary[], total: number, moneda: Moneda = "PYG"): string {
   const rows = items.map((it) => `
     <tr>
       <td style="font-size:14px;color:${MUTED};padding:6px 0;line-height:1.4;">
         ${it.productoLabel}<br />
         <span style="color:#22244e88;font-size:12px;">Para ${it.nombreNino} · ${it.tipoEntrega === "digital" ? "Digital" : "Impreso"}</span>
       </td>
-      <td align="right" style="font-size:14px;font-weight:600;color:${DARK};padding:6px 0;white-space:nowrap;">${fmtPyg(it.precioPyg)}</td>
+      <td align="right" style="font-size:14px;font-weight:600;color:${DARK};padding:6px 0;white-space:nowrap;">${fmtMonto(it.precioPyg, moneda)}</td>
     </tr>`).join("");
 
   return `<table width="100%" cellpadding="0" cellspacing="0"
@@ -125,7 +131,7 @@ export function summaryCard(items: EmailItemSummary[], total: number): string {
         <tr><td colspan="2" style="padding:8px 0;"><hr style="border:none;border-top:1px solid ${BORDER};margin:0;" /></td></tr>
         <tr>
           <td style="font-size:15px;font-weight:700;color:${DARK};padding:4px 0;">Total</td>
-          <td align="right" style="font-size:18px;font-weight:800;color:${DARK};padding:4px 0;">${fmtPyg(total)}</td>
+          <td align="right" style="font-size:18px;font-weight:800;color:${DARK};padding:4px 0;">${fmtMonto(total, moneda)}</td>
         </tr>
       </table>
     </td></tr>

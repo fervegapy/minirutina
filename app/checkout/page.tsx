@@ -27,6 +27,7 @@ const MapLocationPicker = dynamic(
 import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
 import DlocalCardForm, { type DlocalCardFormHandle } from "@/components/checkout/DlocalCardForm";
 import { useCarrito, type CartItem, type Formato, type Producto } from "@/lib/carrito";
+import { formatPrecio, getMonedaClient, precioEn, vendeImpreso, type Moneda, type PreciosProducto } from "@/lib/mercado";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas:     "Tablero de Rutinas",
@@ -37,8 +38,10 @@ const PRECIO_DELIVERY_FALLBACK = 35000;
 const FALLBACK_IMPRESO = 149000;
 const FALLBACK_DIGITAL = 89000;
 
+// Formato en Gs. — dentro de CheckoutInner se pisa con uno que usa la moneda
+// del visitante.
 function fmt(n: number) {
-  return "Gs. " + n.toLocaleString("es-PY");
+  return formatPrecio(n, "PYG");
 }
 
 type CheckoutMode = "redirect" | "embedded";
@@ -68,8 +71,16 @@ interface PrecioRow {
   precio_digital_20:  number | null;
 }
 
-function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>): number {
+function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>, moneda: Moneda): number {
   const row = prices[item.producto];
+  // Fuera de Paraguay: solo digital, en la moneda local y sin fallback (un
+  // precio sin cargar = 0, y el formulario no deja pagar).
+  if (moneda !== "PYG") {
+    const usar20 =
+      item.producto === "recompensas" &&
+      (item.personalizacion as { cantidad?: number } | null)?.cantidad === 20;
+    return precioEn(row as unknown as PreciosProducto, moneda, "digital", usar20) ?? 0;
+  }
   if (!row) {
     // Fallback if precios row not loaded — keeps the UI usable even if DB is slow.
     return item.formato === "digital" ? FALLBACK_DIGITAL : FALLBACK_IMPRESO;
@@ -87,6 +98,18 @@ function CheckoutInner() {
   const router = useRouter();
   const params = useSearchParams();
   const { items, removeItem, setFormato, clear } = useCarrito();
+
+  // Moneda del visitante (cookie del middleware). Fuera de Paraguay se vende
+  // solo el digital: sin envío, sin factura paraguaya, sin cupones (están en
+  // Gs.) y siempre por el checkout hospedado de dLocal.
+  const [moneda, setMoneda] = useState<Moneda>("PYG");
+  useEffect(() => setMoneda(getMonedaClient()), []);
+  const soloDigital = !vendeImpreso(moneda);
+  const fmt = (n: number) => formatPrecio(n, moneda);
+  useEffect(() => {
+    if (!soloDigital) return;
+    for (const it of items) if (it.formato !== "digital") setFormato(it.id, "digital");
+  }, [soloDigital, items, setFormato]);
 
   // Form state — order-level (shared by all items)
   const [modalidad, setModalidad] = useState<"pickup" | "delivery">("pickup");
@@ -155,7 +178,7 @@ function CheckoutInner() {
   useEffect(() => {
     supabase
       .from("precios")
-      .select("producto, precio_impreso, precio_digital, precio_impreso_20, precio_digital_20")
+      .select("*") // incluye ARS/BRL/USD si ya se corrió supabase/i18n_monedas.sql
       .then(({ data }) => {
         if (data) {
           const map: Record<string, PrecioRow> = {};
@@ -204,11 +227,13 @@ function CheckoutInner() {
 
   // ─── Derived ────────────────────────────────────────────────────────────
   const itemsConPrecio = useMemo(
-    () => items.map((it) => ({ ...it, precio: getItemPrice(it, pricesMap) })),
-    [items, pricesMap],
+    () => items.map((it) => ({ ...it, precio: getItemPrice(it, pricesMap, moneda) })),
+    [items, pricesMap, moneda],
   );
 
-  const anyFisico = items.some((it) => it.formato === "fisico");
+  const anyFisico = !soloDigital && items.some((it) => it.formato === "fisico");
+  // Algún ítem sin precio cargado en la moneda del visitante.
+  const faltaPrecio = soloDigital && !loadingPrecios && itemsConPrecio.some((it) => it.precio <= 0);
 
   const subtotal = itemsConPrecio.reduce((acc, it) => acc + it.precio, 0);
 
@@ -230,6 +255,7 @@ function CheckoutInner() {
     initiateFiredRef.current = true;
     metaTrack("InitiateCheckout", {
       value:        subtotal,
+      currency:     moneda,
       content_ids:  Array.from(new Set(items.map((it) => it.producto))),
       content_type: "product",
       num_items:    items.length,
@@ -286,7 +312,7 @@ function CheckoutInner() {
   const formValido =
     items.length > 0 &&
     !!nombre.trim() && !!apellido.trim() && emailValido && whatsappValido &&
-    datosEntregaOk && facturaOk && !loadingPrecios;
+    datosEntregaOk && facturaOk && !loadingPrecios && !faltaPrecio;
 
   // Navigates to an external URL (the payment gateway) after giving React a
   // chance to paint the "Redirigiendo..." button state. Without the rAF
@@ -352,7 +378,7 @@ function CheckoutInner() {
     //    values so admin / PDF code that still reads pedido.producto keeps
     //    working as a fallback.
     const first = itemsConPrecio[0]!;
-    const pedidoRow = {
+    const pedidoRow: Record<string, unknown> = {
       producto:        first.producto,
       nombre_nino:     first.nombre_nino,
       color_acento:    first.color_acento,
@@ -368,6 +394,9 @@ function CheckoutInner() {
       envio_referencia: esDelivery ? (referencia.trim() || null) : null,
       ruc:              necesitaFactura ? ruc.trim() : null,
       razon_social:     necesitaFactura ? razonSocial.trim() : null,
+      // Solo para pedidos de afuera: así un pedido en Gs. no depende de que
+      // se haya corrido supabase/i18n_monedas.sql.
+      ...(soloDigital ? { moneda_pedido: moneda } : {}),
     };
     // De dónde vino la persona (ver lib/atribucion.ts). El webhook la lee de
     // acá para adjuntarla a la venta en PostHog.
@@ -403,8 +432,9 @@ function CheckoutInner() {
       nombre_nino:     it.nombre_nino,
       color_acento:    it.color_acento,
       personalizacion: it.personalizacion,
-      tipo_entrega:    it.formato,
-      precio_pyg:      it.precio,
+      tipo_entrega:    soloDigital ? "digital" : it.formato,
+      precio_pyg:      soloDigital ? 0 : it.precio,
+      ...(soloDigital ? { precio_moneda: it.precio } : {}),
       orden:           idx,
     }));
     const { error: itemsErr } = await supabase.from("pedido_items").insert(itemsPayload);
@@ -445,7 +475,7 @@ function CheckoutInner() {
       : `${items.length} tableros (${itemsConPrecio.map((it) => it.nombre_nino).join(", ")})`;
 
     try {
-      if (checkoutMode === "embedded") {
+      if (checkoutMode === "embedded" && !soloDigital) {
         const token = await cardRef.current!.tokenize(titular.trim() || nombreCompleto);
         const res = await fetch("/api/checkout/pay-with-token", {
           method:  "POST",
@@ -485,6 +515,9 @@ function CheckoutInner() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({
           pedidoId:    pedidoData.id,
+          // Fuera de Paraguay el servidor recalcula el monto desde la base;
+          // productoPyg se ignora.
+          moneda,
           productoPyg: subtotal,
           envioPyg:    precioEnvio,
           cuponCodigo: cuponAplicado?.codigo ?? null,
@@ -600,6 +633,8 @@ function CheckoutInner() {
                 key={it.id}
                 item={it}
                 price={it.precio}
+                fmt={fmt}
+                soloDigital={soloDigital}
                 onRemove={() => {
                   track({ evento: "checkout_filled", data: { _removed: it.producto } });
                   removeItem(it.id);
@@ -724,11 +759,12 @@ function CheckoutInner() {
               <Input placeholder="Apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} autoComplete="family-name" />
             </div>
             <Input placeholder="Email" type="email" value={email}    onChange={(e) => setEmail(e.target.value)}    autoComplete="email" />
-            <Input placeholder="WhatsApp (ej: +595 981 123456)" type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} autoComplete="tel" />
+            <Input placeholder={soloDigital ? "WhatsApp (con código de país)" : "WhatsApp (ej: +595 981 123456)"} type="tel" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} autoComplete="tel" />
             <p className="text-xs text-[#22244e]/50">
               Te contactamos por WhatsApp para confirmar y coordinar tu pedido.
             </p>
 
+            {!soloDigital && (
             <div className="pt-3 border-t border-[#e5e7eb]">
               <label className="flex items-center gap-2 text-sm text-[#22244e]/80 cursor-pointer">
                 <input
@@ -746,9 +782,11 @@ function CheckoutInner() {
                 </div>
               )}
             </div>
+            )}
           </div>
 
-          {/* Cupón */}
+          {/* Cupón — los cupones están en Gs., así que solo en Paraguay */}
+          {!soloDigital && (
           <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
             <p className="text-[11px] uppercase tracking-widest text-[#22244e]/40 font-bold">
               ¿Tenés un cupón? <span className="text-[#22244e]/30 normal-case">· opcional</span>
@@ -781,9 +819,10 @@ function CheckoutInner() {
               </>
             )}
           </div>
+          )}
 
           {/* Pago embebido */}
-          {checkoutMode === "embedded" && (
+          {checkoutMode === "embedded" && !soloDigital && (
             <div className="bg-white border border-[#e5e7eb] rounded-2xl p-5 space-y-3">
               <StepTitle n={anyFisico ? (modalidad === "delivery" ? 4 : 3) : 2}>
                 Pagá con tu tarjeta
@@ -818,7 +857,7 @@ function CheckoutInner() {
               {anyFisico && (
                 <div className="flex justify-between text-sm text-[#22244e]/60">
                   <span>Envío ({modalidad === "delivery" ? "Delivery" : "Pickup"})</span>
-                  <span>{precioEnvio === 0 ? "Gs. 0" : fmt(precioEnvio)}</span>
+                  <span>{fmt(precioEnvio)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-[#22244e] pt-2 border-t border-[#e5e7eb]">
@@ -839,7 +878,7 @@ function CheckoutInner() {
                 )}
                 {loading
                   ? "Procesando..."
-                  : checkoutMode === "embedded"
+                  : checkoutMode === "embedded" && !soloDigital
                   ? `Pagar ${loadingPrecios ? "" : fmt(total)}`
                   : `Ir a pagar ${loadingPrecios ? "" : fmt(total)}`}
               </Button>
@@ -855,6 +894,8 @@ function CheckoutInner() {
                     ? "Completá la dirección de entrega"
                     : !facturaOk
                     ? "Completá RUC y razón social"
+                    : faltaPrecio
+                    ? "Este tablero todavía no está a la venta en tu país"
                     : "Completá los datos para continuar"}
                 </p>
               )}
@@ -870,11 +911,15 @@ function CheckoutInner() {
 function CartItemRow({
   item,
   price,
+  fmt,
+  soloDigital,
   onRemove,
   onChangeFormato,
 }: {
   item:    CartItem & { producto: Producto };
   price:   number;
+  fmt:     (n: number) => string;
+  soloDigital: boolean;
   onRemove: () => void;
   onChangeFormato: (f: Formato) => void;
 }) {
@@ -931,8 +976,14 @@ function CartItemRow({
           </button>
         </div>
 
-        {/* Format toggle */}
+        {/* Format toggle — fuera de Paraguay no hay impreso, no hay nada que elegir */}
         <div className="flex items-center gap-2 mt-2">
+          {soloDigital ? (
+            <span className="inline-flex items-center gap-1 text-xs text-[#22244e]/70">
+              <Smartphone className="w-3 h-3" />
+              Digital (PDF)
+            </span>
+          ) : (
           <div className="inline-flex rounded-lg border border-[#e5e7eb] overflow-hidden text-xs">
             <button
               type="button"
@@ -959,8 +1010,9 @@ function CartItemRow({
               Digital
             </button>
           </div>
+          )}
           <span className="ml-auto text-sm font-bold text-[#22244e] tabular-nums">
-            {fmt(price)}
+            {price > 0 ? fmt(price) : "—"}
           </span>
         </div>
       </div>

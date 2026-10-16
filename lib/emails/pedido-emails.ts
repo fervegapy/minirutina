@@ -9,6 +9,7 @@
 //   3. en camino              — auto, admin marks estado = enviado
 //   4. feedback               — auto, admin marks estado = entregado
 //   5. factura                — manual, from admin, on demand (not tied to estado)
+import type { Moneda } from "@/lib/mercado";
 import { sendEmail, type EmailAttachment } from "@/lib/email";
 import { getSiteConfig } from "@/lib/site-config";
 import {
@@ -20,7 +21,7 @@ import {
   timeline,
   TIMELINE_STEPS_RETIRO,
   pedidoNumero,
-  fmtPyg,
+  fmtMonto,
   type EmailItemSummary,
 } from "@/lib/emails/template";
 
@@ -77,7 +78,9 @@ interface BaseArgs {
   pedidoId:       string;
   logoUrl?:       string | null;
 }
-interface CartArgs extends BaseArgs { items: EmailItemSummary[]; total: number }
+// `moneda`: la del pedido (Gs. si no se pasa). `precioPyg` de cada ítem y
+// `total` vienen en esa moneda.
+interface CartArgs extends BaseArgs { items: EmailItemSummary[]; total: number; moneda?: Moneda }
 interface ShipArgs extends BaseArgs { nombreNino?: string | null }
 // `esRetiro` = customer chose pickup, not delivery. We never mention the
 // pickup address in email — it's the team's home base — so pickup orders
@@ -112,7 +115,7 @@ export interface ConfirmadoOpts {
   downloadButtons?: { label: string; href: string }[];
 }
 export function buildPedidoConfirmado(
-  { nombreCliente, pedidoId, items, total, logoUrl }: CartArgs,
+  { nombreCliente, pedidoId, items, total, logoUrl, moneda }: CartArgs,
   opts: ConfirmadoOpts = {},
 ): BuiltEmail {
   const { conAdjuntos = false, downloadButtons = [] } = opts;
@@ -147,7 +150,7 @@ export function buildPedidoConfirmado(
     : todosDigitales
       ? (conAdjuntos ? "Adjuntamos tu archivo en este correo." : "Ya estamos preparando tu archivo.")
       : "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso.";
-  const intro = `${saludo(nombreCliente)} ${total > 0 ? `recibimos tu pago de ${fmtPyg(total)}.` : "confirmamos tu pedido."} ${accion}`;
+  const intro = `${saludo(nombreCliente)} ${total > 0 ? `recibimos tu pago de ${fmtMonto(total, moneda)}.` : "confirmamos tu pedido."} ${accion}`;
 
   const html = renderEmailShell({
     logoUrl,
@@ -158,7 +161,7 @@ export function buildPedidoConfirmado(
         : "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
     heading:   "Tu pedido está confirmado ✅",
     intro,
-    contentHtml: progreso + summaryCard(items, total) + whatsappButton(pedidoId, WHATSAPP) + pedidoNumero(pedidoId),
+    contentHtml: progreso + summaryCard(items, total, moneda) + whatsappButton(pedidoId, WHATSAPP) + pedidoNumero(pedidoId),
   });
   return { subject: `Tu pedido está confirmado — Minirutina #${pedidoId.slice(0, 8).toUpperCase()}`, html };
 }

@@ -19,9 +19,11 @@ import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { notificarPagoTelegram, telegramConfigurado } from "@/lib/telegram";
+import { isMoneda, PAIS_DLOCAL, precioEn, type Moneda, type PreciosProducto } from "@/lib/mercado";
 
 interface Body {
   pedidoId:     string;
+  moneda?:      Moneda;              // default PYG
   productoPyg:  number;
   envioPyg?:    number;
   cuponCodigo?:     string | null;
@@ -40,10 +42,98 @@ const NOMBRE_PRODUCTO: Record<string, string> = {
   semana:      "Plan de la Semana",
 };
 
+// ─── Pedidos de afuera (ARS / BRL / USD) ─────────────────────────────────────
+// Solo digital, sin cupones ni envío. El monto NO se toma del cliente: se
+// recalcula desde pedido_items + precios en la moneda pedida, y se guarda en
+// el pedido para que el admin vea lo que se cobró.
+async function crearPagoExterior(
+  req: NextRequest,
+  body: Body,
+  moneda: Exclude<Moneda, "PYG">,
+) {
+  const { pedidoId, email, nombreNino } = body;
+  const [{ data: itemRows }, { data: precioRows }] = await Promise.all([
+    supabaseAdmin
+      .from("pedido_items")
+      .select("id, producto, personalizacion")
+      .eq("pedido_id", pedidoId)
+      .order("orden", { ascending: true }),
+    supabaseAdmin.from("precios").select("*"),
+  ]);
+  const items = itemRows ?? [];
+  if (!pedidoId || items.length === 0) {
+    return NextResponse.json({ ok: false, error: "Datos del pedido incompletos." }, { status: 400 });
+  }
+  const precios = new Map((precioRows ?? []).map((r) => [r.producto as string, r as PreciosProducto]));
+
+  let total = 0;
+  for (const it of items) {
+    const veinte = it.producto === "recompensas" && (it.personalizacion as { cantidad?: number } | null)?.cantidad === 20;
+    const precio = precioEn(precios.get(it.producto), moneda, "digital", veinte);
+    if (precio === null) {
+      return NextResponse.json(
+        { ok: false, error: "Este tablero todavía no está a la venta en tu país." },
+        { status: 400 },
+      );
+    }
+    total += precio;
+    await supabaseAdmin
+      .from("pedido_items")
+      .update({ precio_moneda: precio, precio_pyg: 0, tipo_entrega: "digital" })
+      .eq("id", it.id);
+  }
+  // ARS y PYG no usan decimales; BRL y USD sí (centavos).
+  total = moneda === "ARS" ? Math.round(total) : Math.round(total * 100) / 100;
+
+  const origin = req.headers.get("origin") ?? "https://www.minirutina.com";
+  const nroPedido = pedidoId.slice(0, 8).toUpperCase();
+  const descripcion = (items.length === 1
+    ? `Pedido #${nroPedido} · ${NOMBRE_PRODUCTO[items[0]!.producto] ?? "Tablero"} — ${nombreNino} · Digital (PDF)`
+    : `Pedido #${nroPedido} · ${items.length} tableros · Digital (PDF)`).slice(0, 100);
+
+  const payment = await createPayment({
+    amount:           total,
+    currency:         moneda,
+    // USD sin país: el checkout hospedado de dLocal se lo pide al pagador.
+    ...(PAIS_DLOCAL[moneda] ? { country: PAIS_DLOCAL[moneda] } : {}),
+    order_id:         buildOrderId(pedidoId),
+    description:      descripcion,
+    success_url:      `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`,
+    back_url:         `${origin}/checkout?cancelado=1`,
+    notification_url: `${origin}/api/dlocal/webhook`,
+    payer: {
+      name:  body.nombreComprador?.trim() || undefined,
+      email: email && email.includes("@") ? email : undefined,
+    },
+  });
+  if (!payment.redirect_url) {
+    return NextResponse.json({ ok: false, error: "dLocal no devolvió URL de pago." }, { status: 502 });
+  }
+
+  await supabaseAdmin
+    .from("pedidos")
+    .update({
+      dlocal_payment_id: payment.id,
+      metodo_pago:       "dlocal",
+      moneda_pago:       moneda,
+      moneda_pedido:     moneda,
+      tipo_entrega:      "digital",
+      direccion:         null,
+      costo_envio:       0,
+    })
+    .eq("id", pedidoId);
+
+  return NextResponse.json({ ok: true, url: payment.redirect_url });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as Body;
     const { pedidoId, email, nombreNino, producto, tipoEntrega, modalidad } = body;
+
+    if (isMoneda(body.moneda) && body.moneda !== "PYG") {
+      return await crearPagoExterior(req, body, body.moneda);
+    }
 
     const productoPyg = Number.isFinite(body.productoPyg)
       ? body.productoPyg
