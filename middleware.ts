@@ -50,7 +50,11 @@ function publico(req: NextRequest): NextResponse {
       // Legible desde el cliente: los precios se eligen en el navegador.
       r.cookies.set(MONEDA_COOKIE, moneda, COOKIE_OPTS);
     }
-    if (idiomaCookie !== locale) r.cookies.set(LOCALE_COOKIE, locale, COOKIE_OPTS);
+    // El idioma se guarda solo cuando la persona lo eligió (entró por /en o
+    // /pt, o tocó el selector). Lo detectado no se fija: si no, la primera
+    // detección quedaba pegada para siempre.
+    const elegido = seg === "en" || seg === "pt" ? seg : isLocale(idiomaParam) ? idiomaParam : null;
+    if (elegido && idiomaCookie !== elegido) r.cookies.set(LOCALE_COOKIE, elegido, COOKIE_OPTS);
     return r;
   };
 

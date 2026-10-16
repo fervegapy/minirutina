@@ -66,7 +66,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${rubik.variable}`}>
+    // suppressHydrationWarning: /en y /pt corrigen `lang` en el cliente antes
+    // de hidratar (ver app/v/[variante]/page.tsx), y React avisaría del cambio.
+    <html lang="es" suppressHydrationWarning className={`${inter.variable} ${rubik.variable}`}>
       <body className="antialiased">
         <AtribucionScript />
         <MetaPixel />
