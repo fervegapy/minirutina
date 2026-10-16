@@ -50,7 +50,10 @@ export async function GET(
     sticker:     p.sticker,
   };
 
-  const buffer = await generateBuffer(item.producto, data, false, "cliente");
+  // Versión imprenta, no la "cliente": trae el frente y el dorso de cada
+  // tablero (las fichas "Listo"), así quien lo imprime en casa o en una
+  // imprenta tiene las dos caras, igual que el impreso que armamos acá.
+  const buffer = await generateBuffer(item.producto, data, false, "imprenta");
 
   return new NextResponse(buffer, {
     headers: {

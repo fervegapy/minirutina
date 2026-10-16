@@ -20,7 +20,8 @@ function slug(s: string): string {
 }
 
 /**
- * Builds one cliente PDF (no watermark) per digital item of the pedido.
+ * Builds one print-ready PDF (imprenta version, front + back, no watermark)
+ * per digital item of the pedido.
  * Returns an empty array when there are no digital items. Never throws — on a
  * per-item render failure it logs and skips that item.
  */
@@ -52,7 +53,10 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
         sticker:     p.sticker,
       };
 
-      const buffer = await generateBuffer(it.producto, data, false, "cliente");
+      // Versión imprenta, no la "cliente": trae el frente y el dorso de cada
+      // tablero (las fichas "Listo"), así quien lo imprime en casa o en una
+      // imprenta tiene las dos caras, igual que el impreso que armamos acá.
+      const buffer = await generateBuffer(it.producto, data, false, "imprenta");
       attachments.push({ filename: `tablero-${slug(it.nombre_nino)}.pdf`, content: buffer });
     } catch (e) {
       console.error("[adjuntos] no se pudo generar PDF para item de", pedidoId, e);
