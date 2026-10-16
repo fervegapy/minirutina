@@ -4,8 +4,87 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAdminEmail } from "@/lib/admin-emails";
+import { MONEDA_COOKIE, MONEDA_COOKIE_MAX_AGE, monedaFromCountryCode, type Moneda } from "@/lib/mercado";
+import { LOCALE_COOKIE, isLocale, localeFromRequest, varianteDe, type Locale } from "@/lib/i18n";
+
+// País forzado a mano con ?pais=AR (sirve para probar otros mercados en local
+// o desde Paraguay). Se guarda aparte para que la cookie de moneda normal se
+// pueda recalcular por IP en cada visita.
+const PAIS_FORZADO_COOKIE = "mr_pais_forzado";
+const COOKIE_OPTS = { maxAge: MONEDA_COOKIE_MAX_AGE, path: "/" };
+
+// ─── Sitio público: idioma + moneda ──────────────────────────────────────────
+// No toca Supabase: en el embudo público solo resuelve idioma y moneda y
+// reescribe a la variante estática de la página (ver lib/i18n.ts).
+function publico(req: NextRequest): NextResponse {
+  const { pathname, searchParams } = req.nextUrl;
+
+  // País → moneda. ?pais=XX lo fuerza (y ?pais=auto lo vuelve a la IP).
+  const paisParam = searchParams.get("pais")?.toUpperCase() ?? null;
+  const paisForzado = paisParam === "AUTO" ? null : paisParam ?? req.cookies.get(PAIS_FORZADO_COOKIE)?.value ?? null;
+  const pais = paisForzado ?? req.headers.get("x-vercel-ip-country");
+  const moneda: Moneda = monedaFromCountryCode(pais);
+
+  // Idioma: el prefijo de la URL manda; si no hay, cookie; si no hay cookie,
+  // país + navegador.
+  const seg = pathname.split("/")[1];
+  const idiomaParam = searchParams.get("idioma");
+  const idiomaCookie = req.cookies.get(LOCALE_COOKIE)?.value;
+  let locale: Locale;
+  let resto = pathname; // ruta sin el prefijo de idioma
+  if (seg === "en" || seg === "pt") {
+    locale = seg;
+    resto = pathname.slice(3) || "/";
+  } else {
+    locale = isLocale(idiomaParam) ? idiomaParam
+           : isLocale(idiomaCookie) ? idiomaCookie
+           : localeFromRequest(pais, req.headers.get("accept-language"));
+  }
+
+  const conCookies = (r: NextResponse) => {
+    if (paisParam) {
+      if (paisParam === "AUTO") r.cookies.delete(PAIS_FORZADO_COOKIE);
+      else r.cookies.set(PAIS_FORZADO_COOKIE, paisParam, COOKIE_OPTS);
+    }
+    if (req.cookies.get(MONEDA_COOKIE)?.value !== moneda) {
+      // Legible desde el cliente: los precios se eligen en el navegador.
+      r.cookies.set(MONEDA_COOKIE, moneda, COOKIE_OPTS);
+    }
+    if (idiomaCookie !== locale) r.cookies.set(LOCALE_COOKIE, locale, COOKIE_OPTS);
+    return r;
+  };
+
+  // Una URL en español con el visitante en otro idioma → a su prefijo. Solo
+  // en la home y el detalle de producto, que son las páginas traducidas.
+  const esTraducible = resto === "/" || resto.startsWith("/productos/");
+  if (seg !== "en" && seg !== "pt" && locale !== "es" && esTraducible) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/${locale}${resto === "/" ? "" : resto}`;
+    url.searchParams.delete("idioma");
+    return conCookies(NextResponse.redirect(url));
+  }
+
+  if (esTraducible) {
+    const url = req.nextUrl.clone();
+    url.pathname = `/v/${varianteDe(locale, moneda)}${resto === "/" ? "" : resto}`;
+    return conCookies(NextResponse.rewrite(url));
+  }
+
+  // /en/personalizar/… y similares todavía no existen traducidos: van a la
+  // versión en español.
+  if (seg === "en" || seg === "pt") {
+    const url = req.nextUrl.clone();
+    url.pathname = resto;
+    return conCookies(NextResponse.redirect(url));
+  }
+
+  return conCookies(NextResponse.next());
+}
 
 export async function middleware(req: NextRequest) {
+  const p = req.nextUrl.pathname;
+  if (!p.startsWith("/admin") && !p.startsWith("/auth")) return publico(req);
+
   // Build a response we can attach cookies to as the session refreshes.
   let res = NextResponse.next({ request: req });
 
@@ -64,5 +143,10 @@ export const config = {
   // identifican por contacto), así que el único que se autentica es el admin:
   // correr esto en la landing, los customizers y el checkout solo agregaba el
   // arranque del cliente de Supabase al TTFB de todo el embudo, sin usarlo.
-  matcher: ["/admin/:path*", "/auth/:path*"],
+  // Las públicas pasan por publico(), que es solo leer headers/cookies.
+  matcher: [
+    "/admin/:path*", "/auth/:path*",
+    "/", "/en", "/en/:path*", "/pt", "/pt/:path*",
+    "/productos/:path*", "/personalizar/:path*", "/checkout", "/pagar/:path*",
+  ],
 };

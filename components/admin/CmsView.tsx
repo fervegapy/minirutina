@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   actualizarPrecios,
+  actualizarPreciosExterior,
   setProductoActivo,
   actualizarLabelsProducto,
   crearFaq,
@@ -26,6 +27,14 @@ export interface PrecioRow {
   /** Only used for Recompensas — 20-stickers variant. Null for Rutinas. */
   precio_impreso_20: number | null;
   precio_digital_20: number | null;
+  // Digital en otras monedas (supabase/i18n_monedas.sql). Ausentes si la
+  // migración no se corrió todavía.
+  precio_digital_ars?:    number | null;
+  precio_digital_20_ars?: number | null;
+  precio_digital_brl?:    number | null;
+  precio_digital_20_brl?: number | null;
+  precio_digital_usd?:    number | null;
+  precio_digital_20_usd?: number | null;
 }
 export interface ProductoConfigRow {
   producto: string;
@@ -110,6 +119,7 @@ function PreciosSection({
               precioDigital={precio?.precio_digital ?? 0}
               precioImpreso20={precio?.precio_impreso_20 ?? 0}
               precioDigital20={precio?.precio_digital_20 ?? 0}
+              fila={precio}
               activo={cfg?.activo ?? true}
               nombre={cfg?.nombre ?? null}
               tagline={cfg?.tagline ?? null}
@@ -127,10 +137,12 @@ function ProductoRow({
   precioDigital,
   precioImpreso20,
   precioDigital20,
+  fila,
   activo,
   nombre,
   tagline,
 }: {
+  fila?: PrecioRow;
   producto: string;
   precioImpreso: number;
   precioDigital: number;
@@ -326,6 +338,103 @@ function ProductoRow({
           &quot;Desde&quot; en el catálogo se calcula automáticamente del menor de los dos.
         </p>
       </div>
+
+      <PreciosExterior producto={producto} fila={fila} />
+    </div>
+  );
+}
+
+// ─── Precios fuera de Paraguay ───────────────────────────────────────────────
+// Solo digital (afuera no se vende impreso). Se fijan a mano, sin conversión:
+// un campo vacío = el producto no se ofrece en esa moneda.
+
+const MONEDAS_EXTERIOR = [
+  { sufijo: "ars", label: "Argentina (ARS)", decimales: false },
+  { sufijo: "brl", label: "Brasil (BRL)",    decimales: true  },
+  { sufijo: "usd", label: "Resto del mundo (USD)", decimales: true },
+] as const;
+
+type ColExterior =
+  | "precio_digital_ars" | "precio_digital_20_ars"
+  | "precio_digital_brl" | "precio_digital_20_brl"
+  | "precio_digital_usd" | "precio_digital_20_usd";
+
+function PreciosExterior({ producto, fila }: { producto: string; fila?: PrecioRow }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const esRecompensas = producto === "recompensas";
+  // La migración no corrió: las columnas no vienen en la fila.
+  const migrado = !!fila && "precio_digital_usd" in fila;
+
+  const columnas: ColExterior[] = MONEDAS_EXTERIOR.flatMap((m) =>
+    esRecompensas
+      ? [`precio_digital_${m.sufijo}` as ColExterior, `precio_digital_20_${m.sufijo}` as ColExterior]
+      : [`precio_digital_${m.sufijo}` as ColExterior],
+  );
+  const inicial = Object.fromEntries(
+    columnas.map((c) => [c, fila?.[c] != null ? String(fila[c]) : ""]),
+  ) as Record<ColExterior, string>;
+  const [valores, setValores] = useState(inicial);
+  const dirty = columnas.some((c) => valores[c] !== inicial[c]);
+
+  const guardar = () => {
+    startTransition(async () => {
+      const r = await actualizarPreciosExterior(
+        producto,
+        Object.fromEntries(columnas.map((c) => [c, valores[c] ? Number(valores[c]) : null])),
+      );
+      if (r.ok) router.refresh();
+      else alert(r.error ?? "Error");
+    });
+  };
+
+  if (!migrado) {
+    return (
+      <p className="text-xs text-zinc-500 pt-2 border-t border-zinc-100">
+        Precios fuera de Paraguay: corré <code>supabase/i18n_monedas.sql</code> en Supabase para cargarlos.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 pt-2 border-t border-zinc-100">
+      <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">
+        Fuera de Paraguay — solo digital
+      </p>
+      {MONEDAS_EXTERIOR.map((m) => (
+        <div key={m.sufijo} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {(esRecompensas ? ["", "20_"] : [""]).map((v) => {
+            const col = `precio_digital_${v}${m.sufijo}` as ColExterior;
+            return (
+              <div key={col}>
+                <label className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium block mb-1">
+                  {m.label}{esRecompensas ? (v ? " · 20 stickers" : " · 10 stickers") : ""}
+                </label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step={m.decimales ? "0.01" : "1"}
+                  min="0"
+                  value={valores[col]}
+                  placeholder="Sin precio — no se vende"
+                  onChange={(e) => setValores((prev) => ({ ...prev, [col]: e.target.value }))}
+                  className="text-sm bg-white"
+                />
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      {dirty && (
+        <Button
+          onClick={guardar}
+          disabled={pending}
+          className="bg-zinc-900 hover:bg-zinc-800 text-white text-sm h-9 rounded-md"
+        >
+          <Save className="w-3.5 h-3.5 mr-1.5" />
+          {pending ? "Guardando..." : "Guardar precios de afuera"}
+        </Button>
+      )}
     </div>
   );
 }

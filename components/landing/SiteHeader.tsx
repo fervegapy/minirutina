@@ -13,6 +13,7 @@ import Link from "next/link";
 import Logo from "@/components/landing/Logo";
 import { waMeUrl } from "@/lib/contacto";
 import CartBadge from "@/components/landing/CartBadge";
+import { getHomeDict, type HomeDict } from "@/lib/i18n/home";
 
 export default function SiteHeader({
   // El contenedor acompaña el ancho del contenido de cada página, si no en
@@ -20,13 +21,14 @@ export default function SiteHeader({
   // max-w-3xl y el detalle de producto max-w-5xl. Las clases van literales
   // porque Tailwind no ve las que se arman concatenando.
   ancho = "3xl",
+  d = getHomeDict("es-py"),
+  homeHref = "/",
 }: {
   ancho?: "3xl" | "5xl";
+  d?: HomeDict;
+  homeHref?: string;
 }) {
-  const waUrl = waMeUrl(
-    process.env.NEXT_PUBLIC_WHATSAPP ?? null,
-    "Hola Minirutina, tengo una consulta sobre los tableros.",
-  );
+  const waUrl = waMeUrl(process.env.NEXT_PUBLIC_WHATSAPP ?? null, d.header.waMensaje);
 
   return (
     <header className="sticky top-0 z-50 bg-[#faf6e7]/95 backdrop-blur-sm border-b border-[#e5e7eb]">
@@ -35,7 +37,7 @@ export default function SiteHeader({
           ancho === "5xl" ? "max-w-5xl" : "max-w-3xl"
         } mx-auto px-6 h-16 flex items-center justify-between`}
       >
-        <Link href="/" className="flex items-center gap-2">
+        <Link href={homeHref} className="flex items-center gap-2">
           <Logo priority />
         </Link>
 
@@ -48,7 +50,7 @@ export default function SiteHeader({
               rel="noopener noreferrer"
               className="inline-flex items-center h-10 px-4 rounded-lg border border-[#e5e7eb] text-sm font-semibold text-[#22244e] hover:bg-[#22244e]/5 transition-colors"
             >
-              Consultar
+              {d.header.consultar}
             </a>
           )}
         </div>

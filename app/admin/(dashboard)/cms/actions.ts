@@ -12,10 +12,11 @@ async function asegurarAdmin() {
 }
 
 function revalidarPublicas() {
-  // Pages that surface CMS-managed content:
-  revalidatePath("/");                              // landing (testimonials)
-  revalidatePath("/productos/rutinas");             // FAQs + activo
-  revalidatePath("/productos/recompensas");
+  // Pages that surface CMS-managed content. Las públicas viven en
+  // /v/[variante] (una por idioma/mercado, ver lib/i18n), así que se
+  // revalida la ruta dinámica entera.
+  revalidatePath("/v/[variante]", "page");                  // landing
+  revalidatePath("/v/[variante]/productos/[slug]", "page"); // precios + activo
 }
 
 // ─── Precios ─────────────────────────────────────────────────────────────────
@@ -45,9 +46,38 @@ export async function actualizarPrecios(
     if (error) return { ok: false, error: error.message };
     revalidatePath("/admin/cms");
     revalidatePath("/checkout");
-    revalidatePath("/");
-    revalidatePath("/productos/rutinas");
-    revalidatePath("/productos/recompensas");
+    revalidarPublicas();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error" };
+  }
+}
+
+// Precios del digital en ARS / BRL / USD (columnas de supabase/i18n_monedas.sql).
+// null = sin cargar → el producto no se ofrece en esa moneda.
+const COLUMNAS_EXTERIOR = [
+  "precio_digital_ars", "precio_digital_20_ars",
+  "precio_digital_brl", "precio_digital_20_brl",
+  "precio_digital_usd", "precio_digital_20_usd",
+] as const;
+
+export async function actualizarPreciosExterior(
+  producto: string,
+  valores: Partial<Record<(typeof COLUMNAS_EXTERIOR)[number], number | null>>,
+) {
+  try {
+    const supabase = await asegurarAdmin();
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    for (const col of COLUMNAS_EXTERIOR) {
+      if (!(col in valores)) continue;
+      const v = valores[col];
+      payload[col] = typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+    }
+    const { error } = await supabase.from("precios").update(payload).eq("producto", producto);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/admin/cms");
+    revalidatePath("/checkout");
+    revalidarPublicas();
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error" };

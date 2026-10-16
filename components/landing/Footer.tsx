@@ -2,15 +2,30 @@ import Link from "next/link";
 import Logo from "@/components/landing/Logo";
 import { getSiteConfig } from "@/lib/site-config";
 import { waMeUrl } from "@/lib/contacto";
+import { getHomeDict, type HomeDict } from "@/lib/i18n/home";
+import type { Locale } from "@/lib/i18n";
 
-export default async function Footer() {
+// Selector de idioma. Va con ?idioma= para que el middleware guarde la
+// elección en la cookie: sin eso, un visitante con el navegador en inglés que
+// elige "Español" volvería a ser redirigido a /en.
+const IDIOMAS: { locale: Locale; label: string; href: string }[] = [
+  { locale: "es", label: "Español",   href: "/?idioma=es" },
+  { locale: "en", label: "English",   href: "/en" },
+  { locale: "pt", label: "Português", href: "/pt" },
+];
+
+export default async function Footer({
+  d = getHomeDict("es-py"),
+  locale,
+}: {
+  d?: HomeDict;
+  // Solo las páginas traducidas lo pasan; sin él no se muestra el selector.
+  locale?: Locale;
+} = {}) {
   const cfg = await getSiteConfig();
   // WhatsApp lives here in the footer for the rest of the flow — the floating
   // button is only on the home so it doesn't block conversion CTAs.
-  const waUrl = waMeUrl(
-    process.env.NEXT_PUBLIC_WHATSAPP ?? null,
-    "Hola Minirutina, les escribo desde la web y me gustaría hacer una consulta.",
-  );
+  const waUrl = waMeUrl(process.env.NEXT_PUBLIC_WHATSAPP ?? null, d.waFab.mensaje);
   return (
     <footer className="bg-[#22244e] px-6 py-12">
       <div className="max-w-5xl mx-auto">
@@ -21,7 +36,7 @@ export default async function Footer() {
               <Logo invert />
             </div>
             <p className="text-white/50 text-sm max-w-xs leading-relaxed">
-              {cfg.site_description}
+              {d.footer.descripcion || cfg.site_description}
             </p>
           </div>
 
@@ -29,20 +44,20 @@ export default async function Footer() {
           <div className="grid grid-cols-2 gap-8 text-sm">
             <div>
               <p className="font-bold text-white/30 uppercase text-xs tracking-widest mb-3">
-                Productos
+                {d.footer.productos}
               </p>
               <div className="space-y-2">
                 <Link href="/personalizar/rutinas" className="block text-white/60 hover:text-white transition-colors">
-                  Tablero de Rutinas
+                  {d.footer.rutinas}
                 </Link>
                 <Link href="/personalizar/recompensas" className="block text-white/60 hover:text-white transition-colors">
-                  Tablero de Recompensas
+                  {d.footer.recompensas}
                 </Link>
               </div>
             </div>
             <div>
               <p className="font-bold text-white/30 uppercase text-xs tracking-widest mb-3">
-                Ayuda
+                {d.footer.ayuda}
               </p>
               <div className="space-y-2">
                 {waUrl && (
@@ -56,13 +71,13 @@ export default async function Footer() {
                   </a>
                 )}
                 <Link href="/contacto" className="block text-white/60 hover:text-white transition-colors">
-                  Contacto
+                  {d.footer.contacto}
                 </Link>
                 <Link href="/envios-y-devoluciones" className="block text-white/60 hover:text-white transition-colors">
-                  Envíos y devoluciones
+                  {d.footer.envios}
                 </Link>
                 <Link href="/terminos" className="block text-white/60 hover:text-white transition-colors">
-                  Términos y condiciones
+                  {d.footer.terminos}
                 </Link>
                 <a
                   href="mailto:soporte@minirutina.com"
@@ -75,12 +90,32 @@ export default async function Footer() {
           </div>
         </div>
 
+        {locale && (
+          <nav aria-label={d.footer.idioma} className="flex flex-wrap items-center gap-2 mb-6">
+            {IDIOMAS.map((i) => (
+              <Link
+                key={i.locale}
+                href={i.href}
+                hrefLang={i.locale}
+                aria-current={i.locale === locale ? "true" : undefined}
+                className={`inline-flex items-center h-10 px-4 rounded-lg border text-sm font-semibold transition-colors ${
+                  i.locale === locale
+                    ? "border-white/40 text-white"
+                    : "border-white/10 text-white/50 hover:text-white"
+                }`}
+              >
+                {i.label}
+              </Link>
+            ))}
+          </nav>
+        )}
+
         <div className="border-t border-white/10 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
           <p className="text-white/30 text-xs">
-            © {new Date().getFullYear()} Minirutina. Todos los derechos reservados.
+            © {new Date().getFullYear()} Minirutina. {d.footer.derechos}
           </p>
           <p className="text-white/20 text-xs">
-            Hecho con ❤️ para familias paraguayas
+            {d.footer.hecho}
           </p>
         </div>
       </div>

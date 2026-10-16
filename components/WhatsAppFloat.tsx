@@ -3,15 +3,18 @@
 import { useEffect, useState } from "react";
 import { waMeUrl } from "@/lib/contacto";
 
-const WA_URL = waMeUrl(
-  process.env.NEXT_PUBLIC_WHATSAPP ?? null,
-  "Hola Minirutina, les escribo desde la web y me gustaría hacer una consulta.",
-);
 
 // Mostrar el FAB recién cuando se pasó este % de scroll de la página.
 const SCROLL_THRESHOLD = 0.75;
 
-export default function WhatsAppFloat() {
+export default function WhatsAppFloat({
+  mensaje = "Hola Minirutina, les escribo desde la web y me gustaría hacer una consulta.",
+  aria = "Escribinos por WhatsApp",
+}: {
+  mensaje?: string;
+  aria?: string;
+}) {
+  const WA_URL = waMeUrl(process.env.NEXT_PUBLIC_WHATSAPP ?? null, mensaje);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -38,7 +41,7 @@ export default function WhatsAppFloat() {
       href={WA_URL}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Escribinos por WhatsApp"
+      aria-label={aria}
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
       className={`fixed bottom-5 right-5 z-50 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${

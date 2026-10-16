@@ -17,6 +17,7 @@
 // esto al bundle del navegador sin necesidad, porque acá los íconos son
 // estáticos. Los nombres terminan en `Icon` — los cortos (`Hand`) están
 // deprecados en la 2.1.
+import type { HomeDict } from "@/lib/i18n/home";
 import {
   SpeakerSimpleSlashIcon,
   HandTapIcon,
@@ -33,78 +34,13 @@ import {
 
 type PhosphorIcon = typeof SparkleIcon;
 
-const MOTIVOS = [
-  {
-    icon: SpeakerSimpleSlashIcon,
-    titulo: "La instrucción deja de salir de tu boca",
-    texto:
-      "Mientras sos vos el que avisa que hay que vestirse, hay alguien con quien negociar. Cuando está en la pared, el chico va, mira y sigue. No desaparecen los días malos, pero se termina la discusión de todas las mañanas por lo mismo.",
-  },
-  {
-    icon: HandTapIcon,
-    titulo: "Marcar es la mitad de la gracia",
-    texto:
-      "En el de rutinas cada actividad se marca con velcro; en el de recompensas, pegando la figurita. Ese gesto es lo que engancha: quieren llegar al final de la fila. Es la diferencia entre un cartel que se mira y algo que el chico usa con las manos.",
-  },
-  {
-    icon: SealCheckIcon,
-    titulo: "Lo reconoce como propio",
-    texto:
-      "Un tablero genérico es decoración. Con su nombre arriba y las actividades de su día, no las de un ejemplo de internet, lo trata como suyo. A los tres o cuatro años eso pesa más de lo que parece.",
-  },
-];
-
-const RECOMENDACIONES = [
-  {
-    icon: ListNumbersIcon,
-    // El tablero de rutinas lleva 7 actividades fijas por lado: no se puede
-    // recomendar "empezá con menos". Lo que sí está en manos del cliente es
-    // cuáles elige y en qué orden.
-    texto:
-      "Elegí las 7 actividades en el orden real en que pasan en tu casa, no en el orden ideal. Si la fila no coincide con el día, el chico le deja de creer.",
-  },
-  {
-    icon: EyeIcon,
-    texto:
-      "Colgalo a la altura de los ojos de tu hijo, no a la tuya. Si tiene que pedirte que lo baje, deja de usarlo.",
-  },
-  {
-    icon: CalendarCheckIcon,
-    texto: "La primera semana acompañalo cada vez. Después empieza a ir solo.",
-  },
-  {
-    icon: ClockIcon,
-    texto:
-      "Si vas a usar uno solo de los dos, empezá por el momento del día que más te cuesta hoy.",
-  },
-];
-
-const OBJECIONES = [
-  {
-    q: "¿No puedo imprimir uno gratis de internet?",
-    a: "Podés, y mucha gente arranca así. La diferencia está en cuánto dura: una hoja común, con manos recién lavadas y tirones, aguanta unos días. Este va en papel de 300g con plastificado mate, que es lo que le permite aguantar el velcro yendo y viniendo todos los días.",
-  },
-  {
-    q: "¿Y si se aburre a los dos días?",
-    a: "La novedad siempre baja, eso pasa con todo. Lo que sostiene el uso es que lo marque él y no vos, y que la fila diga lo que de verdad pasa en tu casa. Cuando el chico llega al final y ve la fila completa, quiere volver a hacerlo mañana.",
-  },
-  {
-    q: "Todavía no sabe leer.",
-    a: "No hace falta. Cada actividad es una ilustración: el vaso de leche, el cepillo de dientes, la mochila. El nombre de arriba lo reconoce por la forma mucho antes de saber leerlo.",
-  },
-  {
-    q: "¿Cómo sé que va a quedar bien?",
-    a: "Antes de pagar ves el PDF de impresión armado con lo que elegiste: el mismo archivo que después va a la imprenta. No hay sorpresa entre la pantalla y lo que te llega.",
-  },
-  {
-    q: "Tengo dos hijos.",
-    a: "Un tablero por chico. Compartir uno no funciona: cada uno quiere marcar el suyo. Podés poner los dos en el mismo pedido y pagarlos juntos.",
-  },
-  {
-    q: "En el de recompensas, ¿vienen las figuritas?",
-    a: "Sí, vienen incluidas. Y la ilustración la elegís vos al personalizar, así que son las figuritas que a tu hijo le gustan y no las que vinieron en la caja.",
-  },
-];
+// Los textos viven en lib/i18n/home.ts (uno por idioma/mercado); acá quedan
+// solo los íconos, en el mismo orden que los textos.
+const ICONOS_MOTIVOS = [SpeakerSimpleSlashIcon, HandTapIcon, SealCheckIcon];
+// El tablero de rutinas lleva 7 actividades fijas por lado: no se puede
+// recomendar "empezá con menos". Lo que sí está en manos del cliente es
+// cuáles elige y en qué orden.
+const ICONOS_RECO = [ListNumbersIcon, EyeIcon, CalendarCheckIcon, ClockIcon];
 
 // Encabezado de sección: chip con ícono + volanta + título. Se repite tres
 // veces, así que vive acá y no copiado en cada bloque.
@@ -141,7 +77,10 @@ function Encabezado({
   );
 }
 
-export default function PorQueFunciona() {
+export default function PorQueFunciona({ d }: { d: HomeDict }) {
+  const MOTIVOS = d.porQue.motivos.map((m, i) => ({ ...m, icon: ICONOS_MOTIVOS[i]! }));
+  const RECOMENDACIONES = d.reco.items.map((texto, i) => ({ texto, icon: ICONOS_RECO[i]! }));
+  const OBJECIONES = d.obj.items;
   return (
     <>
       {/* Mecanismo — por qué un tablero cambia algo */}
@@ -149,11 +88,11 @@ export default function PorQueFunciona() {
         <div className="max-w-3xl mx-auto">
           <Encabezado
             icon={SparkleIcon}
-            volanta="Por qué funciona"
-            bajada="A los tres años tu hijo no puede leer una lista de tareas, pero sí puede mirar una fila de dibujos y saber qué viene después. Todo el tablero se apoya en eso."
+            volanta={d.porQue.volanta}
+            bajada={d.porQue.bajada}
           >
-            Un dibujo en la pared{" "}
-            <span className="text-[#336aea]">cambia la mañana</span>
+            {d.porQue.titulo}{" "}
+            <span className="text-[#336aea]">{d.porQue.destacado}</span>
           </Encabezado>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -183,11 +122,11 @@ export default function PorQueFunciona() {
         <div className="max-w-3xl mx-auto">
           <Encabezado
             icon={LightbulbIcon}
-            volanta="Antes de colgarlo"
-            bajada="El tablero solo no hace el trabajo. Esto es lo que separa al que se usa todos los días del que termina detrás de la puerta."
+            volanta={d.reco.volanta}
+            bajada={d.reco.bajada}
           >
-            Cuatro cosas que{" "}
-            <span className="text-[#336aea]">conviene saber</span>
+            {d.reco.titulo}{" "}
+            <span className="text-[#336aea]">{d.reco.destacado}</span>
           </Encabezado>
 
           <ul className="grid gap-3 md:grid-cols-2">
@@ -217,9 +156,9 @@ export default function PorQueFunciona() {
           leerlas, no tranquilizan a nadie. */}
       <section className="px-6 py-14 md:py-20 bg-white border-y border-[#e5e7eb]">
         <div className="max-w-3xl mx-auto">
-          <Encabezado icon={ChatCircleDotsIcon} volanta="Sin vueltas">
-            Lo que nos preguntan{" "}
-            <span className="text-[#336aea]">antes de comprar</span>
+          <Encabezado icon={ChatCircleDotsIcon} volanta={d.obj.volanta}>
+            {d.obj.titulo}{" "}
+            <span className="text-[#336aea]">{d.obj.destacado}</span>
           </Encabezado>
 
           <div className="grid gap-4 md:grid-cols-2">
