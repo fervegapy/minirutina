@@ -40,7 +40,7 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
       const p = (it.personalizacion ?? {}) as
         & Partial<PersonalizacionRutinas>
         & Partial<PersonalizacionRecompensas>
-        & { genero?: Genero | null };
+        & { genero?: Genero | null; idioma?: string };
 
       const data: PdfData = {
         nombreNino:  it.nombre_nino,
@@ -50,10 +50,12 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
         genero:      p.genero ?? null,
         cantidad:    p.cantidad,
         sticker:     p.sticker,
+        idioma:      p.idioma,
       };
 
       const buffer = await generateBuffer(it.producto, data, false, "cliente");
-      attachments.push({ filename: `tablero-${slug(it.nombre_nino)}.pdf`, content: buffer });
+      const base = p.idioma === "en" ? "chart" : p.idioma === "pt" ? "quadro" : "tablero";
+      attachments.push({ filename: `${base}-${slug(it.nombre_nino)}.pdf`, content: buffer });
     } catch (e) {
       console.error("[adjuntos] no se pudo generar PDF para item de", pedidoId, e);
     }

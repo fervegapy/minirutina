@@ -10,6 +10,8 @@ import path from "path";
 import fs from "fs";
 import { loadImages, loadRecompensaImages, loadStickerImage } from "@/lib/pdfImages";
 import type { Genero } from "@/lib/iconAssets";
+import { isLocale, type Locale } from "@/lib/i18n";
+import { getPdfTextos } from "@/lib/i18n/compra";
 import TableroPDF from "@/components/pdf/TableroPDF";
 import RecompensaPDF from "@/components/pdf/RecompensaPDF";
 import ImprentaRutinasPDF from "@/components/pdf/ImprentaRutinasPDF";
@@ -41,13 +43,15 @@ async function buildRutinasBuffer(
   noche: string[],
   watermark: boolean,
   genero: Genero | null,
+  idioma: Locale,
 ) {
   const allIconIds = [...manana, ...noche];
-  const images = loadImages(allIconIds, genero);
+  const images = loadImages(allIconIds, genero, idioma);
   const element = React.createElement(TableroPDF, {
     nombreNino, colorAcento, manana, noche, images,
     subtitleFont: SUBTITLE_FONT,
     watermark,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -58,12 +62,14 @@ async function buildRecompensasBuffer(
   genero: Genero,
   cantidad: 10 | 20,
   watermark: boolean,
+  idioma: Locale,
 ) {
-  const images = loadRecompensaImages();
+  const images = loadRecompensaImages(idioma);
   const element = React.createElement(RecompensaPDF, {
     nombreNino, genero, cantidad, images,
     subtitleFont: SUBTITLE_FONT,
     watermark,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -120,6 +126,8 @@ export interface PdfData {
   genero?: Genero | null;
   cantidad?: 10 | 20;
   sticker?: string;
+  /** Idioma del pedido (personalizacion.idioma). Español si falta. */
+  idioma?: string | null;
 }
 
 // Generate the right buffer from inline preview data or DB pedido data.
@@ -129,6 +137,8 @@ export async function generateBuffer(
   watermark: boolean,
   mode: PdfMode = "cliente",
 ): Promise<Buffer> {
+  // La versión de imprenta es solo para los impresos de Paraguay: va en español.
+  const idioma: Locale = isLocale(data.idioma) ? data.idioma : "es";
   if (producto === "recompensas") {
     const genero = (data.genero ?? "nino") as Genero;
     const cantidad = (data.cantidad ?? 10) as 10 | 20;
@@ -137,7 +147,7 @@ export async function generateBuffer(
         data.nombreNino, genero, cantidad, data.sticker ?? "estrella",
       );
     }
-    return buildRecompensasBuffer(data.nombreNino, genero, cantidad, watermark);
+    return buildRecompensasBuffer(data.nombreNino, genero, cantidad, watermark, idioma);
   }
   // default → rutinas
   if (mode === "imprenta") {
@@ -156,5 +166,6 @@ export async function generateBuffer(
     data.noche ?? [],
     watermark,
     data.genero ?? null,
+    idioma,
   );
 }

@@ -3,7 +3,7 @@ import Logo from "@/components/landing/Logo";
 import { getSiteConfig } from "@/lib/site-config";
 import { waMeUrl } from "@/lib/contacto";
 import { getHomeDict, type HomeDict } from "@/lib/i18n/home";
-import type { Locale } from "@/lib/i18n";
+import { prefijo, type Locale } from "@/lib/i18n";
 
 // Selector de idioma. Va con ?idioma= para que el middleware guarde la
 // elección en la cookie: sin eso, un visitante con el navegador en inglés que
@@ -47,10 +47,10 @@ export default async function Footer({
                 {d.footer.productos}
               </p>
               <div className="space-y-2">
-                <Link href="/personalizar/rutinas" className="block text-white/60 hover:text-white transition-colors">
+                <Link href={`${locale ? prefijo(locale) : ""}/personalizar/rutinas`} className="block text-white/60 hover:text-white transition-colors">
                   {d.footer.rutinas}
                 </Link>
-                <Link href="/personalizar/recompensas" className="block text-white/60 hover:text-white transition-colors">
+                <Link href={`${locale ? prefijo(locale) : ""}/personalizar/recompensas`} className="block text-white/60 hover:text-white transition-colors">
                   {d.footer.recompensas}
                 </Link>
               </div>

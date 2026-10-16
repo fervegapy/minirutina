@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPayment, verifyWebhookSignature, pedidoIdFromOrderId } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmail } from "@/lib/email";
-import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
+import { enviarPedidoConfirmado, idiomaDePedido, productoLabel } from "@/lib/emails/pedido-emails";
 import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import { extraerNombre } from "@/lib/contacto";
 import { captureServerEvent } from "@/lib/posthog-server";
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       .order("orden", { ascending: true });
     const items = ((itemsRows ?? []) as Array<{
       producto: string; nombre_nino: string; tipo_entrega: string; precio_pyg: number;
-      precio_moneda?: number | null; orden: number;
+      precio_moneda?: number | null; orden: number; personalizacion?: unknown;
     }>).map((it) => ({
       ...it,
       // Precio en la moneda del cobro (los pedidos de afuera lo guardan en
@@ -201,17 +201,19 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
 
     if (customerEmail) {
+      // Idioma en el que compró (el checkout lo guarda en cada ítem).
+      const idioma = idiomaDePedido(items);
       // Map items → branded email summary. Fall back to the pedido's legacy
       // columns when there are no pedido_items rows (old single-item orders).
       const emailItems = items.length > 0
         ? items.map((it) => ({
-            productoLabel: productoLabel(it.producto),
+            productoLabel: productoLabel(it.producto, idioma),
             nombreNino:    it.nombre_nino,
             tipoEntrega:   it.tipo_entrega === "digital" ? ("digital" as const) : ("fisico" as const),
             precioPyg:     it.precio_pyg,
           }))
         : [{
-            productoLabel: productoLabel(pedido.producto),
+            productoLabel: productoLabel(pedido.producto, idioma),
             nombreNino:    pedido.nombre_nino,
             tipoEntrega:   ("fisico" as const),
             precioPyg:     montoPyg,
@@ -247,6 +249,7 @@ export async function POST(req: NextRequest) {
         items:         emailItems,
         total:         montoPyg,
         moneda,
+        idioma,
         attachments:   adjuntos,
       }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
       if (!envio.ok) {

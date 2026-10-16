@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
         noche:       body.noche,
         genero:      body.genero,
         cantidad:    body.cantidad,
+        idioma:      body.idioma,
       },
       true,
     );
@@ -101,7 +102,7 @@ export async function POST(req: NextRequest) {
   const p = pedido.personalizacion as
     & Partial<PersonalizacionRutinas>
     & Partial<PersonalizacionRecompensas>
-    & { genero?: Genero | null };
+    & { genero?: Genero | null; idioma?: string };
 
   const mode: PdfMode = body.mode === "imprenta" ? "imprenta" : "cliente";
 
@@ -117,6 +118,7 @@ export async function POST(req: NextRequest) {
       genero:      p.genero ?? null,
       cantidad:    p.cantidad,
       sticker:     p.sticker,
+      idioma:      p.idioma,
     },
     false,
     mode,

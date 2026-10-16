@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Genero } from "@/lib/iconAssets";
+import { iconDir, type Genero } from "@/lib/iconAssets";
 
 export type { Genero };
 
@@ -14,12 +14,17 @@ interface GenderPickerProps {
   value: Genero | null;
   onChange: (g: Genero) => void;
   accentColor?: string;
+  /** Idioma de la imagen (la etiqueta NIÑO/NIÑA está dibujada) y del texto. */
+  idioma?: string;
+  etiquetas?: { nino: string; nina: string };
 }
 
 export default function GenderPicker({
   value,
   onChange,
   accentColor = "#336aea",
+  idioma,
+  etiquetas,
 }: GenderPickerProps) {
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -37,7 +42,12 @@ export default function GenderPicker({
                 : {}
             }
           >
-            <GenderImage id={op.id} label={op.label} emoji={op.emoji} />
+            <GenderImage
+              id={op.id}
+              label={etiquetas?.[op.id] ?? op.label}
+              emoji={op.emoji}
+              dir={iconDir(idioma)}
+            />
           </button>
         );
       })}
@@ -50,10 +60,12 @@ function GenderImage({
   id,
   label,
   emoji,
+  dir,
 }: {
   id: Genero;
   label: string;
   emoji: string;
+  dir: string;
 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
@@ -67,7 +79,7 @@ function GenderImage({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={`/icons/${id}.png`}
+      src={`/icons/${dir}${id}.png`}
       alt={label}
       className="absolute inset-0 w-full h-full object-cover"
       onError={() => setFailed(true)}

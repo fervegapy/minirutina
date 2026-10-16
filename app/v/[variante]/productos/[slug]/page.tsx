@@ -168,7 +168,7 @@ export default async function ProductoPage({
               </div>
 
               {/* CTA */}
-              <Link href={producto.customizerHref}>
+              <Link href={`${prefijo(locale)}${producto.customizerHref}`}>
                 <Button className="w-full bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-xl shadow-none border-0 text-base h-12">
                   {ui.cta}
                 </Button>
@@ -245,7 +245,7 @@ export default async function ProductoPage({
             {precio}
           </p>
         </div>
-        <Link href={producto.customizerHref} className="shrink-0">
+        <Link href={`${prefijo(locale)}${producto.customizerHref}`} className="shrink-0">
           <Button className="bg-[#336aea] hover:bg-[#2856c7] text-white font-bold rounded-lg shadow-none border-0 h-12 px-6 transition-all duration-200 ease-out active:scale-[0.98]">
             {ui.ctaCorto}
           </Button>

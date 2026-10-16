@@ -16,7 +16,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createPayment, buildOrderId } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
-import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
+import { enviarPedidoConfirmado, labelDescarga, productoLabel } from "@/lib/emails/pedido-emails";
+import { isLocale, prefijo, type Locale } from "@/lib/i18n";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { notificarPagoTelegram, telegramConfigurado } from "@/lib/telegram";
 import { isMoneda, PAIS_DLOCAL, precioEn, type Moneda, type PreciosProducto } from "@/lib/mercado";
@@ -41,6 +42,12 @@ interface Body {
   producto:     string;
   tipoEntrega:  "fisico" | "digital";
   modalidad?:   "pickup" | "delivery" | null;
+  idioma?:      Locale;              // del checkout; define a qué URL se vuelve
+}
+
+/** Prefijo de idioma para las URLs de vuelta (/en/confirmacion, …). */
+function pre(body: Body): string {
+  return isLocale(body.idioma) ? prefijo(body.idioma) : "";
 }
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
@@ -109,8 +116,8 @@ async function crearPagoExterior(
     ...(PAIS_DLOCAL[moneda] ? { country: PAIS_DLOCAL[moneda] } : {}),
     order_id:         buildOrderId(pedidoId),
     description:      descripcion,
-    success_url:      `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`,
-    back_url:         `${origin}/checkout?cancelado=1`,
+    success_url:      `${origin}${pre(body)}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`,
+    back_url:         `${origin}${pre(body)}/checkout?cancelado=1`,
     notification_url: `${origin}/api/dlocal/webhook`,
     payer: {
       name:  body.nombreComprador?.trim() || undefined,
@@ -232,8 +239,9 @@ export async function POST(req: NextRequest) {
       // heavy PDF generation runs inside this request. We AWAIT the send so it
       // can't be cut off when the serverless function returns.
       if (email?.includes("@")) {
+        const idioma: Locale = isLocale(body.idioma) ? body.idioma : "es";
         const emailItems = rows.map((it) => ({
-          productoLabel: productoLabel(it.producto),
+          productoLabel: productoLabel(it.producto, idioma),
           nombreNino:    it.nombre_nino,
           tipoEntrega:   it.tipo_entrega === "digital" ? "digital" as const : "fisico" as const,
           precioPyg:     Number(it.precio_pyg) || 0,
@@ -242,7 +250,7 @@ export async function POST(req: NextRequest) {
         const downloadButtons = rows
           .filter((it) => it.tipo_entrega === "digital")
           .map((it) => ({
-            label: `Descargar tablero de ${it.nombre_nino}`,
+            label: labelDescarga(it.nombre_nino, idioma),
             href:  `${origin}/api/pdf/${it.id}`,
           }));
         // Await + inspect the result. sendEmail RESOLVES with { ok:false } on
@@ -256,6 +264,7 @@ export async function POST(req: NextRequest) {
           items:         emailItems,
           total:         0,
           downloadButtons,
+          idioma,
         }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
         if (!envio.ok) {
           console.error("[create-session] cupón-100 email NO se envió para", pedidoId, ":", envio.error);
@@ -267,7 +276,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const confirmUrl = `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`;
+      const confirmUrl = `${origin}${pre(body)}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`;
       return NextResponse.json({ ok: true, url: confirmUrl });
     }
     const nombreProducto = NOMBRE_PRODUCTO[producto] ?? "Tablero personalizado";
@@ -291,8 +300,8 @@ export async function POST(req: NextRequest) {
       country:          "PY",
       order_id:         buildOrderId(pedidoId),  // unique per attempt (retry-safe)
       description:      descripcion,
-      success_url:      `${origin}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`,
-      back_url:         `${origin}/checkout?cancelado=1`,
+      success_url:      `${origin}${pre(body)}/confirmacion?pedido_id=${pedidoId}&pagado=1&nombre_nino=${encodeURIComponent(nombreNino)}`,
+      back_url:         `${origin}${pre(body)}/checkout?cancelado=1`,
       notification_url: `${origin}/api/dlocal/webhook`,
       payer: {
         name:  body.nombreComprador?.trim() || (nombreNino ? `Pedido ${nombreNino}` : undefined),

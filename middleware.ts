@@ -59,9 +59,13 @@ function publico(req: NextRequest): NextResponse {
   };
 
   // Una URL en español con el visitante en otro idioma → a su prefijo. Solo
-  // en la home y el detalle de producto, que son las páginas traducidas.
+  // en las páginas traducidas: home, detalle de producto y el flujo de compra.
   const esTraducible = resto === "/" || resto.startsWith("/productos/");
-  if (seg !== "en" && seg !== "pt" && locale !== "es" && esTraducible) {
+  // El flujo de compra existe de verdad en /en/… y /pt/… (app/[locale]/): no
+  // se reescribe, se sirve tal cual.
+  const esFlujo =
+    resto.startsWith("/personalizar/") || resto === "/checkout" || resto === "/confirmacion";
+  if (seg !== "en" && seg !== "pt" && locale !== "es" && (esTraducible || esFlujo)) {
     const url = req.nextUrl.clone();
     url.pathname = `/${locale}${resto === "/" ? "" : resto}`;
     url.searchParams.delete("idioma");
@@ -74,8 +78,9 @@ function publico(req: NextRequest): NextResponse {
     return conCookies(NextResponse.rewrite(url));
   }
 
-  // /en/personalizar/… y similares todavía no existen traducidos: van a la
-  // versión en español.
+  if (esFlujo) return conCookies(NextResponse.next());
+
+  // Lo que no está traducido (/en/pagar/…, etc.) va a la versión en español.
   if (seg === "en" || seg === "pt") {
     const url = req.nextUrl.clone();
     url.pathname = resto;
@@ -151,6 +156,6 @@ export const config = {
   matcher: [
     "/admin/:path*", "/auth/:path*",
     "/", "/en", "/en/:path*", "/pt", "/pt/:path*",
-    "/productos/:path*", "/personalizar/:path*", "/checkout", "/pagar/:path*",
+    "/productos/:path*", "/personalizar/:path*", "/checkout", "/confirmacion", "/pagar/:path*",
   ],
 };

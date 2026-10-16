@@ -38,7 +38,7 @@ export async function GET(
   const p = (item.personalizacion ?? {}) as
     & Partial<PersonalizacionRutinas>
     & Partial<PersonalizacionRecompensas>
-    & { genero?: Genero | null };
+    & { genero?: Genero | null; idioma?: string };
 
   const data: PdfData = {
     nombreNino:  item.nombre_nino,
@@ -48,6 +48,7 @@ export async function GET(
     genero:      p.genero ?? null,
     cantidad:    p.cantidad,
     sticker:     p.sticker,
+    idioma:      p.idioma,
   };
 
   const buffer = await generateBuffer(item.producto, data, false, "cliente");
@@ -55,7 +56,7 @@ export async function GET(
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="tablero-${slug(item.nombre_nino)}.pdf"`,
+      "Content-Disposition": `attachment; filename="${p.idioma === "en" ? "chart" : p.idioma === "pt" ? "quadro" : "tablero"}-${slug(item.nombre_nino)}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

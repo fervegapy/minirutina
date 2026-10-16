@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { iconFileName, type Genero } from "./iconAssets";
+import { iconDir, iconFileName, type Genero } from "./iconAssets";
 
 function toDataUrl(filePath: string, mime = "image/png"): string {
   const buffer = fs.readFileSync(filePath);
@@ -38,17 +38,22 @@ const RECOMPENSAS_KEYS = [
   "circulo-nina",
 ];
 
+// `idioma`: las ilustraciones traen la etiqueta dibujada en español; las de
+// inglés y portugués están en subcarpetas (public/icons/en/…). Si falta una
+// traducida se usa la original antes que dejar el hueco.
 export function loadImages(
   iconIds: string[],
   genero?: Genero | null,
+  idioma?: string | null,
 ): Record<string, string> {
   const images: Record<string, string> = {};
+  const dir = iconDir(idioma);
 
   for (const id of iconIds) {
     // Resolve gendered variants (e.g. agua-nino.png) when applicable.
     // The dictionary is still keyed by the bare id so TableroPDF doesn't need to know.
     const fileName = iconFileName(id, genero);
-    let src = tryRead(path.join(ICONS_DIR, fileName));
+    let src = (dir && tryRead(path.join(ICONS_DIR, dir, fileName))) || tryRead(path.join(ICONS_DIR, fileName));
     // Defensive fallback: if the gendered file is missing, try the bare id.
     if (!src && fileName !== `${id}.png`) {
       src = tryRead(path.join(ICONS_DIR, `${id}.png`));
@@ -64,11 +69,15 @@ export function loadImages(
   return images;
 }
 
-/** Loads the Tablero de Recompensas asset set. Keys come back without prefix. */
-export function loadRecompensaImages(): Record<string, string> {
+/** Loads the Tablero de Recompensas asset set. Keys come back without prefix.
+ *  "comienza aquí" y "¡lo lograste!" tienen versión por idioma. */
+export function loadRecompensaImages(idioma?: string | null): Record<string, string> {
   const images: Record<string, string> = {};
+  const dir = iconDir(idioma);
   for (const key of RECOMPENSAS_KEYS) {
-    const src = tryRead(path.join(RECOMPENSAS_DIR, `${key}.png`));
+    const src =
+      (dir && tryRead(path.join(RECOMPENSAS_DIR, dir, `${key}.png`))) ||
+      tryRead(path.join(RECOMPENSAS_DIR, `${key}.png`));
     if (src) images[key] = src;
   }
   return images;

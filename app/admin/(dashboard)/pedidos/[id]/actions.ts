@@ -11,6 +11,7 @@ import {
   enviarFeedback,
   enviarPedidoConfirmado,
   enviarRecordatorioPago,
+  idiomaDePedido,
   productoLabel,
 } from "@/lib/emails/pedido-emails";
 import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
@@ -54,12 +55,14 @@ async function resumenPedido(supabase: SupabaseAdminClient, pedidoId: string) {
 
   const { data: itemsRows } = await supabase
     .from("pedido_items")
-    .select("producto, nombre_nino, tipo_entrega, precio_pyg, orden")
+    .select("producto, nombre_nino, tipo_entrega, precio_pyg, orden, personalizacion")
     .eq("pedido_id", pedidoId)
     .order("orden", { ascending: true });
 
+  // Idioma en el que se compró: el reenvío de la confirmación sale igual.
+  const idioma = idiomaDePedido(itemsRows ?? []);
   const items = (itemsRows ?? []).map((it) => ({
-    productoLabel: productoLabel(it.producto as string),
+    productoLabel: productoLabel(it.producto as string, idioma),
     nombreNino:    it.nombre_nino as string,
     tipoEntrega:   (it.tipo_entrega === "digital" ? "digital" : "fisico") as "digital" | "fisico",
     precioPyg:     Number(it.precio_pyg) || 0,
@@ -78,6 +81,7 @@ async function resumenPedido(supabase: SupabaseAdminClient, pedidoId: string) {
     esRetiro:      (pedido.direccion ?? "").startsWith("Pickup"),
     items,
     total,
+    idioma,
   };
 }
 
@@ -170,6 +174,7 @@ export async function reenviarConfirmacionPago(
       pedidoId,
       items:         r.items,
       total:         r.total,
+      idioma:        r.idioma,
       attachments:   adjuntos,
     });
     if (!res.ok) return { ok: false, error: res.error ?? "No se pudo enviar el email." };
