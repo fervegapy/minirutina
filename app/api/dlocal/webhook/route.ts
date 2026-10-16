@@ -24,10 +24,6 @@ const NOMBRE_PRODUCTO: Record<string, string> = {
   semana:      "Plan de la Semana",
 };
 
-function fmtPyg(n: number) {
-  return "Gs. " + Math.round(n).toLocaleString("es-PY");
-}
-
 function extractEmail(contacto?: string | null): string | null {
   if (!contacto) return null;
   const m = contacto.match(/Email:\s*([^\s|]+)/i);

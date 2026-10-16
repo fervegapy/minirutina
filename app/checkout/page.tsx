@@ -38,12 +38,6 @@ const PRECIO_DELIVERY_FALLBACK = 35000;
 const FALLBACK_IMPRESO = 149000;
 const FALLBACK_DIGITAL = 89000;
 
-// Formato en Gs. — dentro de CheckoutInner se pisa con uno que usa la moneda
-// del visitante.
-function fmt(n: number) {
-  return formatPrecio(n, "PYG");
-}
-
 type CheckoutMode = "redirect" | "embedded";
 const CHECKOUT_MODE_FALLBACK = (process.env.NEXT_PUBLIC_CHECKOUT_MODE ?? "redirect") as CheckoutMode;
 
@@ -260,7 +254,7 @@ function CheckoutInner() {
       content_type: "product",
       num_items:    items.length,
     });
-  }, [email, whatsapp, loadingPrecios, items, subtotal]);
+  }, [email, whatsapp, loadingPrecios, items, subtotal, moneda]);
 
   // ─── Coupon ─────────────────────────────────────────────────────────────
   const aplicarCupon = async () => {
