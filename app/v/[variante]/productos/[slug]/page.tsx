@@ -12,6 +12,7 @@ import { isVariante, localeDeVariante, prefijo, HTML_LANG, VARIANTES, type Varia
 import { getHomeDict } from "@/lib/i18n/home";
 import { getProducto, getProductoUI } from "@/lib/i18n/producto";
 import { formatPrecio, precioEn, type PreciosProducto } from "@/lib/mercado";
+import { leerTasas } from "@/lib/tasas";
 
 // Se sirve en /productos/<slug>, /en/productos/<slug> y /pt/productos/<slug>:
 // el middleware reescribe a /v/<variante>/productos/<slug> (ver lib/i18n).
@@ -62,7 +63,7 @@ export default async function ProductoPage({
   // CMS lookups: config (active + label overrides) y precios, en paralelo.
   // precios va con "*" para que la página no se rompa si todavía no se corrió
   // supabase/i18n_monedas.sql (las columnas ARS/BRL/USD no existirían).
-  const [{ data: cfg }, { data: precioRow }] = await Promise.all([
+  const [{ data: cfg }, { data: precioRow }, tasas] = await Promise.all([
     supabase
       .from("productos_config")
       .select("activo, nombre, tagline")
@@ -73,6 +74,8 @@ export default async function ProductoPage({
       .select("*")
       .eq("producto", params.slug)
       .maybeSingle(),
+    // Solo hace falta afuera (ARS/BRL se calculan desde el USD).
+    variante === "es-py" ? Promise.resolve({}) : leerTasas(supabase),
   ]);
 
   // Product paused → behave like it doesn't exist.
@@ -93,7 +96,7 @@ export default async function ProductoPage({
   const precioFijo = usaCms
     ? (precioPy !== null ? formatPrecio(precioPy, "PYG") : producto.precioDesde)
     : null;
-  const precio = precioFijo ?? <PrecioProducto precios={precios} />;
+  const precio = precioFijo ?? <PrecioProducto precios={precios} tasas={tasas} />;
 
   return (
     <div className="min-h-screen bg-[#faf6e7] pb-24 md:pb-0">

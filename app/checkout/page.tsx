@@ -27,7 +27,8 @@ const MapLocationPicker = dynamic(
 import { findZonaForCiudad, type DeliveryZona } from "@/lib/delivery";
 import DlocalCardForm, { type DlocalCardFormHandle } from "@/components/checkout/DlocalCardForm";
 import { useCarrito, type CartItem, type Formato, type Producto } from "@/lib/carrito";
-import { formatPrecio, getMonedaClient, precioEn, vendeImpreso, type Moneda, type PreciosProducto } from "@/lib/mercado";
+import { formatPrecio, getMonedaClient, precioEn, vendeImpreso, type Moneda, type PreciosProducto, type Tasas } from "@/lib/mercado";
+import { leerTasas } from "@/lib/tasas";
 
 const NOMBRE_PRODUCTO: Record<string, string> = {
   rutinas:     "Tablero de Rutinas",
@@ -65,7 +66,7 @@ interface PrecioRow {
   precio_digital_20:  number | null;
 }
 
-function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>, moneda: Moneda): number {
+function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>, moneda: Moneda, tasas: Tasas): number {
   const row = prices[item.producto];
   // Fuera de Paraguay: solo digital, en la moneda local y sin fallback (un
   // precio sin cargar = 0, y el formulario no deja pagar).
@@ -73,7 +74,7 @@ function getItemPrice(item: CartItem, prices: Record<string, PrecioRow>, moneda:
     const usar20 =
       item.producto === "recompensas" &&
       (item.personalizacion as { cantidad?: number } | null)?.cantidad === 20;
-    return precioEn(row as unknown as PreciosProducto, moneda, "digital", usar20) ?? 0;
+    return precioEn(row as unknown as PreciosProducto, moneda, "digital", usar20, tasas) ?? 0;
   }
   if (!row) {
     // Fallback if precios row not loaded — keeps the UI usable even if DB is slow.
@@ -168,6 +169,13 @@ function CheckoutInner() {
   // Prices for BOTH products (we don't know which the cart has until items load)
   const [pricesMap, setPricesMap] = useState<Record<string, PrecioRow>>({});
   const [loadingPrecios, setLoadingPrecios] = useState(true);
+  // Tipo de cambio del día: ARS/BRL se calculan desde el precio en USD.
+  const [tasas, setTasas] = useState<Tasas>({});
+  const [tasasListas, setTasasListas] = useState(false);
+  useEffect(() => {
+    if (!soloDigital) return;
+    leerTasas(supabase).then((t) => { setTasas(t); setTasasListas(true); });
+  }, [soloDigital]);
 
   useEffect(() => {
     supabase
@@ -221,13 +229,13 @@ function CheckoutInner() {
 
   // ─── Derived ────────────────────────────────────────────────────────────
   const itemsConPrecio = useMemo(
-    () => items.map((it) => ({ ...it, precio: getItemPrice(it, pricesMap, moneda) })),
-    [items, pricesMap, moneda],
+    () => items.map((it) => ({ ...it, precio: getItemPrice(it, pricesMap, moneda, tasas) })),
+    [items, pricesMap, moneda, tasas],
   );
 
   const anyFisico = !soloDigital && items.some((it) => it.formato === "fisico");
   // Algún ítem sin precio cargado en la moneda del visitante.
-  const faltaPrecio = soloDigital && !loadingPrecios && itemsConPrecio.some((it) => it.precio <= 0);
+  const faltaPrecio = soloDigital && !loadingPrecios && tasasListas && itemsConPrecio.some((it) => it.precio <= 0);
 
   const subtotal = itemsConPrecio.reduce((acc, it) => acc + it.precio, 0);
 
@@ -306,7 +314,8 @@ function CheckoutInner() {
   const formValido =
     items.length > 0 &&
     !!nombre.trim() && !!apellido.trim() && emailValido && whatsappValido &&
-    datosEntregaOk && facturaOk && !loadingPrecios && !faltaPrecio;
+    datosEntregaOk && facturaOk && !loadingPrecios && !faltaPrecio &&
+    (!soloDigital || tasasListas);
 
   // Navigates to an external URL (the payment gateway) after giving React a
   // chance to paint the "Redirigiendo..." button state. Without the rAF

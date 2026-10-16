@@ -345,13 +345,15 @@ function ProductoRow({
 }
 
 // ─── Precios fuera de Paraguay ───────────────────────────────────────────────
-// Solo digital (afuera no se vende impreso). Se fijan a mano, sin conversión:
-// un campo vacío = el producto no se ofrece en esa moneda.
+// Solo digital (afuera no se vende impreso). El precio base es el USD; ARS y
+// BRL se calculan solos desde el USD con el tipo de cambio del día
+// (redondeados), salvo que se cargue un valor a mano, que pisa al calculado.
+// Sin USD = el producto no se vende afuera.
 
 const MONEDAS_EXTERIOR = [
-  { sufijo: "ars", label: "Argentina (ARS)", decimales: false },
-  { sufijo: "brl", label: "Brasil (BRL)",    decimales: true  },
-  { sufijo: "usd", label: "Resto del mundo (USD)", decimales: true },
+  { sufijo: "usd", label: "Precio base (USD)",          decimales: true,  vacio: "Sin precio — no se vende afuera" },
+  { sufijo: "ars", label: "Argentina (ARS) · opcional", decimales: false, vacio: "Automático desde USD" },
+  { sufijo: "brl", label: "Brasil (BRL) · opcional",    decimales: true,  vacio: "Automático desde USD" },
 ] as const;
 
 type ColExterior =
@@ -401,6 +403,10 @@ function PreciosExterior({ producto, fila }: { producto: string; fila?: PrecioRo
       <p className="text-[11px] uppercase tracking-wide text-zinc-500 font-medium">
         Fuera de Paraguay — solo digital
       </p>
+      <p className="text-[10px] text-zinc-400">
+        ARS y BRL se calculan cada día desde el USD con el tipo de cambio oficial y se redondean
+        (R$ …9,90 / $ …900). Cargá un valor solo si querés fijarlo a mano.
+      </p>
       {MONEDAS_EXTERIOR.map((m) => (
         <div key={m.sufijo} className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {(esRecompensas ? ["", "20_"] : [""]).map((v) => {
@@ -416,7 +422,7 @@ function PreciosExterior({ producto, fila }: { producto: string; fila?: PrecioRo
                   step={m.decimales ? "0.01" : "1"}
                   min="0"
                   value={valores[col]}
-                  placeholder="Sin precio — no se vende"
+                  placeholder={m.vacio}
                   onChange={(e) => setValores((prev) => ({ ...prev, [col]: e.target.value }))}
                   className="text-sm bg-white"
                 />

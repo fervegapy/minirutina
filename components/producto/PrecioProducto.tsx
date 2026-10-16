@@ -14,28 +14,32 @@ import {
   vendeImpreso,
   type Moneda,
   type PreciosProducto,
+  type Tasas,
 } from "@/lib/mercado";
 
-export function usePrecio(precios: PreciosProducto | null) {
+export function usePrecio(precios: PreciosProducto | null, tasas: Tasas = {}) {
   const [moneda, setMoneda] = useState<Moneda | null>(null);
   useEffect(() => setMoneda(getMonedaClient()), []);
   if (!moneda) return { moneda: null, valor: null, texto: null };
   // Paraguay ve el impreso (el producto estrella); afuera, el digital.
-  const valor = precioEn(precios, moneda, vendeImpreso(moneda) ? "fisico" : "digital");
+  const valor = precioEn(precios, moneda, vendeImpreso(moneda) ? "fisico" : "digital", false, tasas);
   return { moneda, valor, texto: valor !== null ? formatPrecio(valor, moneda) : null };
 }
 
 export default function PrecioProducto({
   precios,
+  tasas,
   className,
   // Lo que se muestra si el admin todavía no cargó precio en esa moneda.
   sinPrecio = "",
 }: {
   precios: PreciosProducto | null;
+  // Tipo de cambio del día para calcular ARS/BRL desde el USD.
+  tasas?: Tasas;
   className?: string;
   sinPrecio?: string;
 }) {
-  const { moneda, texto } = usePrecio(precios);
+  const { moneda, texto } = usePrecio(precios, tasas);
   return (
     <span className={className} aria-busy={!moneda}>
       {moneda ? texto ?? sinPrecio : " "}

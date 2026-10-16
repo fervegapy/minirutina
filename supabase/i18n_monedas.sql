@@ -30,3 +30,28 @@ alter table public.pedidos
 -- en los pedidos de afuera queda en 0).
 alter table public.pedido_items
   add column if not exists precio_moneda numeric;
+
+-- ─── Tipo de cambio diario (USD → ARS / BRL) ────────────────────────────────
+-- Los precios de afuera se fijan en USD; ARS y BRL se calculan desde el USD
+-- con la tasa del día, redondeados (ver lib/mercado.ts). La carga una tarea
+-- diaria de Vercel (app/api/cron/tipo-cambio). Una fila por moneda y día.
+create table if not exists public.tasas_usd (
+  moneda     text        not null check (moneda in ('ARS', 'BRL')),
+  fecha      date        not null,
+  tasa       numeric     not null check (tasa > 0),  -- unidades de `moneda` por 1 USD
+  fuente     text,
+  created_at timestamptz not null default now(),
+  primary key (moneda, fecha)
+);
+
+-- Lectura pública (el checkout calcula el precio en el navegador); escritura
+-- solo con la service role (la tarea diaria).
+alter table public.tasas_usd enable row level security;
+drop policy if exists "tasas_usd lectura publica" on public.tasas_usd;
+create policy "tasas_usd lectura publica" on public.tasas_usd for select using (true);
+
+-- Precios en USD de arranque (editables en /admin/cms). Solo si están vacíos.
+update public.precios set precio_digital_usd = 17
+  where producto = 'rutinas' and precio_digital_usd is null;
+update public.precios set precio_digital_usd = 14, precio_digital_20_usd = 14
+  where producto = 'recompensas' and precio_digital_usd is null;

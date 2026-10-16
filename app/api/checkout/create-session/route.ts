@@ -20,6 +20,13 @@ import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-email
 import { captureServerEvent } from "@/lib/posthog-server";
 import { notificarPagoTelegram, telegramConfigurado } from "@/lib/telegram";
 import { isMoneda, PAIS_DLOCAL, precioEn, type Moneda, type PreciosProducto } from "@/lib/mercado";
+import { leerTasas } from "@/lib/tasas";
+
+// Cuánto puede diferir el precio que vio el cliente (guardado al crear el
+// pedido) del recalculado acá. Cubre que la tasa del día cambie entre que
+// armó el carrito y pagó, más el redondeo; más que eso se trata como precio
+// manipulado y se cobra el recalculado.
+const TOLERANCIA_PRECIO = 0.08;
 
 interface Body {
   pedidoId:     string;
@@ -43,22 +50,24 @@ const NOMBRE_PRODUCTO: Record<string, string> = {
 };
 
 // ─── Pedidos de afuera (ARS / BRL / USD) ─────────────────────────────────────
-// Solo digital, sin cupones ni envío. El monto NO se toma del cliente: se
-// recalcula desde pedido_items + precios en la moneda pedida, y se guarda en
-// el pedido para que el admin vea lo que se cobró.
+// Solo digital, sin cupones ni envío. El monto no se toma a ciegas del
+// cliente: se recalcula desde precios + tipo de cambio del día. Si el que
+// quedó guardado al crear el pedido (lo que el cliente vio) está dentro de la
+// tolerancia, se respeta ese — así no paga distinto de lo que leyó.
 async function crearPagoExterior(
   req: NextRequest,
   body: Body,
   moneda: Exclude<Moneda, "PYG">,
 ) {
   const { pedidoId, email, nombreNino } = body;
-  const [{ data: itemRows }, { data: precioRows }] = await Promise.all([
+  const [{ data: itemRows }, { data: precioRows }, tasas] = await Promise.all([
     supabaseAdmin
       .from("pedido_items")
-      .select("id, producto, personalizacion")
+      .select("*")
       .eq("pedido_id", pedidoId)
       .order("orden", { ascending: true }),
     supabaseAdmin.from("precios").select("*"),
+    leerTasas(supabaseAdmin),
   ]);
   const items = itemRows ?? [];
   if (!pedidoId || items.length === 0) {
@@ -69,13 +78,15 @@ async function crearPagoExterior(
   let total = 0;
   for (const it of items) {
     const veinte = it.producto === "recompensas" && (it.personalizacion as { cantidad?: number } | null)?.cantidad === 20;
-    const precio = precioEn(precios.get(it.producto), moneda, "digital", veinte);
-    if (precio === null) {
+    const calculado = precioEn(precios.get(it.producto), moneda, "digital", veinte, tasas);
+    if (calculado === null) {
       return NextResponse.json(
         { ok: false, error: "Este tablero todavía no está a la venta en tu país." },
         { status: 400 },
       );
     }
+    const visto = Number((it as { precio_moneda?: number | null }).precio_moneda);
+    const precio = visto > 0 && Math.abs(visto / calculado - 1) <= TOLERANCIA_PRECIO ? visto : calculado;
     total += precio;
     await supabaseAdmin
       .from("pedido_items")

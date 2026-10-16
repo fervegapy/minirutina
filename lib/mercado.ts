@@ -7,9 +7,11 @@
 //   Brasil    → BRL  · solo digital
 //   Resto     → USD  · solo digital
 //
-// Los precios en ARS/BRL/USD los fija el admin a mano en /admin/cms: no se
-// convierten desde Gs. Un precio sin cargar (null) = ese producto no se
-// ofrece en esa moneda.
+// El precio de afuera se fija en USD (a mano, en /admin/cms). ARS y BRL se
+// calculan desde el USD con el tipo de cambio del día (tabla tasas_usd, que
+// carga una tarea diaria) y se redondean a un precio "lindo". Si el admin
+// carga a mano un precio en ARS o BRL, ese gana sobre el calculado. Nada se
+// convierte desde Gs. Sin precio USD (ni override) = no se vende afuera.
 //
 // "PYG" es el default: sin país detectado (dev local, bots, IP rara) nos
 // quedamos con el comportamiento de siempre en vez de asumir exterior.
@@ -77,15 +79,49 @@ export const PRECIOS_SELECT =
   "precio_digital_ars, precio_digital_20_ars, precio_digital_brl, precio_digital_20_brl, " +
   "precio_digital_usd, precio_digital_20_usd";
 
+/** Unidades de cada moneda por 1 USD (de la tabla tasas_usd). */
+export type Tasas = Partial<Record<"ARS" | "BRL", number>>;
+
+/**
+ * Redondeo a un precio de vidriera, al más cercano: BRL termina en 9,90
+ * (R$ 85,93 → R$ 89,90) y ARS en 900 ($ 25.737 → $ 25.900). El desvío
+ * máximo es de R$ 5 o $ 500 respecto del cálculo exacto.
+ */
+export function redondearPrecio(n: number, moneda: Moneda): number {
+  if (moneda === "BRL") return Math.max(9.9, Math.round((n + 0.1) / 10) * 10 - 0.1);
+  if (moneda === "ARS") return Math.max(900, Math.round((n + 100) / 1000) * 1000 - 100);
+  return n;
+}
+
 /**
  * Precio de un ítem en la moneda dada, o null si no está cargado (o no se
- * vende: impreso fuera de Paraguay).
+ * vende: impreso fuera de Paraguay). ARS/BRL: override manual si existe; si
+ * no, USD × tasa del día redondeado (null si falta la tasa o el USD).
  */
 export function precioEn(
   row: PreciosProducto | null | undefined,
   moneda: Moneda,
   tipo: "fisico" | "digital",
   veinte = false,
+  tasas: Tasas = {},
+): number | null {
+  if (row && tipo === "digital" && (moneda === "ARS" || moneda === "BRL")) {
+    const manual = precioDirecto(row, moneda, tipo, veinte);
+    if (manual !== null) return manual;
+    const usd = precioDirecto(row, "USD", tipo, veinte);
+    const tasa = tasas[moneda];
+    if (usd === null || !tasa || !(tasa > 0)) return null;
+    return redondearPrecio(usd * tasa, moneda);
+  }
+  return precioDirecto(row, moneda, tipo, veinte);
+}
+
+// El valor tal como está en la fila de `precios`, sin conversión.
+function precioDirecto(
+  row: PreciosProducto | null | undefined,
+  moneda: Moneda,
+  tipo: "fisico" | "digital",
+  veinte: boolean,
 ): number | null {
   if (!row) return null;
   let v: number | null | undefined;
