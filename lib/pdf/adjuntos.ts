@@ -10,7 +10,8 @@ import type {
   PersonalizacionRecompensas,
 } from "@/types/pedido";
 
-// Slugify a child's name for a safe filename (tablero-sofia.pdf).
+// Slugify a child's name for a safe filename (rutinas-sofia.pdf). The
+// product goes in the name so two boards for the same kid don't collide.
 function slug(s: string): string {
   return (s || "tablero")
     .toLowerCase()
@@ -57,7 +58,7 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
       // tablero (las fichas "Listo"), así quien lo imprime en casa o en una
       // imprenta tiene las dos caras, igual que el impreso que armamos acá.
       const buffer = await generateBuffer(it.producto, data, false, "imprenta");
-      attachments.push({ filename: `tablero-${slug(it.nombre_nino)}.pdf`, content: buffer });
+      attachments.push({ filename: `${it.producto}-${slug(it.nombre_nino)}.pdf`, content: buffer });
     } catch (e) {
       console.error("[adjuntos] no se pudo generar PDF para item de", pedidoId, e);
     }
