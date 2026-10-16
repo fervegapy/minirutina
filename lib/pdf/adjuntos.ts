@@ -2,15 +2,17 @@
 // can be attached to the confirmation email. Físico items are skipped — those
 // go through the producción/envío flow instead.
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { generateBuffer, type PdfData } from "@/lib/pdf/render";
+import { generateDigitalBuffer, generateInstructivoBuffer, type PdfData } from "@/lib/pdf/render";
 import type { EmailAttachment } from "@/lib/email";
+import { archivoInstructivo } from "@/components/pdf/InstructivoPDF";
 import type { Genero } from "@/lib/iconAssets";
 import type {
   PersonalizacionRutinas,
   PersonalizacionRecompensas,
 } from "@/types/pedido";
 
-// Slugify a child's name for a safe filename (tablero-sofia.pdf).
+// Slugify a child's name for a safe filename (rutinas-sofia.pdf). The
+// product goes in the name so two boards for the same kid don't collide.
 function slug(s: string): string {
   return (s || "tablero")
     .toLowerCase()
@@ -20,7 +22,8 @@ function slug(s: string): string {
 }
 
 /**
- * Builds one cliente PDF (no watermark) per digital item of the pedido.
+ * Builds one print-ready PDF (imprenta version, front + back, cut line, no
+ * watermark) per digital item of the pedido, plus the assembly guide.
  * Returns an empty array when there are no digital items. Never throws — on a
  * per-item render failure it logs and skips that item.
  */
@@ -34,6 +37,8 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
 
   const items = rows ?? [];
   const attachments: EmailAttachment[] = [];
+  // Idioma del instructivo: el del primer ítem digital.
+  const idioma = (items[0]?.personalizacion as { idioma?: string } | null)?.idioma ?? null;
 
   for (const it of items) {
     try {
@@ -53,11 +58,21 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
         idioma:      p.idioma,
       };
 
-      const buffer = await generateBuffer(it.producto, data, false, "cliente");
-      const base = p.idioma === "en" ? "chart" : p.idioma === "pt" ? "quadro" : "tablero";
-      attachments.push({ filename: `${base}-${slug(it.nombre_nino)}.pdf`, content: buffer });
+      // Versión imprenta (frente y dorso, como el impreso que armamos acá)
+      // con línea de corte para recortar en casa. Ver generateDigitalBuffer.
+      const buffer = await generateDigitalBuffer(it.producto, data);
+      attachments.push({ filename: `${it.producto}-${slug(it.nombre_nino)}.pdf`, content: buffer });
     } catch (e) {
       console.error("[adjuntos] no se pudo generar PDF para item de", pedidoId, e);
+    }
+  }
+
+  // Una sola vez por email, aunque el pedido traiga varios tableros.
+  if (attachments.length > 0) {
+    try {
+      attachments.push({ filename: archivoInstructivo(idioma), content: await generateInstructivoBuffer(idioma) });
+    } catch (e) {
+      console.error("[adjuntos] no se pudo generar el instructivo para", pedidoId, e);
     }
   }
 

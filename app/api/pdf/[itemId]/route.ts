@@ -4,7 +4,7 @@
 // the checkout request itself.
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { generateBuffer, type PdfData } from "@/lib/pdf/render";
+import { generateDigitalBuffer, type PdfData } from "@/lib/pdf/render";
 import type { Genero } from "@/lib/iconAssets";
 import type {
   PersonalizacionRutinas,
@@ -51,12 +51,14 @@ export async function GET(
     idioma:      p.idioma,
   };
 
-  const buffer = await generateBuffer(item.producto, data, false, "cliente");
+  // Versión imprenta (frente y dorso) con línea de corte, igual que el
+  // adjunto del email. Ver generateDigitalBuffer.
+  const buffer = await generateDigitalBuffer(item.producto, data);
 
   return new NextResponse(buffer, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${p.idioma === "en" ? "chart" : p.idioma === "pt" ? "quadro" : "tablero"}-${slug(item.nombre_nino)}.pdf"`,
+      "Content-Disposition": `attachment; filename="${item.producto}-${slug(item.nombre_nino)}.pdf"`,
       "Cache-Control": "no-store",
     },
   });

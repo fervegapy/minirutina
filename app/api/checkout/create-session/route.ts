@@ -18,6 +18,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchCupon, evaluarCupon } from "@/lib/cupones";
 import { enviarPedidoConfirmado, labelDescarga, productoLabel } from "@/lib/emails/pedido-emails";
 import { isLocale, prefijo, type Locale } from "@/lib/i18n";
+import { textosInstructivo } from "@/components/pdf/InstructivoPDF";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { notificarPagoTelegram, telegramConfigurado } from "@/lib/telegram";
 import { isMoneda, PAIS_DLOCAL, precioEn, type Moneda, type PreciosProducto } from "@/lib/mercado";
@@ -253,6 +254,13 @@ export async function POST(req: NextRequest) {
             label: labelDescarga(it.nombre_nino, idioma),
             href:  `${origin}/api/pdf/${it.id}`,
           }));
+        // Instructivo de armado: uno por email, como en el flujo con adjuntos.
+        if (downloadButtons.length > 0) {
+          downloadButtons.push({
+            label: textosInstructivo(idioma).titulo,
+            href:  `${origin}/api/pdf/instructivo${idioma === "es" ? "" : `?idioma=${idioma}`}`,
+          });
+        }
         // Await + inspect the result. sendEmail RESOLVES with { ok:false } on
         // a Resend error (it doesn't throw), so a plain .catch would miss it.
         // Awaiting also matters on serverless, where the function can freeze

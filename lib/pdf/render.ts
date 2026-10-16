@@ -16,6 +16,8 @@ import TableroPDF from "@/components/pdf/TableroPDF";
 import RecompensaPDF from "@/components/pdf/RecompensaPDF";
 import ImprentaRutinasPDF from "@/components/pdf/ImprentaRutinasPDF";
 import ImprentaRecompensasPDF from "@/components/pdf/ImprentaRecompensasPDF";
+import InstructivoPDF, { textosInstructivo } from "@/components/pdf/InstructivoPDF";
+import { agregarLineaDeCorte } from "@/lib/pdf/corte";
 
 const fontsDir = path.join(process.cwd(), "public", "fonts");
 
@@ -83,9 +85,10 @@ async function buildImprentaRutinasBuffer(
   manana: string[],
   noche: string[],
   genero: Genero | null,
+  idioma: Locale,
 ) {
   const allIconIds = [...manana, ...noche];
-  const images = loadImages(allIconIds, genero);
+  const images = loadImages(allIconIds, genero, idioma);
   // Reuse the green check sticker from /public/recompensas/stickers/check.png
   // as the visual on the "Listo" fichas — keeps the cumplido check identical
   // across both products.
@@ -94,6 +97,7 @@ async function buildImprentaRutinasBuffer(
     nombreNino, colorAcento, manana, noche, images,
     checkSrc,
     subtitleFont: SUBTITLE_FONT,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -104,13 +108,15 @@ async function buildImprentaRecompensasBuffer(
   genero: Genero,
   cantidad: 10 | 20,
   stickerId: string,
+  idioma: Locale,
 ) {
-  const images = loadRecompensaImages();
+  const images = loadRecompensaImages(idioma);
   const stickerSrc = loadStickerImage(stickerId);
   const element = React.createElement(ImprentaRecompensasPDF, {
     nombreNino, genero, cantidad, images,
     stickerSrc, stickerId,
     subtitleFont: SUBTITLE_FONT,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -137,14 +143,14 @@ export async function generateBuffer(
   watermark: boolean,
   mode: PdfMode = "cliente",
 ): Promise<Buffer> {
-  // La versión de imprenta es solo para los impresos de Paraguay: va en español.
+  // También la imprenta: es la que recibe quien compra el digital.
   const idioma: Locale = isLocale(data.idioma) ? data.idioma : "es";
   if (producto === "recompensas") {
     const genero = (data.genero ?? "nino") as Genero;
     const cantidad = (data.cantidad ?? 10) as 10 | 20;
     if (mode === "imprenta") {
       return buildImprentaRecompensasBuffer(
-        data.nombreNino, genero, cantidad, data.sticker ?? "estrella",
+        data.nombreNino, genero, cantidad, data.sticker ?? "estrella", idioma,
       );
     }
     return buildRecompensasBuffer(data.nombreNino, genero, cantidad, watermark, idioma);
@@ -157,6 +163,7 @@ export async function generateBuffer(
       data.manana ?? [],
       data.noche ?? [],
       data.genero ?? null,
+      idioma,
     );
   }
   return buildRutinasBuffer(
@@ -168,4 +175,29 @@ export async function generateBuffer(
     data.genero ?? null,
     idioma,
   );
+}
+
+// ─── Lo que recibe quien compra el digital ───────────────────────────────────
+
+/**
+ * PDF para el cliente que imprime en casa o en una imprenta: la versión
+ * imprenta (frente y dorso) con línea de corte redondeada alrededor de cada
+ * tablero. En recompensas solo el tablero lleva contorno: la hoja de fichas
+ * ya trae su propia línea de corte en cada círculo.
+ */
+export async function generateDigitalBuffer(producto: string, data: PdfData): Promise<Buffer> {
+  const imprenta = await generateBuffer(producto, data, false, "imprenta");
+  return agregarLineaDeCorte(imprenta, producto === "recompensas" ? [0] : undefined);
+}
+
+/** Instructivo de armado (una hoja A4), igual para todos los productos.
+ *  En el idioma de la compra; español si no es en ni pt. */
+export async function generateInstructivoBuffer(idioma?: string | null): Promise<Buffer> {
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const element = React.createElement(InstructivoPDF, {
+    logoSrc: fs.existsSync(logoPath) ? logoPath : null,
+    textos: textosInstructivo(idioma),
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return renderToBuffer(element as any);
 }

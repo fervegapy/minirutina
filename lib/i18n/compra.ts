@@ -587,6 +587,10 @@ export interface PdfTextos {
   miRecompensa:  string;
   comienzaAqui:  string;
   loLograste:    string;
+  // Versión imprenta (el PDF digital es esta, frente y dorso)
+  listo:         string;
+  fichasTitulo:  (nombre: string) => string;
+  fichasSub:     (cantidad: number, diametro: string) => string;
 }
 
 const PDF: Record<Locale, PdfTextos> = {
@@ -594,16 +598,25 @@ const PDF: Record<Locale, PdfTextos> = {
     vistaPrevia: "VISTA PREVIA", manana: "rutina al despertar", noche: "rutina nocturna",
     tableroDe: "tablero de", ninoFallback: "tu niño", miRecompensa: "mi recompensa",
     comienzaAqui: "comienza aquí  →", loLograste: "¡LO LOGRASTE!",
+    listo: "Listo",
+    fichasTitulo: (n) => `Fichas de logrado — ${n}`,
+    fichasSub: (c, d) => `Recortar por la línea gris. ${c} unidades · Ø ${d}.`,
   },
   en: {
     vistaPrevia: "PREVIEW", manana: "morning routine", noche: "bedtime routine",
     tableroDe: "chart for", ninoFallback: "your child", miRecompensa: "my reward",
     comienzaAqui: "start here  →", loLograste: "YOU DID IT!",
+    listo: "Done",
+    fichasTitulo: (n) => `Achievement stickers — ${n}`,
+    fichasSub: (c, d) => `Cut along the gray line. ${c} pieces · Ø ${d}.`,
   },
   pt: {
     vistaPrevia: "PRÉVIA", manana: "rotina da manhã", noche: "rotina da noite",
     tableroDe: "quadro de", ninoFallback: "seu filho", miRecompensa: "minha recompensa",
     comienzaAqui: "comece aqui  →", loLograste: "VOCÊ CONSEGUIU!",
+    listo: "Pronto",
+    fichasTitulo: (n) => `Fichas de conquista — ${n}`,
+    fichasSub: (c, d) => `Recorte pela linha cinza. ${c} unidades · Ø ${d}.`,
   },
 };
 

@@ -4,6 +4,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { RecompensaPage, type Genero } from "./RecompensaPDF";
+import { getPdfTextos, type PdfTextos } from "@/lib/i18n/compra";
 
 const pt = (mm: number) => mm * 2.83465;
 
@@ -21,6 +22,9 @@ export interface ImprentaRecompensasPDFProps {
   /** Sticker id the customer chose — used as a fallback label */
   stickerId: string;
   subtitleFont?: string;
+  /** Textos del idioma del pedido (español si no se pasa). Las imágenes con
+   *  texto dibujado ya vienen del idioma en `images`. */
+  textos?: PdfTextos;
 }
 
 const styles = StyleSheet.create({
@@ -73,11 +77,13 @@ function FichasStickersPage({
   cantidad,
   stickerSrc,
   stickerId,
+  textos,
 }: {
   nombreNino: string;
   cantidad: 10 | 20;
   stickerSrc: string | null;
   stickerId: string;
+  textos: PdfTextos;
 }) {
   const { COLS, ROWS, CELL, STICKER } = stickerGrid(cantidad);
   const GRID_W = COLS * CELL;
@@ -90,10 +96,10 @@ function FichasStickersPage({
     <Page size={[pt(PAGE_W_MM), pt(PAGE_H_MM)]} style={styles.page}>
       <View style={styles.pageHeader}>
         <Text style={styles.pageHeaderTitle}>
-          Fichas de logrado — {nombreNino}
+          {textos.fichasTitulo(nombreNino)}
         </Text>
         <Text style={styles.pageHeaderSub}>
-          Recortar por la línea gris. {cantidad} unidades · Ø {cantidad === 10 ? "4 cm" : "2.6 cm"}.
+          {textos.fichasSub(cantidad, cantidad === 10 ? "4 cm" : "2.6 cm")}
         </Text>
       </View>
 
@@ -151,6 +157,7 @@ export default function ImprentaRecompensasPDF({
   stickerSrc,
   stickerId,
   subtitleFont = "Nunito",
+  textos = getPdfTextos("es"),
 }: ImprentaRecompensasPDFProps) {
   return (
     <Document>
@@ -161,12 +168,14 @@ export default function ImprentaRecompensasPDF({
         images={images}
         watermark={false}
         subtitleFont={subtitleFont}
+        textos={textos}
       />
       <FichasStickersPage
         nombreNino={nombreNino}
         cantidad={cantidad}
         stickerSrc={stickerSrc}
         stickerId={stickerId}
+        textos={textos}
       />
     </Document>
   );
