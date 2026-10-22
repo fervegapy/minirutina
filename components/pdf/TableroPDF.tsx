@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { getPdfTextos, type PdfTextos } from "@/lib/i18n/compra";
 
 export interface TableroPDFProps {
   nombreNino: string;
@@ -9,6 +10,8 @@ export interface TableroPDFProps {
   images: Record<string, string>;
   subtitleFont?: string;
   watermark?: boolean;
+  /** Textos del idioma del pedido (español si no se pasa). */
+  textos?: PdfTextos;
 }
 
 // ─── Unit conversion ──────────────────────────────────────────────────────────
@@ -325,7 +328,7 @@ function LowerZone() {
 
 // ─── Watermark overlay (preview only — protects pre-paid downloads) ──────────
 
-function Watermark() {
+function Watermark({ texto }: { texto: string }) {
   return (
     <>
       {/* Full-page semi-transparent black overlay (35% opacity) */}
@@ -363,7 +366,7 @@ function Watermark() {
             transform:     "rotate(-22deg)",
           }}
         >
-          VISTA PREVIA
+          {texto}
         </Text>
       </View>
     </>
@@ -382,6 +385,7 @@ export interface FranjaPageProps {
   images:       Record<string, string>;
   subtitleFont: string;
   watermark:    boolean;
+  vistaPrevia?: string;
 }
 
 export function FranjaPage({
@@ -394,6 +398,7 @@ export function FranjaPage({
   images,
   subtitleFont,
   watermark,
+  vistaPrevia = "VISTA PREVIA",
 }: FranjaPageProps) {
   return (
     <Page size={[pt(297), pt(210)]} style={s.page}>
@@ -420,7 +425,7 @@ export function FranjaPage({
       <Text style={s.brand}>minirutina.com</Text>
 
       {/* Preview-only watermark — must be last so it overlays everything */}
-      {watermark && <Watermark />}
+      {watermark && <Watermark texto={vistaPrevia} />}
     </Page>
   );
 }
@@ -435,30 +440,33 @@ export default function TableroPDF({
   images,
   subtitleFont = "Nunito",
   watermark = false,
+  textos = getPdfTextos("es"),
 }: TableroPDFProps) {
   return (
     <Document>
       <FranjaPage
         nombreNino={nombreNino}
         colorAcento={colorAcento}
-        subtitle="rutina al despertar"
+        subtitle={textos.manana}
         decoLeftKey="deco:manana-left"
         decoRightKey="deco:manana-right"
         iconIds={manana}
         images={images}
         subtitleFont={subtitleFont}
         watermark={watermark}
+        vistaPrevia={textos.vistaPrevia}
       />
       <FranjaPage
         nombreNino={nombreNino}
         colorAcento={colorAcento}
-        subtitle="rutina nocturna"
+        subtitle={textos.noche}
         decoLeftKey="deco:noche-left"
         decoRightKey="deco:noche-right"
         iconIds={noche}
         images={images}
         subtitleFont={subtitleFont}
         watermark={watermark}
+        vistaPrevia={textos.vistaPrevia}
       />
     </Document>
   );

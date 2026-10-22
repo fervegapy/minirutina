@@ -4,11 +4,12 @@
 // the Authorization header. We verify it, fetch the full payment to read
 // its status, and if PAID we mark the pedido as 'pagado' + fire the
 // customer / admin notification emails (same as the old Stripe webhook).
+import { formatPrecio, isMoneda, type Moneda } from "@/lib/mercado";
 import { NextRequest, NextResponse } from "next/server";
 import { getPayment, verifyWebhookSignature, pedidoIdFromOrderId } from "@/lib/dlocal";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmail } from "@/lib/email";
-import { enviarPedidoConfirmado, productoLabel } from "@/lib/emails/pedido-emails";
+import { enviarPedidoConfirmado, idiomaDePedido, productoLabel } from "@/lib/emails/pedido-emails";
 import { generarAdjuntosDigitales } from "@/lib/pdf/adjuntos";
 import { extraerNombre } from "@/lib/contacto";
 import { captureServerEvent } from "@/lib/posthog-server";
@@ -22,10 +23,6 @@ const NOMBRE_PRODUCTO: Record<string, string> = {
   recompensas: "Tablero de Recompensas",
   semana:      "Plan de la Semana",
 };
-
-function fmtPyg(n: number) {
-  return "Gs. " + Math.round(n).toLocaleString("es-PY");
-}
 
 function extractEmail(contacto?: string | null): string | null {
   if (!contacto) return null;
@@ -109,7 +106,11 @@ export async function POST(req: NextRequest) {
     }
 
     const pedido = updated[0] as { id: string; nombre_nino: string; producto: string; contacto?: string | null };
+    // Moneda real del cobro: Gs. en Paraguay, ARS/BRL/USD afuera. `montoPyg`
+    // queda con su nombre histórico pero va en esa moneda.
+    const moneda: Moneda = isMoneda(payment.currency) ? payment.currency : "PYG";
     const montoPyg = Number(payment.amount) || 0;
+    const fmtM = (n: number) => formatPrecio(n, moneda);
 
     // Customer email
     const customerEmail = extractEmail(pedido.contacto);
@@ -126,12 +127,18 @@ export async function POST(req: NextRequest) {
     // Fetch items so emails + analytics reflect the full cart.
     const { data: itemsRows } = await supabaseAdmin
       .from("pedido_items")
-      .select("producto, nombre_nino, tipo_entrega, precio_pyg, orden")
+      .select("*")
       .eq("pedido_id", pedidoId)
       .order("orden", { ascending: true });
-    const items = (itemsRows ?? []) as Array<{
+    const items = ((itemsRows ?? []) as Array<{
       producto: string; nombre_nino: string; tipo_entrega: string; precio_pyg: number;
-    }>;
+      precio_moneda?: number | null; orden: number; personalizacion?: unknown;
+    }>).map((it) => ({
+      ...it,
+      // Precio en la moneda del cobro (los pedidos de afuera lo guardan en
+      // precio_moneda; precio_pyg queda en 0).
+      precio_pyg: moneda === "PYG" ? Number(it.precio_pyg) || 0 : Number(it.precio_moneda) || 0,
+    }));
 
     // Subject / headline reflect single vs multi-item.
     const subjectName = items.length > 1
@@ -141,7 +148,7 @@ export async function POST(req: NextRequest) {
       ? `<ul style="margin:0 0 12px;padding-left:18px;font-size:14px;color:#22244ecc;">
            ${items.map((it) =>
              `<li>${NOMBRE_PRODUCTO[it.producto] ?? it.producto} — <strong>${it.nombre_nino}</strong>
-              <span style="color:#22244e88;">· ${it.tipo_entrega === "digital" ? "Digital" : "Impreso"} · ${fmtPyg(it.precio_pyg)}</span></li>`
+              <span style="color:#22244e88;">· ${it.tipo_entrega === "digital" ? "Digital" : "Impreso"} · ${fmtM(it.precio_pyg)}</span></li>`
            ).join("")}
          </ul>`
       : "";
@@ -167,6 +174,7 @@ export async function POST(req: NextRequest) {
       totalPyg: montoPyg,
       metodo:   "dLocal",
       contacto: pedido.contacto,
+      moneda,
     }).catch(() => false);
     if (telegramConfigurado() && !tgOk) {
       captureServerEvent({
@@ -193,17 +201,19 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
 
     if (customerEmail) {
+      // Idioma en el que compró (el checkout lo guarda en cada ítem).
+      const idioma = idiomaDePedido(items);
       // Map items → branded email summary. Fall back to the pedido's legacy
       // columns when there are no pedido_items rows (old single-item orders).
       const emailItems = items.length > 0
         ? items.map((it) => ({
-            productoLabel: productoLabel(it.producto),
+            productoLabel: productoLabel(it.producto, idioma),
             nombreNino:    it.nombre_nino,
             tipoEntrega:   it.tipo_entrega === "digital" ? ("digital" as const) : ("fisico" as const),
             precioPyg:     it.precio_pyg,
           }))
         : [{
-            productoLabel: productoLabel(pedido.producto),
+            productoLabel: productoLabel(pedido.producto, idioma),
             nombreNino:    pedido.nombre_nino,
             tipoEntrega:   ("fisico" as const),
             precioPyg:     montoPyg,
@@ -238,6 +248,8 @@ export async function POST(req: NextRequest) {
         pedidoId,
         items:         emailItems,
         total:         montoPyg,
+        moneda,
+        idioma,
         attachments:   adjuntos,
       }).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
       if (!envio.ok) {
@@ -262,7 +274,7 @@ export async function POST(req: NextRequest) {
           <p>Pedido <strong>#${pedidoId.slice(0,8).toUpperCase()}</strong> ·
           ${items.length > 1 ? `<strong>${items.length} items</strong>` : `<strong>${pedido.nombre_nino}</strong> — ${productoLabel(pedido.producto)}`}.</p>
           ${itemsListHtml}
-          <p style="font-size:18px;"><strong>${fmtPyg(montoPyg)}</strong></p>
+          <p style="font-size:18px;"><strong>${fmtM(montoPyg)}</strong></p>
           ${pedido.contacto ? `<p style="font-size:13px;color:#22244e88;">Contacto: ${pedido.contacto}</p>` : ""}
           <p><a href="https://www.minirutina.com/admin/pedidos/${pedidoId}" style="background:#22244e;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;">Ver en /admin/pedidos</a></p>
         </body></html>`,

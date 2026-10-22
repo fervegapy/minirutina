@@ -9,6 +9,9 @@
 //   3. en camino              — auto, admin marks estado = enviado
 //   4. feedback               — auto, admin marks estado = entregado
 //   5. factura                — manual, from admin, on demand (not tied to estado)
+import type { Moneda } from "@/lib/mercado";
+import { isLocale, type Locale } from "@/lib/i18n";
+import { nombreProducto } from "@/lib/i18n/compra";
 import { sendEmail, type EmailAttachment } from "@/lib/email";
 import { getSiteConfig } from "@/lib/site-config";
 import {
@@ -20,18 +23,22 @@ import {
   timeline,
   TIMELINE_STEPS_RETIRO,
   pedidoNumero,
-  fmtPyg,
+  fmtMonto,
   type EmailItemSummary,
 } from "@/lib/emails/template";
 
-const PRODUCTO_LABEL: Record<string, string> = {
-  rutinas:     "Tablero de Rutinas",
-  recompensas: "Tablero de Recompensas",
-  semana:      "Plan de la Semana",
-};
+export function productoLabel(producto: string, idioma: Locale = "es"): string {
+  return nombreProducto(producto, idioma);
+}
 
-export function productoLabel(producto: string): string {
-  return PRODUCTO_LABEL[producto] ?? producto;
+/** Idioma de un pedido: el que el checkout guardó en personalizacion.idioma
+ *  de sus ítems (español si no hay, como los pedidos de antes). */
+export function idiomaDePedido(items: { personalizacion?: unknown }[]): Locale {
+  for (const it of items) {
+    const v = (it.personalizacion as { idioma?: unknown } | null | undefined)?.idioma;
+    if (isLocale(v)) return v;
+  }
+  return "es";
 }
 
 // Business contact + feedback destination. Filled via env (see .env.local);
@@ -56,8 +63,9 @@ async function getLogoUrl(): Promise<string | null> {
   return logoCache;
 }
 
-function saludo(nombreCliente?: string | null): string {
-  return nombreCliente ? `Hola ${nombreCliente.split(" ")[0]},` : "Hola,";
+function saludo(nombreCliente?: string | null, idioma: Locale = "es"): string {
+  const hola = { es: "Hola", en: "Hi", pt: "Olá" }[idioma];
+  return nombreCliente ? `${hola} ${nombreCliente.split(" ")[0]},` : `${hola},`;
 }
 
 /** "Cómo pagar" copy — links to WhatsApp when the number is configured. */
@@ -77,7 +85,9 @@ interface BaseArgs {
   pedidoId:       string;
   logoUrl?:       string | null;
 }
-interface CartArgs extends BaseArgs { items: EmailItemSummary[]; total: number }
+// `moneda`: la del pedido (Gs. si no se pasa). `precioPyg` de cada ítem y
+// `total` vienen en esa moneda.
+interface CartArgs extends BaseArgs { items: EmailItemSummary[]; total: number; moneda?: Moneda; idioma?: Locale }
 interface ShipArgs extends BaseArgs { nombreNino?: string | null }
 // `esRetiro` = customer chose pickup, not delivery. We never mention the
 // pickup address in email — it's the team's home base — so pickup orders
@@ -111,17 +121,102 @@ export interface ConfirmadoOpts {
   conAdjuntos?:     boolean;
   downloadButtons?: { label: string; href: string }[];
 }
+
+const CONFIRMADO: Record<Locale, {
+  listoTitulo: string; listoCuerpo: string;
+  adjTitulo: string; adjTituloMixto: string; adjCuerpo: string; adjCuerpoMixto: string;
+  proximoTitulo: string; proximoCuerpo: string;
+  accionBotones: string; accionAdjuntos: string; accionPreparando: string; accionFisico: string;
+  pago: (monto: string) => string; sinPago: string;
+  preBotones: string; preAdjuntos: string; prePago: string;
+  heading: string; asunto: (nro: string) => string;
+  descargar: (nino: string) => string;
+}> = {
+  es: {
+    listoTitulo: "Tu tablero está listo 🎉",
+    listoCuerpo: "Descargá tu archivo desde el botón de abajo, listo para imprimir en casa o donde prefieras.",
+    adjTitulo: "Tu archivo está listo 📎",
+    adjTituloMixto: "Tu archivo digital 📎",
+    adjCuerpo: "Adjuntamos tu tablero en este correo, listo para imprimir en casa o donde prefieras.",
+    adjCuerpoMixto: "Adjuntamos en este correo el tablero de la versión digital. Los impresos siguen el proceso de abajo.",
+    proximoTitulo: "Próximo paso",
+    proximoCuerpo: "Estamos preparando tu archivo. Te lo enviamos por email apenas esté listo.",
+    accionBotones: "Descargá tu tablero desde el botón de abajo.",
+    accionAdjuntos: "Adjuntamos tu archivo en este correo.",
+    accionPreparando: "Ya estamos preparando tu archivo.",
+    accionFisico: "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso.",
+    pago: (m) => `recibimos tu pago de ${m}.`,
+    sinPago: "confirmamos tu pedido.",
+    preBotones: "Tu tablero está listo para descargar.",
+    preAdjuntos: "Tu archivo está listo — lo adjuntamos en este correo.",
+    prePago: "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
+    heading: "Tu pedido está confirmado ✅",
+    asunto: (nro) => `Tu pedido está confirmado — Minirutina #${nro}`,
+    descargar: (n) => `Descargar tablero de ${n}`,
+  },
+  en: {
+    listoTitulo: "Your chart is ready 🎉",
+    listoCuerpo: "Download your file with the button below, ready to print at home or wherever you like.",
+    adjTitulo: "Your file is ready 📎",
+    adjTituloMixto: "Your digital file 📎",
+    adjCuerpo: "Your chart is attached to this email, ready to print at home or wherever you like.",
+    adjCuerpoMixto: "The digital chart is attached to this email. Printed charts follow the steps below.",
+    proximoTitulo: "Next step",
+    proximoCuerpo: "We're preparing your file. We'll email it to you as soon as it's ready.",
+    accionBotones: "Download your chart with the button below.",
+    accionAdjuntos: "Your file is attached to this email.",
+    accionPreparando: "We're already preparing your file.",
+    accionFisico: "We've started preparing your chart — we'll keep you posted at every step.",
+    pago: (m) => `we received your payment of ${m}.`,
+    sinPago: "your order is confirmed.",
+    preBotones: "Your chart is ready to download.",
+    preAdjuntos: "Your file is ready — it's attached to this email.",
+    prePago: "Payment confirmed. We've started preparing your order.",
+    heading: "Your order is confirmed ✅",
+    asunto: (nro) => `Your order is confirmed — Minirutina #${nro}`,
+    descargar: (n) => `Download ${n}'s chart`,
+  },
+  pt: {
+    listoTitulo: "Seu quadro está pronto 🎉",
+    listoCuerpo: "Baixe seu arquivo no botão abaixo, pronto para imprimir em casa ou onde preferir.",
+    adjTitulo: "Seu arquivo está pronto 📎",
+    adjTituloMixto: "Seu arquivo digital 📎",
+    adjCuerpo: "Seu quadro está anexado a este e-mail, pronto para imprimir em casa ou onde preferir.",
+    adjCuerpoMixto: "O quadro da versão digital está anexado a este e-mail. Os impressos seguem o processo abaixo.",
+    proximoTitulo: "Próximo passo",
+    proximoCuerpo: "Estamos preparando seu arquivo. Enviamos por e-mail assim que estiver pronto.",
+    accionBotones: "Baixe seu quadro no botão abaixo.",
+    accionAdjuntos: "Seu arquivo está anexado a este e-mail.",
+    accionPreparando: "Já estamos preparando seu arquivo.",
+    accionFisico: "Já começamos a preparar seu quadro — vamos avisando a cada passo.",
+    pago: (m) => `recebemos seu pagamento de ${m}.`,
+    sinPago: "seu pedido está confirmado.",
+    preBotones: "Seu quadro está pronto para baixar.",
+    preAdjuntos: "Seu arquivo está pronto — está anexado a este e-mail.",
+    prePago: "Pagamento confirmado. Já começamos a preparar seu pedido.",
+    heading: "Seu pedido está confirmado ✅",
+    asunto: (nro) => `Seu pedido está confirmado — Minirutina #${nro}`,
+    descargar: (n) => `Baixar o quadro de ${n}`,
+  },
+};
+
+/** Texto del botón de descarga (flujo cupón 100 %). */
+export function labelDescarga(nombreNino: string, idioma: Locale = "es"): string {
+  return CONFIRMADO[idioma].descargar(nombreNino);
+}
+
 export function buildPedidoConfirmado(
-  { nombreCliente, pedidoId, items, total, logoUrl }: CartArgs,
+  { nombreCliente, pedidoId, items, total, logoUrl, moneda, idioma = "es" }: CartArgs,
   opts: ConfirmadoOpts = {},
 ): BuiltEmail {
+  const t = CONFIRMADO[idioma];
   const { conAdjuntos = false, downloadButtons = [] } = opts;
   const hayBotones     = downloadButtons.length > 0;
   const todosDigitales = items.length > 0 && items.every((it) => it.tipoEntrega === "digital");
   const hayDigitales   = items.some((it) => it.tipoEntrega === "digital");
 
   const botonesHtml = hayBotones
-    ? infoBox("Tu tablero está listo 🎉", "Descargá tu archivo desde el botón de abajo, listo para imprimir en casa o donde prefieras.")
+    ? infoBox(t.listoTitulo, t.listoCuerpo)
       + downloadButtons.map((b) => emailButton(b.href, b.label) + `<div style="height:8px;"></div>`).join("")
     : "";
 
@@ -130,37 +225,36 @@ export function buildPedidoConfirmado(
     ? botonesHtml
     : conAdjuntos
       ? infoBox(
-          todosDigitales ? "Tu archivo está listo 📎" : "Tu archivo digital 📎",
-          todosDigitales
-            ? "Adjuntamos tu tablero en este correo, listo para imprimir en casa o donde prefieras."
-            : "Adjuntamos en este correo el tablero de la versión digital. Los impresos siguen el proceso de abajo.",
+          todosDigitales ? t.adjTitulo : t.adjTituloMixto,
+          todosDigitales ? t.adjCuerpo : t.adjCuerpoMixto,
         )
       : todosDigitales
-        ? infoBox("Próximo paso", "Estamos preparando tu archivo. Te lo enviamos por email apenas esté listo.")
+        ? infoBox(t.proximoTitulo, t.proximoCuerpo)
         : "";
 
   // All-digital orders have no physical timeline; mixed/físico orders do.
   const progreso = todosDigitales ? digitalBox : (hayDigitales ? digitalBox : "") + timeline(1);
 
   const accion = hayBotones
-    ? "Descargá tu tablero desde el botón de abajo."
+    ? t.accionBotones
     : todosDigitales
-      ? (conAdjuntos ? "Adjuntamos tu archivo en este correo." : "Ya estamos preparando tu archivo.")
-      : "Ya empezamos a preparar tu tablero — te vamos avisando en cada paso.";
-  const intro = `${saludo(nombreCliente)} ${total > 0 ? `recibimos tu pago de ${fmtPyg(total)}.` : "confirmamos tu pedido."} ${accion}`;
+      ? (conAdjuntos ? t.accionAdjuntos : t.accionPreparando)
+      : t.accionFisico;
+  const intro = `${saludo(nombreCliente, idioma)} ${total > 0 ? t.pago(fmtMonto(total, moneda)) : t.sinPago} ${accion}`;
 
   const html = renderEmailShell({
     logoUrl,
-    preheader: hayBotones
-      ? "Tu tablero está listo para descargar."
-      : conAdjuntos
-        ? "Tu archivo está listo — lo adjuntamos en este correo."
-        : "Confirmamos tu pago. Ya empezamos a preparar tu pedido.",
-    heading:   "Tu pedido está confirmado ✅",
+    idioma,
+    preheader: hayBotones ? t.preBotones : conAdjuntos ? t.preAdjuntos : t.prePago,
+    heading:   t.heading,
     intro,
-    contentHtml: progreso + summaryCard(items, total) + whatsappButton(pedidoId, WHATSAPP) + pedidoNumero(pedidoId),
+    contentHtml:
+      progreso +
+      summaryCard(items, total, moneda, idioma) +
+      whatsappButton(pedidoId, WHATSAPP, idioma) +
+      pedidoNumero(pedidoId, idioma),
   });
-  return { subject: `Tu pedido está confirmado — Minirutina #${pedidoId.slice(0, 8).toUpperCase()}`, html };
+  return { subject: t.asunto(pedidoId.slice(0, 8).toUpperCase()), html };
 }
 
 // ─── 3. En camino ──────────────────────────────────────────────────────────

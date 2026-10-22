@@ -11,6 +11,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { FranjaPage } from "./TableroPDF";
+import { getPdfTextos, type PdfTextos } from "@/lib/i18n/compra";
 
 const pt = (mm: number) => mm * 2.83465;
 
@@ -35,6 +36,8 @@ export interface ImprentaRutinasPDFProps {
    *  every "Listo" ficha so the cumplido visual is identical across products. */
   checkSrc?: string | null;
   subtitleFont?: string;
+  /** Textos del idioma del pedido (español si no se pasa). */
+  textos?: PdfTextos;
 }
 
 const styles = StyleSheet.create({
@@ -52,7 +55,7 @@ const styles = StyleSheet.create({
  * lower zone (y = 140.5 → 210 mm) is divided into 7 columns; each column
  * shows a dashed-outline placeholder for the check + the word "Listo".
  */
-function FranjaPageBlanco({ checkSrc }: { checkSrc?: string | null }) {
+function FranjaPageBlanco({ checkSrc, listo }: { checkSrc?: string | null; listo: string }) {
   const CHECK_PLACEHOLDER_MM = 24;
 
   return (
@@ -99,7 +102,7 @@ function FranjaPageBlanco({ checkSrc }: { checkSrc?: string | null }) {
                   marginBottom:  pt(4),
                 }}
               >
-                Listo
+                {listo}
               </Text>
               {checkSrc ? (
                 <Image
@@ -139,13 +142,14 @@ export default function ImprentaRutinasPDF({
   images,
   checkSrc = null,
   subtitleFont = "Nunito",
+  textos = getPdfTextos("es"),
 }: ImprentaRutinasPDFProps) {
   return (
     <Document>
       <FranjaPage
         nombreNino={nombreNino}
         colorAcento={colorAcento}
-        subtitle="rutina al despertar"
+        subtitle={textos.manana}
         decoLeftKey="deco:manana-left"
         decoRightKey="deco:manana-right"
         iconIds={manana}
@@ -155,11 +159,11 @@ export default function ImprentaRutinasPDF({
       />
       {/* Page 2 — blank back-side of the mañana tablero, lower zone with
           7 'Listo' cells (rotated 180° for the fold). */}
-      <FranjaPageBlanco checkSrc={checkSrc} />
+      <FranjaPageBlanco checkSrc={checkSrc} listo={textos.listo} />
       <FranjaPage
         nombreNino={nombreNino}
         colorAcento={colorAcento}
-        subtitle="rutina nocturna"
+        subtitle={textos.noche}
         decoLeftKey="deco:noche-left"
         decoRightKey="deco:noche-right"
         iconIds={noche}
@@ -168,7 +172,7 @@ export default function ImprentaRutinasPDF({
         watermark={false}
       />
       {/* Page 4 — blank back-side of the noche tablero. */}
-      <FranjaPageBlanco checkSrc={checkSrc} />
+      <FranjaPageBlanco checkSrc={checkSrc} listo={textos.listo} />
     </Document>
   );
 }

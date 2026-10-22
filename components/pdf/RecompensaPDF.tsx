@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { getPdfTextos, type PdfTextos } from "@/lib/i18n/compra";
 
 export type Genero = "nino" | "nina";
 
@@ -17,6 +18,9 @@ export interface RecompensaPDFProps {
   images: Record<string, string>;
   watermark?: boolean;
   subtitleFont?: string;
+  /** Textos del idioma del pedido (español si no se pasa). Las imágenes con
+   *  texto dibujado ya vienen del idioma en `images` (lib/pdfImages). */
+  textos?: PdfTextos;
 }
 
 // ─── Unit conversion ──────────────────────────────────────────────────────────
@@ -119,7 +123,7 @@ function buildPath(cantidad: 10 | 20): { x: number; y: number; d: number }[] {
 }
 
 // ─── Watermark ────────────────────────────────────────────────────────────────
-function Watermark() {
+function Watermark({ texto }: { texto: string }) {
   return (
     <>
       <View
@@ -149,7 +153,7 @@ function Watermark() {
             transform:     "rotate(-22deg)",
           }}
         >
-          VISTA PREVIA
+          {texto}
         </Text>
       </View>
     </>
@@ -168,6 +172,7 @@ export function RecompensaPage({
   images,
   watermark = false,
   subtitleFont = "Nunito",
+  textos = getPdfTextos("es"),
 }: RecompensaPDFProps) {
   const palette = PALETTES[genero];
   const path = buildPath(cantidad);
@@ -234,13 +239,13 @@ export function RecompensaPage({
     <Page size={[pt(PAGE_W_MM), pt(PAGE_H_MM)]} style={styles.page}>
         {/* Header: tablero de NAME */}
         <View style={styles.headerWrap}>
-          <Text style={styles.headerPrefix}>tablero de</Text>
-          <Text style={styles.headerName}>{nombreNino || "tu niño"}</Text>
+          <Text style={styles.headerPrefix}>{textos.tableroDe}</Text>
+          <Text style={styles.headerName}>{nombreNino || textos.ninoFallback}</Text>
         </View>
 
         {/* Reward pill: "mi recompensa" + blank line to fill in by hand */}
         <View style={styles.pillRow}>
-          <Text style={styles.pillLabel}>mi recompensa</Text>
+          <Text style={styles.pillLabel}>{textos.miRecompensa}</Text>
           <View style={styles.pill} />
         </View>
 
@@ -288,7 +293,7 @@ export function RecompensaPage({
                   color:      "#1F2937",
                 }}
               >
-                comienza aquí  →
+                {textos.comienzaAqui}
               </Text>
             </View>
           );
@@ -370,7 +375,7 @@ export function RecompensaPage({
                 textAlign:     "right",
               }}
             >
-              ¡LO LOGRASTE!
+              {textos.loLograste}
             </Text>
           );
         })()}
@@ -395,7 +400,7 @@ export function RecompensaPage({
           minirutina.com
         </Text>
 
-        {watermark && <Watermark />}
+        {watermark && <Watermark texto={textos.vistaPrevia} />}
       </Page>
   );
 }

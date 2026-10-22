@@ -5,7 +5,7 @@
 // call is fire-and-forget — if the pixel is blocked (ad blockers, Safari ITP)
 // nothing throws and the UI is unaffected.
 //
-// Production sells in Guaraníes only, so `currency` is always PYG.
+// Default PYG; los pedidos de afuera pasan su moneda (ARS/BRL/USD).
 
 export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "1113349541645232";
 
@@ -19,7 +19,7 @@ export type MetaEvent =
 
 export interface MetaParams {
   value?:        number;
-  currency?:     "PYG";
+  currency?:     "PYG" | "ARS" | "BRL" | "USD";
   content_name?: string;
   content_ids?:  string[];
   content_type?: "product";

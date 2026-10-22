@@ -1,9 +1,14 @@
 interface StepIndicatorProps {
   steps: string[];
   current: number;
+  pasoDe?: (n: number, total: number) => string;
 }
 
-export default function StepIndicator({ steps, current }: StepIndicatorProps) {
+export default function StepIndicator({
+  steps,
+  current,
+  pasoDe = (n, t) => `Paso ${n} de ${t}`,
+}: StepIndicatorProps) {
   const pct = Math.round(((current) / (steps.length - 1)) * 100);
 
   return (
@@ -18,7 +23,7 @@ export default function StepIndicator({ steps, current }: StepIndicatorProps) {
       {/* Step label */}
       <div className="flex justify-between items-center">
         <span className="text-xs font-semibold text-[#22244e]/50 uppercase tracking-wide">
-          Paso {current + 1} de {steps.length}
+          {pasoDe(current + 1, steps.length)}
         </span>
         <span className="text-xs font-bold text-[#22244e]">
           {steps[current]}

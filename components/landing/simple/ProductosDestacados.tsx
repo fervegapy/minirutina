@@ -8,23 +8,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { productos as productosData } from "@/lib/productos";
+import { prefijo, type Locale } from "@/lib/i18n";
+import type { HomeDict } from "@/lib/i18n/home";
 
-const CARDS = [
-  {
-    slug: "rutinas",
-    // Nombre más corto que el de lib/productos.ts: en la tarjeta el título
-    // tiene que leerse de un vistazo, el detalle ya lo explica la página.
-    titulo: "Rutina visual",
-    bajada: "Dos tableros: uno para la mañana y uno para la noche. Tu peque sabe qué viene después sin que se lo repitas.",
-  },
-  {
-    slug: "recompensas",
-    titulo: "Tablero de recompensas",
-    bajada: "10 o 20 pasos hasta el premio que vos elegís. Para instalar un hábito nuevo sin peleas ni castigos.",
-  },
-] as const;
+// Los títulos son más cortos que los de lib/productos.ts: en la tarjeta el
+// título tiene que leerse de un vistazo, el detalle ya lo explica la página.
+const SLUGS = ["rutinas", "recompensas"] as const;
 
-export default function ProductosDestacados() {
+export default function ProductosDestacados({ d, locale }: { d: HomeDict; locale: Locale }) {
+  const CARDS = SLUGS.map((slug) => ({ slug, ...d.cards[slug] }));
   return (
     <section id="productos" className="px-6 pb-16">
       <div className="max-w-3xl mx-auto grid gap-6 md:grid-cols-2">
@@ -33,7 +25,7 @@ export default function ProductosDestacados() {
           return (
             <Link
               key={card.slug}
-              href={`/productos/${card.slug}`}
+              href={`${prefijo(locale)}/productos/${card.slug}`}
               className="group flex flex-col bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden hover:border-[#336aea] transition-colors"
             >
               <div
@@ -60,7 +52,7 @@ export default function ProductosDestacados() {
                 {/* Botón visual, no <Button>: toda la tarjeta ya es el <Link>
                     y un botón real anidado sería un link dentro de otro. */}
                 <span className="flex items-center justify-center h-12 rounded-lg bg-[#336aea] text-white font-bold group-hover:bg-[#2856c7] transition-colors">
-                  Personalizar tablero
+                  {d.cta}
                 </span>
               </div>
             </Link>

@@ -8,6 +8,7 @@
 // Never throws — callers treat this as fire-and-forget, a Telegram outage
 // must never break a payment webhook.
 
+import { formatPrecio, type Moneda } from "@/lib/mercado";
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const CHAT_ID   = process.env.TELEGRAM_CHAT_ID ?? "";
 
@@ -60,9 +61,11 @@ export async function notificarPagoTelegram(args: {
   totalPyg:  number;
   metodo:    string;          // "dLocal" | "Cupón 100%"
   contacto?: string | null;
+  // Moneda de los montos (los pedidos de afuera pagan en ARS/BRL/USD).
+  moneda?:   Moneda;
 }): Promise<boolean> {
   const nro = args.pedidoId.slice(0, 8).toUpperCase();
-  const fmt = (n: number) => "Gs. " + Math.round(n).toLocaleString("es-PY");
+  const fmt = (n: number) => formatPrecio(n, args.moneda ?? "PYG");
 
   const lineas = args.items.map((it) =>
     `• ${esc(it.producto)} — <b>${esc(it.nombreNino)}</b> (${it.tipoEntrega === "digital" ? "Digital" : "Impreso"}) · ${fmt(it.precioPyg)}`,

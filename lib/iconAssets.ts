@@ -28,7 +28,14 @@ export function iconFileName(id: string, genero?: Genero | null): string {
   return `${id}.png`;
 }
 
+/** Carpeta del idioma: las ilustraciones traen la etiqueta dibujada, así que
+ *  en inglés y portugués se usan las de public/icons/{en,pt}/ (generadas con
+ *  scripts/traducir-imagenes.py). El español está en la raíz. */
+export function iconDir(idioma?: string | null): string {
+  return idioma === "en" || idioma === "pt" ? `${idioma}/` : "";
+}
+
 /** Returns the public URL for use in <img src> on the web. */
-export function iconUrl(id: string, genero?: Genero | null): string {
-  return `/icons/${iconFileName(id, genero)}`;
+export function iconUrl(id: string, genero?: Genero | null, idioma?: string | null): string {
+  return `/icons/${iconDir(idioma)}${iconFileName(id, genero)}`;
 }

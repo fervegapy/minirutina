@@ -5,8 +5,8 @@
 // dos líneas por paso. Mismo lenguaje visual que el sitio: fondo crema,
 // azul Minirutina, tarjetas blancas con borde y sin sombras.
 //
-// Los textos van en un objeto aparte (TEXTOS) para poder sumar inglés y
-// portugués sin tocar el layout.
+// Los textos van en objetos aparte (TEXTOS_ES/EN/PT), elegidos por el idioma
+// de la compra con textosInstructivo().
 import React from "react";
 import { Document, Page, View, Text, Image, Svg, Rect, Circle, Line, Path, StyleSheet } from "@react-pdf/renderer";
 
@@ -59,6 +59,84 @@ export const TEXTOS_ES: TextosInstructivo = {
   ],
   pie: "minirutina.com",
 };
+
+export const TEXTOS_EN: TextosInstructivo = {
+  titulo: "How to assemble your chart",
+  bajada: "Four steps and it's ready to hang.",
+  pasos: [
+    {
+      titulo: "Print",
+      texto:
+        "On A4 paper, ideally 300\u00a0g cardstock. The routine chart is double-sided: the «Done» cards go on the back.",
+    },
+    {
+      titulo: "Laminate",
+      texto:
+        "Ask for Prolam or similar lamination at your stationery or print shop. That way it survives little hands every day.",
+    },
+    {
+      titulo: "Cut out",
+      texto: "Along the dotted outline, which already has rounded corners.",
+    },
+    {
+      titulo: "Stick on the velcro",
+      texto: "1\u00a0cm adhesive velcro dots on the marked circles. And that's it!",
+    },
+  ],
+  consejosTitulo: "To make it work",
+  consejos: [
+    "Hang it at your child's eye level, not yours.",
+    "The first week, go through it together every time. Then they start doing it on their own.",
+    "Let them do the marking, not you: that's what gets them hooked.",
+  ],
+  pie: "minirutina.com",
+};
+
+export const TEXTOS_PT: TextosInstructivo = {
+  titulo: "Como montar seu quadro",
+  bajada: "Quatro passos e ele está pronto para pendurar.",
+  pasos: [
+    {
+      titulo: "Imprima",
+      texto:
+        "Em folha A4, de preferência cartolina de 300\u00a0g. O de rotinas é frente e verso: atrás ficam as fichas de «Pronto».",
+    },
+    {
+      titulo: "Plastifique",
+      texto:
+        "Peça plastificação Prolam ou similar na papelaria ou gráfica. Assim ele aguenta as mãozinhas de todos os dias.",
+    },
+    {
+      titulo: "Recorte",
+      texto: "Pela linha pontilhada do contorno, que já vem com os cantos arredondados.",
+    },
+    {
+      titulo: "Cole o velcro",
+      texto: "Pontos de velcro adesivo de 1\u00a0cm sobre os círculos marcados. E pronto!",
+    },
+  ],
+  consejosTitulo: "Para funcionar",
+  consejos: [
+    "Pendure na altura dos olhos do seu filho, não dos seus.",
+    "Na primeira semana, acompanhe todas as vezes. Depois ele começa a fazer sozinho.",
+    "Deixe que ele marque, não você: é esse gesto que engaja.",
+  ],
+  pie: "minirutina.com",
+};
+
+/** Textos del idioma de la compra; español si no es en ni pt. */
+export function textosInstructivo(idioma?: string | null): TextosInstructivo {
+  return idioma === "en" ? TEXTOS_EN : idioma === "pt" ? TEXTOS_PT : TEXTOS_ES;
+}
+
+/** Nombre del archivo descargado/adjunto. */
+export function archivoInstructivo(idioma?: string | null): string {
+  return idioma === "en"
+    ? "how-to-assemble-your-chart.pdf"
+    : idioma === "pt"
+      ? "como-montar-seu-quadro.pdf"
+      : "como-armar-tu-tablero.pdf";
+}
 
 const s = StyleSheet.create({
   page: {

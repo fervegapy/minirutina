@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { iconUrl, type Genero } from "@/lib/iconAssets";
+import { ACTIVIDADES } from "@/lib/i18n/compra";
+import type { Locale } from "@/lib/i18n";
 
 export const ICONOS_MANANA = [
   { id: "levantarse", label: "Levantarse" },
@@ -67,6 +69,7 @@ interface IconPickerProps {
   max?: number;
   accentColor?: string;
   genero?: Genero | null;
+  idioma?: Locale;
 }
 
 export default function IconPicker({
@@ -76,6 +79,7 @@ export default function IconPicker({
   max = 6,
   accentColor = "#336aea",
   genero = null,
+  idioma = "es",
 }: IconPickerProps) {
   const toggle = (id: string) => {
     if (selected.includes(id)) {
@@ -109,7 +113,12 @@ export default function IconPicker({
                   {order}
                 </span>
               )}
-              <IconImage id={icono.id} label={icono.label} genero={genero} />
+              <IconImage
+                id={icono.id}
+                label={idioma === "es" ? icono.label : ACTIVIDADES[idioma][icono.id] ?? icono.label}
+                genero={genero}
+                idioma={idioma}
+              />
             </button>
           );
         })}
@@ -124,13 +133,15 @@ function IconImage({
   id,
   label,
   genero,
+  idioma,
 }: {
   id: string;
   label: string;
   genero: Genero | null;
+  idioma: Locale;
 }) {
   // Re-key on (id, genero) so changing gender re-mounts and clears the failed state
-  const src = iconUrl(id, genero);
+  const src = iconUrl(id, genero, idioma);
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (

@@ -15,7 +15,15 @@
 //     leer antes de decidir. El que ya venía decidido nunca llega ahí.
 //   - El FAQ compartido queda al final para lo logístico (pago, envío,
 //     versión digital), que es lo que no cubre el bloque de objeciones.
+//
+// Se sirve en "/", "/en" y "/pt": el middleware reescribe a /v/<variante>
+// según idioma y mercado (ver lib/i18n). Los textos están en
+// lib/i18n/home.ts — cada variante es una página estática aparte.
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { isVariante, localeDeVariante, prefijo, HTML_LANG, VARIANTES, type Variante } from "@/lib/i18n";
+import { getHomeDict } from "@/lib/i18n/home";
 import SiteHeader from "@/components/landing/SiteHeader";
 import ProductosDestacados from "@/components/landing/simple/ProductosDestacados";
 import PorQueFunciona from "@/components/landing/simple/PorQueFunciona";
@@ -29,44 +37,62 @@ import WhatsAppFloat from "@/components/WhatsAppFloat";
 // la red de seguridad por si alguna revalidación se pierde.
 export const revalidate = 300;
 
-export const metadata = {
-  title: "Tableros de rutina personalizados para chicos | Minirutina",
-  description:
-    "Tableros visuales personalizados con el nombre y las actividades de tu hijo. Los recibís en 48 horas hábiles en todo Paraguay.",
-};
+export const dynamicParams = false;
+export function generateStaticParams() {
+  return VARIANTES.map((variante) => ({ variante }));
+}
 
-const PASOS = [
-  { icon: "✏️", texto: "Lo personalizás online en 5 minutos" },
-  { icon: "🖨️", texto: "Lo imprimimos en papel 300g plastificado" },
-  { icon: "📦", texto: "Te llega en 48 horas hábiles" },
-];
+export function generateMetadata({ params }: { params: { variante: string } }): Metadata {
+  if (!isVariante(params.variante)) return {};
+  const d = getHomeDict(params.variante);
+  return {
+    title: d.metaTitle,
+    description: d.metaDescription,
+    // La URL pública de cada idioma, no la interna /v/….
+    alternates: {
+      canonical: prefijo(localeDeVariante(params.variante)) || "/",
+      languages: { es: "/", en: "/en", "pt-BR": "/pt", "x-default": "/" },
+    },
+  };
+}
 
-export default function Home() {
+export default function Home({ params }: { params: { variante: string } }) {
+  if (!isVariante(params.variante)) notFound();
+  const variante: Variante = params.variante;
+  const locale = localeDeVariante(variante);
+  const d = getHomeDict(variante);
+  const PASOS = d.pasos;
   return (
     <div className="min-h-screen bg-[#faf6e7]">
-      <SiteHeader />
+      {/* El <html lang> lo fija el layout raíz (es); cambiarlo ahí obligaría a
+          renderizar todo el sitio por request. Lo corregimos en el cliente. */}
+      {locale !== "es" && (
+        <script
+          dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(HTML_LANG[locale])}` }}
+        />
+      )}
+      <SiteHeader d={d} homeHref={prefijo(locale) || "/"} />
       <main>
         {/* Hero compacto: una promesa, una bajada y nada más. El CTA real son
             las tarjetas de producto, que arrancan apenas abajo. */}
         <section className="px-6 pt-6 pb-6 md:pt-12 md:pb-10">
           <div className="max-w-3xl mx-auto text-center">
             <span className="inline-block bg-[#336aea]/20 text-[#22244e] text-xs md:text-sm font-bold px-3.5 py-1.5 rounded-full mb-4">
-              100% personalizables · Te llega en 48hs
+              {d.badge}
             </span>
             {/* Títular corto a propósito: en 375px cada línea extra empuja las
                 fotos de los productos abajo del fold. */}
             <h1 className="text-2xl md:text-4xl font-bold text-[#22244e] leading-[1.15] mb-3">
-              Que la mañana y la hora de dormir{" "}
-              <span className="text-[#336aea]">dejen de ser una pelea</span>
+              {d.h1}{" "}
+              <span className="text-[#336aea]">{d.h1Destacado}</span>
             </h1>
             <p className="text-[#22244e]/70 text-sm md:text-lg leading-relaxed max-w-xl mx-auto">
-              Tableros visuales con el nombre de tu hijo y sus actividades.
-              Elegí el tuyo:
+              {d.bajada}
             </p>
           </div>
         </section>
 
-        <ProductosDestacados />
+        <ProductosDestacados d={d} locale={locale} />
 
         {/* Cómo funciona, en una tira. Sin título de sección ni numeración:
             es prueba de que el proceso es simple, no contenido para leer. */}
@@ -86,30 +112,30 @@ export default function Home() {
           </div>
         </section>
 
-        <PorQueFunciona />
+        <PorQueFunciona d={d} />
 
-        <FAQ />
+        <FAQ d={d} />
 
         {/* Último empujón para quien bajó leyendo las preguntas: el único
             destino es volver a los productos. */}
         <section className="px-6 py-14 bg-white border-t border-[#e5e7eb]">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-2xl md:text-3xl font-bold text-[#22244e] mb-6">
-              Elegí el tablero de tu peque
+              {d.cierre}
             </h2>
             <Link
               href="#productos"
               className="inline-flex items-center justify-center h-12 px-8 rounded-lg bg-[#336aea] text-white font-bold hover:bg-[#2856c7] transition-colors"
             >
-              Personalizar tablero
+              {d.cta}
             </Link>
           </div>
         </section>
       </main>
-      <Footer />
+      <Footer d={d} locale={locale} />
       {/* FAB solo en la home: en el resto del flujo (customizers, checkout)
           molesta la conversión, ahí WhatsApp queda accesible desde el footer. */}
-      <WhatsAppFloat />
+      <WhatsAppFloat mensaje={d.waFab.mensaje} aria={d.waFab.aria} />
     </div>
   );
 }

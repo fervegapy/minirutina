@@ -10,11 +10,13 @@ import path from "path";
 import fs from "fs";
 import { loadImages, loadRecompensaImages, loadStickerImage } from "@/lib/pdfImages";
 import type { Genero } from "@/lib/iconAssets";
+import { isLocale, type Locale } from "@/lib/i18n";
+import { getPdfTextos } from "@/lib/i18n/compra";
 import TableroPDF from "@/components/pdf/TableroPDF";
 import RecompensaPDF from "@/components/pdf/RecompensaPDF";
 import ImprentaRutinasPDF from "@/components/pdf/ImprentaRutinasPDF";
 import ImprentaRecompensasPDF from "@/components/pdf/ImprentaRecompensasPDF";
-import InstructivoPDF from "@/components/pdf/InstructivoPDF";
+import InstructivoPDF, { textosInstructivo } from "@/components/pdf/InstructivoPDF";
 import { agregarLineaDeCorte } from "@/lib/pdf/corte";
 
 const fontsDir = path.join(process.cwd(), "public", "fonts");
@@ -43,13 +45,15 @@ async function buildRutinasBuffer(
   noche: string[],
   watermark: boolean,
   genero: Genero | null,
+  idioma: Locale,
 ) {
   const allIconIds = [...manana, ...noche];
-  const images = loadImages(allIconIds, genero);
+  const images = loadImages(allIconIds, genero, idioma);
   const element = React.createElement(TableroPDF, {
     nombreNino, colorAcento, manana, noche, images,
     subtitleFont: SUBTITLE_FONT,
     watermark,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -60,12 +64,14 @@ async function buildRecompensasBuffer(
   genero: Genero,
   cantidad: 10 | 20,
   watermark: boolean,
+  idioma: Locale,
 ) {
-  const images = loadRecompensaImages();
+  const images = loadRecompensaImages(idioma);
   const element = React.createElement(RecompensaPDF, {
     nombreNino, genero, cantidad, images,
     subtitleFont: SUBTITLE_FONT,
     watermark,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -79,9 +85,10 @@ async function buildImprentaRutinasBuffer(
   manana: string[],
   noche: string[],
   genero: Genero | null,
+  idioma: Locale,
 ) {
   const allIconIds = [...manana, ...noche];
-  const images = loadImages(allIconIds, genero);
+  const images = loadImages(allIconIds, genero, idioma);
   // Reuse the green check sticker from /public/recompensas/stickers/check.png
   // as the visual on the "Listo" fichas — keeps the cumplido check identical
   // across both products.
@@ -90,6 +97,7 @@ async function buildImprentaRutinasBuffer(
     nombreNino, colorAcento, manana, noche, images,
     checkSrc,
     subtitleFont: SUBTITLE_FONT,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -100,13 +108,15 @@ async function buildImprentaRecompensasBuffer(
   genero: Genero,
   cantidad: 10 | 20,
   stickerId: string,
+  idioma: Locale,
 ) {
-  const images = loadRecompensaImages();
+  const images = loadRecompensaImages(idioma);
   const stickerSrc = loadStickerImage(stickerId);
   const element = React.createElement(ImprentaRecompensasPDF, {
     nombreNino, genero, cantidad, images,
     stickerSrc, stickerId,
     subtitleFont: SUBTITLE_FONT,
+    textos: getPdfTextos(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);
@@ -122,6 +132,8 @@ export interface PdfData {
   genero?: Genero | null;
   cantidad?: 10 | 20;
   sticker?: string;
+  /** Idioma del pedido (personalizacion.idioma). Español si falta. */
+  idioma?: string | null;
 }
 
 // Generate the right buffer from inline preview data or DB pedido data.
@@ -131,15 +143,17 @@ export async function generateBuffer(
   watermark: boolean,
   mode: PdfMode = "cliente",
 ): Promise<Buffer> {
+  // También la imprenta: es la que recibe quien compra el digital.
+  const idioma: Locale = isLocale(data.idioma) ? data.idioma : "es";
   if (producto === "recompensas") {
     const genero = (data.genero ?? "nino") as Genero;
     const cantidad = (data.cantidad ?? 10) as 10 | 20;
     if (mode === "imprenta") {
       return buildImprentaRecompensasBuffer(
-        data.nombreNino, genero, cantidad, data.sticker ?? "estrella",
+        data.nombreNino, genero, cantidad, data.sticker ?? "estrella", idioma,
       );
     }
-    return buildRecompensasBuffer(data.nombreNino, genero, cantidad, watermark);
+    return buildRecompensasBuffer(data.nombreNino, genero, cantidad, watermark, idioma);
   }
   // default → rutinas
   if (mode === "imprenta") {
@@ -149,6 +163,7 @@ export async function generateBuffer(
       data.manana ?? [],
       data.noche ?? [],
       data.genero ?? null,
+      idioma,
     );
   }
   return buildRutinasBuffer(
@@ -158,6 +173,7 @@ export async function generateBuffer(
     data.noche ?? [],
     watermark,
     data.genero ?? null,
+    idioma,
   );
 }
 
@@ -174,11 +190,13 @@ export async function generateDigitalBuffer(producto: string, data: PdfData): Pr
   return agregarLineaDeCorte(imprenta, producto === "recompensas" ? [0] : undefined);
 }
 
-/** Instructivo de armado (una hoja A4), igual para todos los productos. */
-export async function generateInstructivoBuffer(): Promise<Buffer> {
+/** Instructivo de armado (una hoja A4), igual para todos los productos.
+ *  En el idioma de la compra; español si no es en ni pt. */
+export async function generateInstructivoBuffer(idioma?: string | null): Promise<Buffer> {
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const element = React.createElement(InstructivoPDF, {
     logoSrc: fs.existsSync(logoPath) ? logoPath : null,
+    textos: textosInstructivo(idioma),
   });
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return renderToBuffer(element as any);

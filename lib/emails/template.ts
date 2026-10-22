@@ -4,6 +4,34 @@
 //
 // Everything here is plain string HTML with inline styles + table layout —
 // the only thing email clients (Gmail, Outlook, Apple Mail) render reliably.
+import { formatPrecio, type Moneda } from "@/lib/mercado";
+import { HTML_LANG, type Locale } from "@/lib/i18n";
+
+// Textos de los bloques compartidos. Todos los emails aceptan `idioma`
+// (español si no se pasa); hoy solo el de pedido confirmado lo usa.
+const TXT: Record<Locale, {
+  para: string; digital: string; impreso: string; resumen: string; total: string;
+  dudas: string; waMensaje: (nro: string) => string; numero: string;
+}> = {
+  es: {
+    para: "Para", digital: "Digital", impreso: "Impreso", resumen: "Resumen del pedido", total: "Total",
+    dudas: "¿Dudas? Escribinos por WhatsApp",
+    waMensaje: (nro) => `Hola Mini Rutina, les escribo en relación al pedido ${nro}`,
+    numero: "Número de pedido",
+  },
+  en: {
+    para: "For", digital: "Digital", impreso: "Printed", resumen: "Order summary", total: "Total",
+    dudas: "Questions? Message us on WhatsApp",
+    waMensaje: (nro) => `Hi Minirutina, I'm writing about order ${nro}`,
+    numero: "Order number",
+  },
+  pt: {
+    para: "Para", digital: "Digital", impreso: "Impresso", resumen: "Resumo do pedido", total: "Total",
+    dudas: "Dúvidas? Fale com a gente no WhatsApp",
+    waMensaje: (nro) => `Olá, Minirutina! Escrevo sobre o pedido ${nro}`,
+    numero: "Número do pedido",
+  },
+};
 
 const BG      = "#faf6e7";
 const DARK    = "#22244e";
@@ -20,6 +48,11 @@ export interface EmailItemSummary {
 
 export function fmtPyg(n: number): string {
   return "Gs. " + Math.round(n).toLocaleString("es-PY");
+}
+
+/** Monto en la moneda del pedido (Gs. por defecto; ARS/BRL/USD para afuera). */
+export function fmtMonto(n: number, moneda: Moneda = "PYG"): string {
+  return formatPrecio(n, moneda);
 }
 
 /** Header logo: real logo image (site_config.logo_url) on a cream bar — same
@@ -42,15 +75,17 @@ export function renderEmailShell({
   intro,
   contentHtml,
   logoUrl,
+  idioma = "es",
 }: {
   preheader?: string;
   heading: string;
   intro?: string;
   contentHtml: string;
   logoUrl?: string | null;
+  idioma?: Locale;
 }): string {
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="${HTML_LANG[idioma]}">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -104,28 +139,34 @@ export function emailButton(href: string, label: string): string {
 }
 
 /** Order summary card: lists each item + total. */
-export function summaryCard(items: EmailItemSummary[], total: number): string {
+export function summaryCard(
+  items: EmailItemSummary[],
+  total: number,
+  moneda: Moneda = "PYG",
+  idioma: Locale = "es",
+): string {
+  const t = TXT[idioma];
   const rows = items.map((it) => `
     <tr>
       <td style="font-size:14px;color:${MUTED};padding:6px 0;line-height:1.4;">
         ${it.productoLabel}<br />
-        <span style="color:#22244e88;font-size:12px;">Para ${it.nombreNino} · ${it.tipoEntrega === "digital" ? "Digital" : "Impreso"}</span>
+        <span style="color:#22244e88;font-size:12px;">${t.para} ${it.nombreNino} · ${it.tipoEntrega === "digital" ? t.digital : t.impreso}</span>
       </td>
-      <td align="right" style="font-size:14px;font-weight:600;color:${DARK};padding:6px 0;white-space:nowrap;">${fmtPyg(it.precioPyg)}</td>
+      <td align="right" style="font-size:14px;font-weight:600;color:${DARK};padding:6px 0;white-space:nowrap;">${fmtMonto(it.precioPyg, moneda)}</td>
     </tr>`).join("");
 
   return `<table width="100%" cellpadding="0" cellspacing="0"
     style="background:${BG};border:1px solid ${BORDER};border-radius:12px;margin-bottom:24px;">
     <tr><td style="padding:20px 24px;">
       <p style="margin:0 0 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#22244e55;">
-        Resumen del pedido
+        ${t.resumen}
       </p>
       <table width="100%" cellpadding="0" cellspacing="0">
         ${rows}
         <tr><td colspan="2" style="padding:8px 0;"><hr style="border:none;border-top:1px solid ${BORDER};margin:0;" /></td></tr>
         <tr>
-          <td style="font-size:15px;font-weight:700;color:${DARK};padding:4px 0;">Total</td>
-          <td align="right" style="font-size:18px;font-weight:800;color:${DARK};padding:4px 0;">${fmtPyg(total)}</td>
+          <td style="font-size:15px;font-weight:700;color:${DARK};padding:4px 0;">${t.total}</td>
+          <td align="right" style="font-size:18px;font-weight:800;color:${DARK};padding:4px 0;">${fmtMonto(total, moneda)}</td>
         </tr>
       </table>
     </td></tr>
@@ -152,21 +193,21 @@ const WHATSAPP_ICON = "https://www.minirutina.com/email/whatsapp.png";
 /** Subtle WhatsApp contact link (icon + text), pre-filled with the order
  *  number. Intentionally low-emphasis — it signals the support channel
  *  without competing with the email's primary CTA. */
-export function whatsappButton(pedidoId: string, waNumber: string): string {
+export function whatsappButton(pedidoId: string, waNumber: string, idioma: Locale = "es"): string {
   if (!waNumber) return "";
   const nro  = pedidoId.slice(0, 8).toUpperCase();
-  const text = encodeURIComponent(`Hola Mini Rutina, les escribo en relación al pedido ${nro}`);
+  const text = encodeURIComponent(TXT[idioma].waMensaje(nro));
   return `<p style="margin:4px 0 16px;font-size:14px;line-height:1;">
     <a href="https://wa.me/${waNumber}?text=${text}" style="color:${MUTED};text-decoration:none;font-weight:600;">
-      <img src="${WHATSAPP_ICON}" width="18" height="18" alt="" style="vertical-align:-4px;margin-right:6px;border:0;" />¿Dudas? Escribinos por WhatsApp
+      <img src="${WHATSAPP_ICON}" width="18" height="18" alt="" style="vertical-align:-4px;margin-right:6px;border:0;" />${TXT[idioma].dudas}
     </a>
   </p>`;
 }
 
 /** Order number chip. */
-export function pedidoNumero(pedidoId: string): string {
+export function pedidoNumero(pedidoId: string, idioma: Locale = "es"): string {
   return `<p style="margin:0;font-size:13px;color:#22244e66;">
-    Número de pedido:
+    ${TXT[idioma].numero}:
     <code style="font-size:12px;background:#f3f4f6;padding:2px 6px;border-radius:4px;">${pedidoId.slice(0, 8).toUpperCase()}</code>
   </p>`;
 }

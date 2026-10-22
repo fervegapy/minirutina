@@ -4,6 +4,7 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { generateDigitalBuffer, generateInstructivoBuffer, type PdfData } from "@/lib/pdf/render";
 import type { EmailAttachment } from "@/lib/email";
+import { archivoInstructivo } from "@/components/pdf/InstructivoPDF";
 import type { Genero } from "@/lib/iconAssets";
 import type {
   PersonalizacionRutinas,
@@ -36,13 +37,15 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
 
   const items = rows ?? [];
   const attachments: EmailAttachment[] = [];
+  // Idioma del instructivo: el del primer ítem digital.
+  const idioma = (items[0]?.personalizacion as { idioma?: string } | null)?.idioma ?? null;
 
   for (const it of items) {
     try {
       const p = (it.personalizacion ?? {}) as
         & Partial<PersonalizacionRutinas>
         & Partial<PersonalizacionRecompensas>
-        & { genero?: Genero | null };
+        & { genero?: Genero | null; idioma?: string };
 
       const data: PdfData = {
         nombreNino:  it.nombre_nino,
@@ -52,6 +55,7 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
         genero:      p.genero ?? null,
         cantidad:    p.cantidad,
         sticker:     p.sticker,
+        idioma:      p.idioma,
       };
 
       // Versión imprenta (frente y dorso, como el impreso que armamos acá)
@@ -66,7 +70,7 @@ export async function generarAdjuntosDigitales(pedidoId: string): Promise<EmailA
   // Una sola vez por email, aunque el pedido traiga varios tableros.
   if (attachments.length > 0) {
     try {
-      attachments.push({ filename: "como-armar-tu-tablero.pdf", content: await generateInstructivoBuffer() });
+      attachments.push({ filename: archivoInstructivo(idioma), content: await generateInstructivoBuffer(idioma) });
     } catch (e) {
       console.error("[adjuntos] no se pudo generar el instructivo para", pedidoId, e);
     }

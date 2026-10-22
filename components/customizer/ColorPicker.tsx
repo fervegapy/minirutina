@@ -8,9 +8,11 @@ export const COLORES = [
 interface ColorPickerProps {
   value: string;
   onChange: (color: string) => void;
+  /** Nombres de color por hex (aria-label); si falta, el de COLORES. */
+  nombres?: Record<string, string>;
 }
 
-export default function ColorPicker({ value, onChange }: ColorPickerProps) {
+export default function ColorPicker({ value, onChange, nombres }: ColorPickerProps) {
   return (
     <div className="flex flex-wrap gap-4 justify-center">
       {COLORES.map((c) => (
@@ -24,8 +26,8 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
               : "border-transparent hover:border-[#e5e7eb]"
           }`}
           style={{ backgroundColor: c.bg }}
-          aria-label={c.label}
-          title={c.label}
+          aria-label={nombres?.[c.value] ?? c.label}
+          title={nombres?.[c.value] ?? c.label}
         />
       ))}
     </div>
