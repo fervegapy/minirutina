@@ -12,6 +12,10 @@ import type {
 } from "@/types/pedido";
 
 export const runtime = "nodejs";
+// Generar PDFs en una función "fría" tarda ~30 s. Sin este techo explícito,
+// el límite de Vercel podría cortar la función a la mitad (el pedido queda
+// pagado y el email con el PDF no sale). No la hace más lenta: es un tope.
+export const maxDuration = 60;
 
 function slug(s: string): string {
   return (s || "tablero")

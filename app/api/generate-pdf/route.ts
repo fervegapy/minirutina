@@ -7,6 +7,10 @@ import type {
   PersonalizacionRecompensas,
 } from "@/types/pedido";
 
+// Generar PDFs en una función "fría" tarda ~30 s. Techo explícito para que
+// el límite de Vercel no corte la vista previa o la descarga a la mitad.
+export const maxDuration = 60;
+
 // Hard-coded test pedido — used when pedidoId === "test" (rutinas only)
 const TEST_PEDIDO = {
   id: "test",
