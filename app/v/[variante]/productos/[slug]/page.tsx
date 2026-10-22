@@ -105,7 +105,7 @@ export default async function ProductoPage({
           dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(HTML_LANG[locale])}` }}
         />
       )}
-      <SiteHeader ancho="5xl" d={d} homeHref={prefijo(locale) || "/"} />
+      <SiteHeader ancho="5xl" d={d} homeHref={prefijo(locale) || "/"} locale={locale} />
       <MetaViewContent
         producto={params.slug}
         precio={usaCms && precioPy !== null ? precioPy : undefined}

@@ -5,12 +5,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isAdminEmail } from "@/lib/admin-emails";
 import { MONEDA_COOKIE, MONEDA_COOKIE_MAX_AGE, monedaFromCountryCode, type Moneda } from "@/lib/mercado";
-import { LOCALE_COOKIE, isLocale, localeFromRequest, varianteDe, type Locale } from "@/lib/i18n";
+import { LOCALE_COOKIE, PAIS_COOKIE, PAIS_FORZADO_COOKIE, PAIS_IP_COOKIE, isLocale, varianteDe, type Locale } from "@/lib/i18n";
 
-// País forzado a mano con ?pais=AR (sirve para probar otros mercados en local
-// o desde Paraguay). Se guarda aparte para que la cookie de moneda normal se
-// pueda recalcular por IP en cada visita.
-const PAIS_FORZADO_COOKIE = "mr_pais_forzado";
+// País elegido a mano (selector del header, o ?pais=AR para probar): va en
+// PAIS_FORZADO_COOKIE, aparte, para que sin elección la moneda se recalcule
+// por IP en cada visita.
 const COOKIE_OPTS = { maxAge: MONEDA_COOKIE_MAX_AGE, path: "/" };
 
 // ─── Sitio público: idioma + moneda ──────────────────────────────────────────
@@ -27,11 +26,14 @@ function publico(req: NextRequest): NextResponse {
   // País → moneda. ?pais=XX lo fuerza (y ?pais=auto lo vuelve a la IP).
   const paisParam = searchParams.get("pais")?.toUpperCase() ?? null;
   const paisForzado = paisParam === "AUTO" ? null : paisParam ?? req.cookies.get(PAIS_FORZADO_COOKIE)?.value ?? null;
-  const pais = paisForzado ?? req.headers.get("x-vercel-ip-country");
+  const paisIp = req.headers.get("x-vercel-ip-country")?.toUpperCase() ?? null;
+  const pais = paisForzado ?? paisIp;
   const moneda: Moneda = monedaFromCountryCode(pais);
 
-  // Idioma: el prefijo de la URL manda; si no hay, cookie; si no hay cookie,
-  // país + navegador.
+  // Idioma: el prefijo de la URL manda; si no hay, lo que la persona eligió
+  // con el selector (cookie); si no eligió nada, español. Nunca se cambia de
+  // idioma por lo detectado: para eso está el aviso (AvisoPais), que sugiere
+  // y deja decidir.
   const seg = pathname.split("/")[1];
   const idiomaParam = searchParams.get("idioma");
   const idiomaCookie = req.cookies.get(LOCALE_COOKIE)?.value;
@@ -43,7 +45,7 @@ function publico(req: NextRequest): NextResponse {
   } else {
     locale = isLocale(idiomaParam) ? idiomaParam
            : isLocale(idiomaCookie) ? idiomaCookie
-           : localeFromRequest(pais, req.headers.get("accept-language"));
+           : "es";
   }
 
   const conCookies = (r: NextResponse) => {
@@ -55,6 +57,11 @@ function publico(req: NextRequest): NextResponse {
       // Legible desde el cliente: los precios se eligen en el navegador.
       r.cookies.set(MONEDA_COOKIE, moneda, COOKIE_OPTS);
     }
+    // País en uso (el elegido o el de la IP) y el de la IP aparte: el
+    // selector muestra el primero y el aviso compara contra el segundo.
+    const paisUso = pais?.toUpperCase() ?? "PY";
+    if (req.cookies.get(PAIS_COOKIE)?.value !== paisUso) r.cookies.set(PAIS_COOKIE, paisUso, COOKIE_OPTS);
+    if (paisIp && req.cookies.get(PAIS_IP_COOKIE)?.value !== paisIp) r.cookies.set(PAIS_IP_COOKIE, paisIp, COOKIE_OPTS);
     // El idioma se guarda solo cuando la persona lo eligió con el selector
     // (?idioma=). Entrar por /en o /pt no lo fija: esa visita suele venir de
     // nuestra propia redirección o de un link compartido, y fijarlo dejaba a
@@ -65,8 +72,8 @@ function publico(req: NextRequest): NextResponse {
     return r;
   };
 
-  // Una URL en español con el visitante en otro idioma → a su prefijo. Solo
-  // en las páginas traducidas: home, detalle de producto y el flujo de compra.
+  // Una URL en español con otro idioma elegido → a su prefijo. Solo en las
+  // páginas traducidas: home, detalle de producto y el flujo de compra.
   const esTraducible = resto === "/" || resto.startsWith("/productos/");
   // El flujo de compra existe de verdad en /en/… y /pt/… (app/[locale]/): no
   // se reescribe, se sirve tal cual.

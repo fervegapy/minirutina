@@ -71,7 +71,7 @@ export default function Home({ params }: { params: { variante: string } }) {
           dangerouslySetInnerHTML={{ __html: `document.documentElement.lang=${JSON.stringify(HTML_LANG[locale])}` }}
         />
       )}
-      <SiteHeader d={d} homeHref={prefijo(locale) || "/"} />
+      <SiteHeader d={d} homeHref={prefijo(locale) || "/"} locale={locale} />
       <main>
         {/* Hero compacto: una promesa, una bajada y nada más. El CTA real son
             las tarjetas de producto, que arrancan apenas abajo. */}

@@ -21,6 +21,15 @@ export const LOCALES: Locale[] = ["es", "en", "pt"];
 // fijaciones automáticas dejan de contar y solo vale lo elegido a mano.
 export const LOCALE_COOKIE = "mr_idioma_v2";
 
+// País en uso (elegido en el selector o detectado por IP) y país de la IP.
+// Los pone el middleware, legibles desde el cliente (SelectorMercado y
+// AvisoPais). El elegido a mano vive en "mr_pais_forzado".
+export const PAIS_COOKIE = "mr_pais";
+export const PAIS_IP_COOKIE = "mr_pais_ip";
+export const PAIS_FORZADO_COOKIE = "mr_pais_forzado";
+// Se descartó el aviso de país: no volver a mostrarlo.
+export const AVISO_PAIS_COOKIE = "mr_aviso_pais";
+
 export function isLocale(v: unknown): v is Locale {
   return v === "es" || v === "en" || v === "pt";
 }
