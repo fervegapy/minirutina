@@ -19,6 +19,11 @@ const COOKIE_OPTS = { maxAge: MONEDA_COOKIE_MAX_AGE, path: "/" };
 function publico(req: NextRequest): NextResponse {
   const { pathname, searchParams } = req.nextUrl;
 
+  // Archivos estáticos (fotos de public/productos/, íconos, etc.) pasan de
+  // largo: /productos/rutinas.png comparte prefijo con el detalle de
+  // producto y si no se reescribía a /v/…, que no existe (404).
+  if (/\.[a-z0-9]+$/i.test(pathname)) return NextResponse.next();
+
   // País → moneda. ?pais=XX lo fuerza (y ?pais=auto lo vuelve a la IP).
   const paisParam = searchParams.get("pais")?.toUpperCase() ?? null;
   const paisForzado = paisParam === "AUTO" ? null : paisParam ?? req.cookies.get(PAIS_FORZADO_COOKIE)?.value ?? null;
@@ -50,10 +55,12 @@ function publico(req: NextRequest): NextResponse {
       // Legible desde el cliente: los precios se eligen en el navegador.
       r.cookies.set(MONEDA_COOKIE, moneda, COOKIE_OPTS);
     }
-    // El idioma se guarda solo cuando la persona lo eligió (entró por /en o
-    // /pt, o tocó el selector). Lo detectado no se fija: si no, la primera
-    // detección quedaba pegada para siempre.
-    const elegido = seg === "en" || seg === "pt" ? seg : isLocale(idiomaParam) ? idiomaParam : null;
+    // El idioma se guarda solo cuando la persona lo eligió con el selector
+    // (?idioma=). Entrar por /en o /pt no lo fija: esa visita suele venir de
+    // nuestra propia redirección o de un link compartido, y fijarlo dejaba a
+    // la persona atrapada en ese idioma aunque después entrara por la URL en
+    // español.
+    const elegido = isLocale(idiomaParam) ? idiomaParam : null;
     if (elegido && idiomaCookie !== elegido) r.cookies.set(LOCALE_COOKIE, elegido, COOKIE_OPTS);
     return r;
   };

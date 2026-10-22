@@ -16,7 +16,10 @@ import type { Moneda } from "@/lib/mercado";
 export type Locale = "es" | "en" | "pt";
 export const LOCALES: Locale[] = ["es", "en", "pt"];
 
-export const LOCALE_COOKIE = "mr_idioma";
+// "_v2": la versión anterior fijaba el idioma también al entrar por /en o
+// /pt (incluso por nuestra propia redirección). Con el nombre nuevo, esas
+// fijaciones automáticas dejan de contar y solo vale lo elegido a mano.
+export const LOCALE_COOKIE = "mr_idioma_v2";
 
 export function isLocale(v: unknown): v is Locale {
   return v === "es" || v === "en" || v === "pt";

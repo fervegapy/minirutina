@@ -10,8 +10,8 @@ import { prefijo, type Locale } from "@/lib/i18n";
 // elige "Español" volvería a ser redirigido a /en.
 const IDIOMAS: { locale: Locale; label: string; href: string }[] = [
   { locale: "es", label: "Español",   href: "/?idioma=es" },
-  { locale: "en", label: "English",   href: "/en" },
-  { locale: "pt", label: "Português", href: "/pt" },
+  { locale: "en", label: "English",   href: "/en?idioma=en" },
+  { locale: "pt", label: "Português", href: "/pt?idioma=pt" },
 ];
 
 export default async function Footer({
